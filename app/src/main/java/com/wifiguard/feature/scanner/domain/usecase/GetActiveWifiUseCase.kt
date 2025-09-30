@@ -1,7 +1,7 @@
 package com.wifiguard.feature.scanner.domain.usecase
 
 import com.wifiguard.feature.scanner.domain.model.WifiInfo
-import com.wifiguard.feature.scanner.domain.model.SecurityType
+import com.wifiguard.feature.scanner.domain.model.EncryptionType
 import com.wifiguard.feature.scanner.domain.repository.WifiScannerRepository
 import javax.inject.Inject
 import kotlin.random.Random
@@ -37,11 +37,12 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -45,
                 frequency = 5180,
                 timestamp = currentTime - Random.nextLong(1000, 10000),
-                securityType = SecurityType.WPA2,
+                encryptionType = EncryptionType.WPA2,
                 signalStrength = -45,
                 channel = 36,
                 bandwidth = "80 MHz",
-                isHidden = false
+                isHidden = false,
+                isConnected = true // Текущая сеть
             ),
             WifiInfo(
                 ssid = "TP-Link_2.4G",
@@ -50,11 +51,12 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -67,
                 frequency = 2442,
                 timestamp = currentTime - Random.nextLong(2000, 15000),
-                securityType = SecurityType.WPA2,
+                encryptionType = EncryptionType.WPA2,
                 signalStrength = -67,
                 channel = 7,
                 bandwidth = "20 MHz",
-                isHidden = false
+                isHidden = false,
+                isSaved = true
             ),
             WifiInfo(
                 ssid = "Office_Network",
@@ -63,7 +65,7 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -52,
                 frequency = 5240,
                 timestamp = currentTime - Random.nextLong(500, 5000),
-                securityType = SecurityType.WPA3,
+                encryptionType = EncryptionType.WPA3,
                 signalStrength = -52,
                 channel = 48,
                 bandwidth = "160 MHz",
@@ -76,7 +78,7 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -72,
                 frequency = 2462,
                 timestamp = currentTime - Random.nextLong(3000, 20000),
-                securityType = SecurityType.OPEN,
+                encryptionType = EncryptionType.NONE,
                 signalStrength = -72,
                 channel = 11,
                 bandwidth = "20 MHz",
@@ -89,7 +91,7 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -78,
                 frequency = 2437,
                 timestamp = currentTime - Random.nextLong(1500, 12000),
-                securityType = SecurityType.WPA2,
+                encryptionType = EncryptionType.WPA2,
                 signalStrength = -78,
                 channel = 6,
                 bandwidth = "40 MHz",
@@ -102,7 +104,7 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -81,
                 frequency = 5785,
                 timestamp = currentTime - Random.nextLong(4000, 25000),
-                securityType = SecurityType.WPA2,
+                encryptionType = EncryptionType.WPA2,
                 signalStrength = -81,
                 channel = 157,
                 bandwidth = "80 MHz",
@@ -115,7 +117,7 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -85,
                 frequency = 2412,
                 timestamp = currentTime - Random.nextLong(6000, 30000),
-                securityType = SecurityType.OPEN,
+                encryptionType = EncryptionType.NONE,
                 signalStrength = -85,
                 channel = 1,
                 bandwidth = "20 MHz",
@@ -128,9 +130,22 @@ class GetActiveWifiUseCase @Inject constructor(
                 level = -89,
                 frequency = 2472,
                 timestamp = currentTime - Random.nextLong(8000, 35000),
-                securityType = SecurityType.WEP,
+                encryptionType = EncryptionType.WEP,
                 signalStrength = -89,
                 channel = 13,
+                bandwidth = "20 MHz",
+                isHidden = false
+            ),
+            WifiInfo(
+                ssid = "Router_WPS",
+                bssid = "12:34:56:78:9A:BC",
+                capabilities = "[WPS][WPA2-PSK-CCMP][ESS]",
+                level = -75,
+                frequency = 2427,
+                timestamp = currentTime - Random.nextLong(2500, 18000),
+                encryptionType = EncryptionType.WPS,
+                signalStrength = -75,
+                channel = 4,
                 bandwidth = "20 MHz",
                 isHidden = false
             )
