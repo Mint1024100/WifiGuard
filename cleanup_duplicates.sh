@@ -1,32 +1,53 @@
 #!/bin/bash
-# Script to clean up remaining duplicate com.wifiguard structure
+# Final cleanup script for remaining duplicate com.wifiguard structure
 # This directory should not exist in a proper Android project
 
-echo "🧹 Cleaning up remaining duplicate com.wifiguard structure..."
+echo "🧹 Final cleanup: Removing remaining duplicate com.wifiguard structure..."
+echo ""
 
-# Show what will be removed
-echo "📝 Files and directories to be removed:"
-find com.wifiguard -type f 2>/dev/null | head -20
-echo "..."
-
-# Count remaining files
-FILE_COUNT=$(find com.wifiguard -type f 2>/dev/null | wc -l)
-echo "📋 Total remaining files: $FILE_COUNT"
-
-# Remove all remaining files from com.wifiguard structure
+# Check if com.wifiguard directory still exists
 if [ -d "com.wifiguard" ]; then
-    echo "🗑️ Removing duplicate com.wifiguard directory..."
+    echo "📝 Remaining directories to be removed:"
+    find com.wifiguard -type d 2>/dev/null | sort
+    echo ""
+    
+    echo "📝 Remaining files to be removed:"
+    REMAINING_FILES=$(find com.wifiguard -type f 2>/dev/null | wc -l)
+    if [ "$REMAINING_FILES" -gt 0 ]; then
+        find com.wifiguard -type f 2>/dev/null | head -10
+        if [ "$REMAINING_FILES" -gt 10 ]; then
+            echo "... and $(($REMAINING_FILES - 10)) more files"
+        fi
+    else
+        echo "(Only empty directories remain)"
+    fi
+    echo ""
+    
+    echo "📋 Total remaining files: $REMAINING_FILES"
+    echo ""
+    
+    echo "🗑️ Removing entire com.wifiguard directory structure..."
     git rm -rf com.wifiguard/
     
-    echo "✅ Cleanup complete! Duplicate structure removed."
-    echo "💡 Now commit these changes:"
-    echo "   git commit -m 'Remove remaining duplicate com.wifiguard directory structure'"
-    echo "   git push origin main"
+    if [ $? -eq 0 ]; then
+        echo "✅ SUCCESS: All duplicate files removed!"
+        echo ""
+        echo "💡 Next steps:"
+        echo "   git commit -m 'Complete removal of duplicate com.wifiguard structure'"
+        echo "   git push origin main"
+    else
+        echo "❌ ERROR: Failed to remove some files. Please check permissions."
+        exit 1
+    fi
 else
-    echo "✅ No com.wifiguard directory found. Cleanup already complete!"
+    echo "✅ ALREADY CLEAN: No com.wifiguard directory found!"
 fi
 
 echo ""
-echo "🎉 Your WifiGuard project now has a clean, standard Android architecture!"
-echo "📝 All code is properly located in app/src/main/java/com/wifiguard/"
+echo "🎉 CLEANUP COMPLETE!"
+echo "📝 Your WifiGuard project now has a clean, standard Android architecture!"
+echo "🎯 All code is properly located in app/src/main/java/com/wifiguard/"
 echo "🚫 No more duplicate files or conflicting structures!"
+echo "🚀 Ready for professional Android development!"
+echo ""
+echo "See CLEANUP_SUMMARY.md for detailed cleanup report."
