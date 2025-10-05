@@ -65,8 +65,8 @@ subprojects {
                 }
                 
                 compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_11
-                    targetCompatibility = JavaVersion.VERSION_11
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
                 }
                 
                 // Compose configuration for app modules
@@ -94,7 +94,7 @@ subprojects {
         // Kotlin compile options for all modules
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
             kotlinOptions {
-                jvmTarget = "11"
+                jvmTarget = "17"
                 freeCompilerArgs += listOf(
                     "-opt-in=kotlin.RequiresOptIn",
                     "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
