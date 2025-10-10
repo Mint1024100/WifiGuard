@@ -2,115 +2,111 @@ package com.wifiguard.core.data.local.dao
 
 import androidx.room.*
 import com.wifiguard.core.data.local.entity.WifiNetworkEntity
-import com.wifiguard.core.data.local.entity.toDomainModel
-import com.wifiguard.core.domain.model.WifiNetwork
+import com.wifiguard.core.domain.model.ThreatLevel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
- * DAO (Data Access Object) для управления Wi-Fi сетями в Room базе данных.
- * Определяет SQL операции для CRUD операций с Wi-Fi сетями.
+ * Data Access Object для работы с таблицей wifi_networks.
+ * 
+ * Предоставляет методы для CRUD операций с Wi-Fi сетями,
+ * а также специализированные запросы для анализа безопасности.
  */
 @Dao
-abstract class WifiNetworkDao {
+interface WifiNetworkDao {
     
     /**
-     * Получить все Wi-Fi сети, отсортированные по времени последнего обновления
+     * Получить все сети с реальным обновлением
      */
-    @Query("SELECT * FROM wifi_networks ORDER BY last_updated DESC")
-    abstract fun getAllNetworksFlow(): Flow<List<WifiNetworkEntity>>
-    
-    fun getAllNetworks(): Flow<List<WifiNetwork>> {
-        return getAllNetworksFlow().map { entities -> 
-            entities.map { it.toDomainModel() }
-        }
-    }
+    @Query("SELECT * FROM wifi_networks ORDER BY last_seen DESC")
+    fun getAllNetworks(): Flow<List<WifiNetworkEntity>>
     
     /**
-     * Получить сеть по SSID
+     * Получить сеть по BSSID
      */
-    @Query("SELECT * FROM wifi_networks WHERE ssid = :ssid LIMIT 1")
-    abstract suspend fun getNetworkEntityBySSID(ssid: String): WifiNetworkEntity?
-    
-    suspend fun getNetworkBySSID(ssid: String): WifiNetwork? {
-        return getNetworkEntityBySSID(ssid)?.toDomainModel()
-    }
+    @Query("SELECT * FROM wifi_networks WHERE bssid = :bssid LIMIT 1")
+    suspend fun getNetworkByBssid(bssid: String): WifiNetworkEntity?
     
     /**
-     * Вставить или обновить Wi-Fi сеть
+     * Получить все сети с указанным уровнем угрозы
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun insertNetworkEntity(network: WifiNetworkEntity)
-    
-    suspend fun insertNetwork(network: WifiNetwork) {
-        insertNetworkEntity(network.toEntity())
-    }
-    
-    /**
-     * Обновить Wi-Fi сеть
-     */
-    @Update
-    abstract suspend fun updateNetworkEntity(network: WifiNetworkEntity)
-    
-    suspend fun updateNetwork(network: WifiNetwork) {
-        updateNetworkEntity(network.toEntity())
-    }
-    
-    /**
-     * Удалить Wi-Fi сеть
-     */
-    @Delete
-    abstract suspend fun deleteNetworkEntity(network: WifiNetworkEntity)
-    
-    suspend fun deleteNetwork(network: WifiNetwork) {
-        deleteNetworkEntity(network.toEntity())
-    }
+    @Query("SELECT * FROM wifi_networks WHERE threat_level = :threatLevel ORDER BY last_seen DESC")
+    fun getNetworksByThreatLevel(threatLevel: ThreatLevel): Flow<List<WifiNetworkEntity>>
     
     /**
      * Получить подозрительные сети
      */
-    @Query("SELECT * FROM wifi_networks WHERE is_suspicious = 1 ORDER BY last_updated DESC")
-    abstract fun getSuspiciousNetworksFlow(): Flow<List<WifiNetworkEntity>>
-    
-    fun getSuspiciousNetworks(): Flow<List<WifiNetwork>> {
-        return getSuspiciousNetworksFlow().map { entities ->
-            entities.map { it.toDomainModel() }
-        }
-    }
+    @Query("SELECT * FROM wifi_networks WHERE is_suspicious = 1 ORDER BY last_seen DESC")
+    fun getSuspiciousNetworks(): Flow<List<WifiNetworkEntity>>
     
     /**
-     * Получить сети по частоте
+     * Получить сети, обнаруженные за последние N миллисекунд
      */
-    @Query("SELECT * FROM wifi_networks WHERE frequency = :frequency ORDER BY signal_strength DESC")
-    abstract fun getNetworksByFrequency(frequency: Int): Flow<List<WifiNetworkEntity>>
+    @Query("SELECT * FROM wifi_networks WHERE last_seen > :timestamp ORDER BY last_seen DESC")
+    fun getRecentNetworks(timestamp: Long): Flow<List<WifiNetworkEntity>>
     
     /**
-     * Получить сети по каналу
+     * Поиск сетей по SSID
      */
-    @Query("SELECT * FROM wifi_networks WHERE channel = :channel ORDER BY signal_strength DESC")
-    abstract fun getNetworksByChannel(channel: Int): Flow<List<WifiNetworkEntity>>
+    @Query("SELECT * FROM wifi_networks WHERE ssid LIKE '%' || :query || '%' ORDER BY last_seen DESC")
+    fun searchNetworksByName(query: String): Flow<List<WifiNetworkEntity>>
     
     /**
-     * Получить статистику - количество сетей
+     * Получить количество сетей по уровням угроз
      */
-    @Query("SELECT COUNT(*) FROM wifi_networks")
-    abstract suspend fun getNetworksCount(): Int
+    @Query("SELECT threat_level, COUNT(*) as count FROM wifi_networks GROUP BY threat_level")
+    suspend fun getNetworkCountByThreatLevel(): Map<ThreatLevel, Int>
     
     /**
-     * Получить количество подозрительных сетей
+     * Добавить новую сеть
      */
-    @Query("SELECT COUNT(*) FROM wifi_networks WHERE is_suspicious = 1")
-    abstract suspend fun getSuspiciousNetworksCount(): Int
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNetwork(network: WifiNetworkEntity): Long
     
     /**
-     * Очистить старые сети (не видели больше 30 дней)
+     * Добавить несколько сетей
      */
-    @Query("DELETE FROM wifi_networks WHERE last_seen < :olderThanMillis AND is_known = 0")
-    abstract suspend fun cleanupOldNetworks(olderThanMillis: Long)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNetworks(networks: List<WifiNetworkEntity>): List<Long>
     
     /**
-     * Очистить все сети
+     * Обновить существующую сеть
+     */
+    @Update
+    suspend fun updateNetwork(network: WifiNetworkEntity)
+    
+    /**
+     * Обновить время последнего обнаружения и счетчик
+     */
+    @Query("UPDATE wifi_networks SET last_seen = :timestamp, detection_count = detection_count + 1 WHERE bssid = :bssid")
+    suspend fun updateLastSeen(bssid: String, timestamp: Long)
+    
+    /**
+     * Обновить уровень угрозы
+     */
+    @Query("UPDATE wifi_networks SET threat_level = :threatLevel WHERE id = :networkId")
+    suspend fun updateThreatLevel(networkId: Long, threatLevel: ThreatLevel)
+    
+    /**
+     * Отметить сеть как подозрительную
+     */
+    @Query("UPDATE wifi_networks SET is_suspicious = :suspicious WHERE id = :networkId")
+    suspend fun markAsSuspicious(networkId: Long, suspicious: Boolean)
+    
+    /**
+     * Удалить сеть
+     */
+    @Delete
+    suspend fun deleteNetwork(network: WifiNetworkEntity)
+    
+    /**
+     * Удалить все сети
      */
     @Query("DELETE FROM wifi_networks")
-    abstract suspend fun clearAllNetworks()
+    suspend fun deleteAllNetworks()
+    
+    /**
+     * Удалить старые сети (ольдер 30 дней)
+     */
+    @Query("DELETE FROM wifi_networks WHERE last_seen < :cutoffTimestamp")
+    suspend fun deleteOldNetworks(cutoffTimestamp: Long)
 }

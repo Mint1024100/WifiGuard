@@ -2,130 +2,144 @@ package com.wifiguard.core.data.local.dao
 
 import androidx.room.*
 import com.wifiguard.core.data.local.entity.WifiScanResultEntity
-import com.wifiguard.core.data.local.entity.toDomainModel
-import com.wifiguard.core.domain.model.WifiScanResult
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
- * DAO (Data Access Object) для управления результатами сканирования Wi-Fi.
- * Обеспечивает операции для хранения и анализа истории сканирования.
+ * Data Access Object для работы с результатами сканирования Wi-Fi.
+ * 
+ * Предоставляет методы для сохранения и анализа исторических данных
+ * сканирования, мониторинга сигналов и геолокации.
  */
 @Dao
-abstract class WifiScanDao {
+interface WifiScanDao {
     
     /**
-     * Получить последние результаты сканирования
+     * Получить все результаты сканирования
      */
-    @Query("SELECT * FROM wifi_scan_results ORDER BY timestamp DESC LIMIT :limit")
-    abstract fun getLatestScansFlow(limit: Int): Flow<List<WifiScanResultEntity>>
-    
-    fun getLatestScans(limit: Int = 100): Flow<List<WifiScanResult>> {
-        return getLatestScansFlow(limit).map { entities ->
-            entities.map { it.toDomainModel() }
-        }
-    }
+    @Query("SELECT * FROM wifi_scan_results ORDER BY scan_timestamp DESC")
+    fun getAllScanResults(): Flow<List<WifiScanResultEntity>>
     
     /**
-     * Вставить результат сканирования
+     * Получить результаты для конкретной сети
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun insertScanResultEntity(scanResult: WifiScanResultEntity)
-    
-    suspend fun insertScanResult(scanResult: WifiScanResult) {
-        insertScanResultEntity(scanResult.toEntity())
-    }
+    @Query("SELECT * FROM wifi_scan_results WHERE network_id = :networkId ORDER BY scan_timestamp DESC")
+    fun getScanResultsForNetwork(networkId: Long): Flow<List<WifiScanResultEntity>>
     
     /**
-     * Вставить множество результатов сканирования
+     * Получить результаты за период
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun insertScanResultEntities(scanResults: List<WifiScanResultEntity>)
-    
-    suspend fun insertScanResults(scanResults: List<WifiScanResult>) {
-        insertScanResultEntities(scanResults.map { it.toEntity() })
-    }
+    @Query("SELECT * FROM wifi_scan_results WHERE scan_timestamp BETWEEN :startTime AND :endTime ORDER BY scan_timestamp DESC")
+    fun getScanResultsInPeriod(startTime: Long, endTime: Long): Flow<List<WifiScanResultEntity>>
     
     /**
-     * Получить статистику по конкретной сети
+     * Получить результаты по сессии сканирования
      */
-    @Query("SELECT * FROM wifi_scan_results WHERE ssid = :ssid ORDER BY timestamp DESC")
-    abstract fun getNetworkStatisticsFlow(ssid: String): Flow<List<WifiScanResultEntity>>
-    
-    fun getNetworkStatistics(ssid: String): Flow<List<WifiScanResult>> {
-        return getNetworkStatisticsFlow(ssid).map { entities ->
-            entities.map { it.toDomainModel() }
-        }
-    }
+    @Query("SELECT * FROM wifi_scan_results WHERE scan_session_id = :sessionId ORDER BY scan_timestamp ASC")
+    fun getScanResultsBySession(sessionId: String): Flow<List<WifiScanResultEntity>>
     
     /**
-     * Получить сканы за определённый период
+     * Получить последние результаты для каждой сети
+     */
+    @Query("""
+        SELECT sr.* FROM wifi_scan_results sr
+        INNER JOIN (
+            SELECT network_id, MAX(scan_timestamp) as max_timestamp 
+            FROM wifi_scan_results 
+            GROUP BY network_id
+        ) latest ON sr.network_id = latest.network_id 
+        AND sr.scan_timestamp = latest.max_timestamp
+        ORDER BY sr.scan_timestamp DESC
+    """)
+    fun getLatestScanForEachNetwork(): Flow<List<WifiScanResultEntity>>
+    
+    /**
+     * Получить статистику мощности сигнала для сети
+     */
+    @Query("""
+        SELECT 
+            MIN(signal_strength) as min_signal,
+            MAX(signal_strength) as max_signal,
+            AVG(signal_strength) as avg_signal,
+            COUNT(*) as scan_count
+        FROM wifi_scan_results 
+        WHERE network_id = :networkId
+    """)
+    suspend fun getSignalStatistics(networkId: Long): SignalStatistics?
+    
+    /**
+     * Получить количество сканирований за период
+     */
+    @Query("SELECT COUNT(*) FROM wifi_scan_results WHERE scan_timestamp BETWEEN :startTime AND :endTime")
+    suspend fun getScanCountInPeriod(startTime: Long, endTime: Long): Int
+    
+    /**
+     * Получить результаты в радиусе от указанной точки
      */
     @Query("""
         SELECT * FROM wifi_scan_results 
-        WHERE timestamp BETWEEN :startTime AND :endTime 
-        ORDER BY timestamp DESC
+        WHERE location_latitude IS NOT NULL 
+        AND location_longitude IS NOT NULL
+        AND (
+            (location_latitude BETWEEN :lat - :radiusDegrees AND :lat + :radiusDegrees)
+            AND (location_longitude BETWEEN :lng - :radiusDegrees AND :lng + :radiusDegrees)
+        )
+        ORDER BY scan_timestamp DESC
     """)
-    abstract fun getScansByTimeRange(
-        startTime: Long, 
-        endTime: Long
+    fun getScanResultsInRadius(
+        lat: Double, 
+        lng: Double, 
+        radiusDegrees: Double = 0.001 // ~100m
     ): Flow<List<WifiScanResultEntity>>
     
     /**
-     * Получить сканы по типу
+     * Добавить результат сканирования
      */
-    @Query("SELECT * FROM wifi_scan_results WHERE scan_type = :scanType ORDER BY timestamp DESC")
-    abstract fun getScansByType(scanType: String): Flow<List<WifiScanResultEntity>>
+    @Insert
+    suspend fun insertScanResult(scanResult: WifiScanResultEntity): Long
     
     /**
-     * Очистить старые результаты сканирования
+     * Добавить несколько результатов сканирования
      */
-    @Query("DELETE FROM wifi_scan_results WHERE timestamp < :olderThanMillis")
-    abstract suspend fun clearOldScans(olderThanMillis: Long)
+    @Insert
+    suspend fun insertScanResults(scanResults: List<WifiScanResultEntity>): List<Long>
     
     /**
-     * Получить количество сканов за последние 24 часа
+     * Обновить результат сканирования
      */
-    @Query("""
-        SELECT COUNT(*) FROM wifi_scan_results 
-        WHERE timestamp > :timestampMillis
-    """)
-    abstract suspend fun getScansCountSince(timestampMillis: Long): Int
+    @Update
+    suspend fun updateScanResult(scanResult: WifiScanResultEntity)
     
     /**
-     * Получить среднюю силу сигнала для конкретной сети
+     * Удалить результат сканирования
      */
-    @Query("""
-        SELECT AVG(signal_strength) FROM wifi_scan_results 
-        WHERE ssid = :ssid AND timestamp > :sinceTimestamp
-    """)
-    abstract suspend fun getAverageSignalStrength(ssid: String, sinceTimestamp: Long): Double?
+    @Delete
+    suspend fun deleteScanResult(scanResult: WifiScanResultEntity)
     
     /**
-     * Получить уникальные сети за последний час
-     */
-    @Query("""
-        SELECT DISTINCT ssid FROM wifi_scan_results 
-        WHERE timestamp > :sinceTimestamp
-        ORDER BY timestamp DESC
-    """)
-    abstract suspend fun getUniqueSSIDsSince(sinceTimestamp: Long): List<String>
-    
-    /**
-     * Очистить все сканы
+     * Удалить все результаты сканирования
      */
     @Query("DELETE FROM wifi_scan_results")
-    abstract suspend fun clearAllScans()
+    suspend fun deleteAllScanResults()
     
     /**
-     * Получить общее количество сканов
+     * Удалить старые результаты (старше 30 дней)
      */
-    @Query("SELECT COUNT(*) FROM wifi_scan_results")
-    abstract suspend fun getTotalScansCount(): Int
+    @Query("DELETE FROM wifi_scan_results WHERE scan_timestamp < :cutoffTimestamp")
+    suspend fun deleteOldScanResults(cutoffTimestamp: Long)
     
     /**
-     * Получить самый последний скан
+     * Удалить результаты для конкретной сети
      */
-    @Query("SELECT * FROM wifi_scan_results ORDER BY timestamp DESC LIMIT 1")
-    abstract suspend fun getLatestScan(): WifiScanResultEntity?
+    @Query("DELETE FROM wifi_scan_results WHERE network_id = :networkId")
+    suspend fun deleteScanResultsForNetwork(networkId: Long)
 }
+
+/**
+ * Data class для статистики сигналов
+ */
+data class SignalStatistics(
+    val min_signal: Int,
+    val max_signal: Int,
+    val avg_signal: Double,
+    val scan_count: Int
+)

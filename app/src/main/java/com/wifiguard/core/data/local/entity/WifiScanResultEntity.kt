@@ -2,20 +2,31 @@ package com.wifiguard.core.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.PrimaryKey
+import androidx.room.ForeignKey
 import androidx.room.Index
-import com.wifiguard.core.domain.model.WifiScanResult
+import androidx.room.PrimaryKey
 
 /**
- * Room Entity для хранения результатов сканирования Wi-Fi сетей.
- * Используется для хранения истории сканирования и аналитики.
+ * Entity для хранения результатов сканирования Wi-Fi.
+ * 
+ * Хранит исторические данные о каждом сканировании,
+ * что позволяет анализировать тренды и изменения.
  */
 @Entity(
     tableName = "wifi_scan_results",
+    foreignKeys = [
+        ForeignKey(
+            entity = WifiNetworkEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["network_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
     indices = [
-        Index(value = ["ssid"]),
-        Index(value = ["timestamp"]),
-        Index(value = ["ssid", "timestamp"])
+        Index(value = ["network_id"]),
+        Index(value = ["scan_timestamp"]),
+        Index(value = ["location_latitude", "location_longitude"]),
+        Index(value = ["signal_strength"])
     ]
 )
 data class WifiScanResultEntity(
@@ -23,76 +34,57 @@ data class WifiScanResultEntity(
     @ColumnInfo(name = "id")
     val id: Long = 0,
     
-    @ColumnInfo(name = "ssid")
-    val ssid: String,
+    /**
+     * ID связанной сети (Foreign Key)
+     */
+    @ColumnInfo(name = "network_id")
+    val networkId: Long,
     
-    @ColumnInfo(name = "bssid")
-    val bssid: String,
+    /**
+     * Временная метка сканирования
+     */
+    @ColumnInfo(name = "scan_timestamp")
+    val scanTimestamp: Long,
     
+    /**
+     * Мощность сигнала во время сканирования
+     */
     @ColumnInfo(name = "signal_strength")
     val signalStrength: Int,
     
-    @ColumnInfo(name = "frequency")
-    val frequency: Int,
-    
-    @ColumnInfo(name = "channel")
-    val channel: Int,
-    
-    @ColumnInfo(name = "timestamp")
-    val timestamp: Long,
-    
+    /**
+     * Широта местоположения обнаружения
+     */
     @ColumnInfo(name = "location_latitude")
     val locationLatitude: Double? = null,
     
+    /**
+     * Долгота местоположения обнаружения
+     */
     @ColumnInfo(name = "location_longitude")
     val locationLongitude: Double? = null,
     
-    @ColumnInfo(name = "scan_type")
-    val scanType: String = "MANUAL", // MANUAL, AUTOMATIC, BACKGROUND
+    /**
+     * Точность местоположения в метрах
+     */
+    @ColumnInfo(name = "location_accuracy")
+    val locationAccuracy: Float? = null,
     
-    @ColumnInfo(name = "security_type")
-    val securityType: String? = null,
+    /**
+     * Дополнительные данные сканирования
+     */
+    @ColumnInfo(name = "additional_data")
+    val additionalData: String? = null,
     
-    @ColumnInfo(name = "vendor")
-    val vendor: String? = null
+    /**
+     * ID сессии сканирования (для группировки)
+     */
+    @ColumnInfo(name = "scan_session_id")
+    val scanSessionId: String? = null,
+    
+    /**
+     * Признак ручного сканирования
+     */
+    @ColumnInfo(name = "is_manual_scan")
+    val isManualScan: Boolean = false
 )
-
-/**
- * Преобразование Entity в доменную модель
- */
-fun WifiScanResultEntity.toDomainModel(): WifiScanResult {
-    return WifiScanResult(
-        id = id,
-        ssid = ssid,
-        bssid = bssid,
-        signalStrength = signalStrength,
-        frequency = frequency,
-        channel = channel,
-        timestamp = timestamp,
-        locationLatitude = locationLatitude,
-        locationLongitude = locationLongitude,
-        scanType = WifiScanResult.ScanType.valueOf(scanType),
-        securityType = securityType,
-        vendor = vendor
-    )
-}
-
-/**
- * Преобразование доменной модели в Entity
- */
-fun WifiScanResult.toEntity(): WifiScanResultEntity {
-    return WifiScanResultEntity(
-        id = id,
-        ssid = ssid,
-        bssid = bssid,
-        signalStrength = signalStrength,
-        frequency = frequency,
-        channel = channel,
-        timestamp = timestamp,
-        locationLatitude = locationLatitude,
-        locationLongitude = locationLongitude,
-        scanType = scanType.name,
-        securityType = securityType,
-        vendor = vendor
-    )
-}

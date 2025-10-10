@@ -1,16 +1,25 @@
 package com.wifiguard.core.data.local
 
-import androidx.room.*
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import android.content.Context
 import com.wifiguard.core.data.local.dao.WifiNetworkDao
 import com.wifiguard.core.data.local.dao.WifiScanDao
 import com.wifiguard.core.data.local.entity.WifiNetworkEntity
 import com.wifiguard.core.data.local.entity.WifiScanResultEntity
+import com.wifiguard.core.data.local.converter.DatabaseConverters
 
 /**
- * Основная Room база данных для WifiGuard приложения.
- * Обеспечивает хранение данных о Wi-Fi сетях и результатах сканирования.
+ * Основная база данных WifiGuard с использованием Room.
+ * 
+ * Содержит:
+ * - Информацию о Wi-Fi сетях
+ * - Результаты сканирования
+ * - Настройки безопасности
+ * 
+ * @version 1 - начальная схема базы данных
  */
 @Database(
     entities = [
@@ -18,71 +27,44 @@ import com.wifiguard.core.data.local.entity.WifiScanResultEntity
         WifiScanResultEntity::class
     ],
     version = 1,
-    exportSchema = false
+    exportSchema = false // В продакшне установить true и создать schemas/
 )
-@TypeConverters(Converters::class)
+@TypeConverters(DatabaseConverters::class)
 abstract class WifiGuardDatabase : RoomDatabase() {
     
     /**
-     * Получить DAO для Wi-Fi сетей
+     * DAO для работы с Wi-Fi сетями
      */
     abstract fun wifiNetworkDao(): WifiNetworkDao
     
     /**
-     * Получить DAO для результатов сканирования
+     * DAO для работы с результатами сканирования
      */
     abstract fun wifiScanDao(): WifiScanDao
     
     companion object {
+        /**
+         * Имя файла базы данных
+         */
         const val DATABASE_NAME = "wifi_guard_database"
         
         /**
-         * Миграции базы данных (при необходимости в будущем)
+         * Версия базы данных
          */
-        val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                // Пример миграции - добавление нового столбца
-                // database.execSQL("ALTER TABLE wifi_networks ADD COLUMN new_column TEXT DEFAULT ''")
-            }
+        const val DATABASE_VERSION = 1
+        
+        /**
+         * Удобный метод для создания экземпляра базы данных
+         * (для тестов и debug-сборок)
+         */
+        fun create(context: Context): WifiGuardDatabase {
+            return Room.databaseBuilder(
+                context = context,
+                klass = WifiGuardDatabase::class.java,
+                name = DATABASE_NAME
+            )
+                .fallbackToDestructiveMigration()
+                .build()
         }
-    }
-}
-
-/**
- * Класс для преобразования типов данных в Room.
- * Используется для преобразования сложных типов в примитивные.
- */
-class Converters {
-    
-    /**
-     * Преобразование списка строк в JSON строку
-     */
-    @TypeConverter
-    fun fromStringList(value: List<String>?): String? {
-        return value?.joinToString(",")
-    }
-    
-    /**
-     * Преобразование JSON строки в список строк
-     */
-    @TypeConverter
-    fun toStringList(value: String?): List<String>? {
-        return value?.split(",")?.filter { it.isNotBlank() }
-    }
-    
-    /**
-     * Преобразование nullable Double в строку
-     */
-    @TypeConverter
-    fun fromNullableDouble(value: Double?): String? {
-        return value?.toString()
-    }
-    
-    /**
-     * Преобразование строки в nullable Double
-     */
-    @TypeConverter
-    fun toNullableDouble(value: String?): Double? {
-        return value?.toDoubleOrNull()
     }
 }
