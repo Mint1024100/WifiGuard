@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">WifiGuard</string>
+    
+    <!-- Main Activity -->
+    <string name="loading">Загрузка…</string>
+    
+    <!-- Permission Screens -->
+    <string name="permissions_required_title">Требуются разрешения</string>
+    <string name="permissions_required_message">Для анализа Wi-Fi сетей требуются\nразрешения на доступ к\nместоположению и уведомлениям</string>
+    <string name="permissions_blocked_title">Разрешения заблокированы</string>
+    <string name="permissions_blocked_message">Разрешения были заблокированы.\nОткройте настройки приложения\nи предоставьте необходимые разрешения</string>
+    <string name="grant_permissions">Предоставить разрешения</string>
+    <string name="open_settings">Открыть настройки</string>
+    
+    <!-- Navigation -->
+    <string name="scanner_tab">Сканер</string>
+    <string name="analyzer_tab">Анализатор</string>
+    <string name="history_tab">История</string>
+    <string name="settings_tab">Настройки</string>
+    
+    <!-- Scanner Screen -->
+    <string name="scan_wifi_networks">Сканировать сети</string>
+    <string name="scanning">Сканирование…</string>
+    <string name="scan_complete">Сканирование завершено</string>
+    <string name="scan_error">Ошибка сканирования</string>
+    <string name="no_networks_found">Wi-Fi сети не найдены</string>
+    <string name="networks_found">Найдено сетей: %1$d</string>
+    
+    <!-- Network Details -->
+    <string name="network_name">Имя сети</string>
+    <string name="signal_strength">Сила сигнала</string>
+    <string name="security_type">Тип защиты</string>
+    <string name="frequency">Частота</string>
+    <string name="channel">Канал</string>
+    <string name="bssid">BSSID</string>
+    
+    <!-- Security Levels -->
+    <string name="security_level_secure">Безопасно</string>
+    <string name="security_level_warning">Внимание</string>
+    <string name="security_level_danger">Опасно</string>
+    <string name="security_level_critical">Критично</string>
+    
+    <!-- Encryption Types -->
+    <string name="encryption_none">Без защиты</string>
+    <string name="encryption_wep">WEP</string>
+    <string name="encryption_wpa">WPA</string>
+    <string name="encryption_wpa2">WPA2</string>
+    <string name="encryption_wpa3">WPA3</string>
+    <string name="encryption_unknown">Неизвестно</string>
+    
+    <!-- Analysis Screen -->
+    <string name="analyze_network">Анализировать сеть</string>
+    <string name="analysis_complete">Анализ завершен</string>
+    <string name="security_assessment">Оценка безопасности</string>
+    <string name="threat_level">Уровень угрозы</string>
+    <string name="recommendations">Рекомендации</string>
+    
+    <!-- Settings Screen -->
+    <string name="general_settings">Общие настройки</string>
+    <string name="scan_interval">Интервал сканирования</string>
+    <string name="auto_scan">Автосканирование</string>
+    <string name="notifications_enabled">Уведомления включены</string>
+    <string name="dark_theme">Темная тема</string>
+    <string name="language">Язык</string>
+    
+    <!-- Notifications -->
+    <string name="security_alert">Предупреждение безопасности</string>
+    <string name="suspicious_network_detected">Обнаружена подозрительная сеть</string>
+    <string name="weak_encryption_warning">Слабое шифрование обнаружено</string>
+    <string name="open_network_warning">Открытая сеть без защиты</string>
+    
+    <!-- Errors -->
+    <string name="error_generic">Произошла ошибка</string>
+    <string name="error_no_wifi">Wi-Fi недоступен</string>
+    <string name="error_permission_denied">Отказано в разрешении</string>
+    <string name="error_location_disabled">Местоположение отключено</string>
+    <string name="error_network_unavailable">Сеть недоступна</string>
+    
+    <!-- Actions -->
+    <string name="retry">Повторить</string>
+    <string name="cancel">Отмена</string>
+    <string name="ok">OK</string>
+    <string name="yes">Да</string>
+    <string name="no">Нет</string>
+    <string name="back">Назад</string>
+    <string name="next">Далее</string>
+    <string name="save">Сохранить</string>
+    <string name="delete">Удалить</string>
+    <string name="edit">Изменить</string>
+    <string name="share">Поделиться</string>
+    
+    <!-- Content Descriptions -->
+    <string name="wifi_signal_icon">Иконка силы Wi-Fi сигнала</string>
+    <string name="security_level_icon">Иконка уровня безопасности</string>
+    <string name="scan_button">Кнопка сканирования</string>
+    <string name="settings_button">Кнопка настроек</string>
+    
+</resources>
