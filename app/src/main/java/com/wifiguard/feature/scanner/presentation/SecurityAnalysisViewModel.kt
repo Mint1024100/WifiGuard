@@ -273,15 +273,7 @@ data class SecurityThreat(
     val detectedAt: Long
 )
 
-/**
- * Типы угроз
- */
-enum class ThreatType(val displayName: String) {
-    OPEN_NETWORK("Открытая сеть"),
-    WEAK_ENCRYPTION("Слабое шифрование"),
-    ROGUE_ACCESS_POINT("Мошенническая точка доступа"),
-    SUSPICIOUS_NAME("Подозрительное имя")
-}
+// ThreatType определен в SecurityReport.kt
 
 /**
  * Уровень серьёзности угрозы

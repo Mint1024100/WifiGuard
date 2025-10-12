@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.wifiguard.R
 
 /**
  * Экран настроек
@@ -35,13 +34,13 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(stringResource(R.string.settings_title))
+                    Text("Настройки")
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back)
+                            contentDescription = "Назад"
                         )
                     }
                 }
@@ -58,12 +57,12 @@ fun SettingsScreen(
             // Общие настройки
             item {
                 SettingsSection(
-                    title = stringResource(R.string.settings_general),
+                    title = "Общие",
                     icon = Icons.Default.Settings
                 ) {
                     SettingsItem(
-                        title = stringResource(R.string.settings_auto_scan),
-                        subtitle = stringResource(R.string.settings_auto_scan_summary),
+                        title = "Автоматическое сканирование",
+                        subtitle = "Периодическое сканирование в фоне",
                         trailing = {
                             Switch(
                                 checked = uiState.autoScanEnabled,
@@ -73,8 +72,8 @@ fun SettingsScreen(
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_scan_interval),
-                        subtitle = stringResource(R.string.settings_scan_interval_summary),
+                        title = "Интервал сканирования",
+                        subtitle = "Частота автоматического сканирования",
                         onClick = { /* TODO: Show interval picker */ }
                     )
                 }
@@ -83,30 +82,30 @@ fun SettingsScreen(
             // Настройки безопасности
             item {
                 SettingsSection(
-                    title = stringResource(R.string.settings_security),
+                    title = "Безопасность",
                     icon = Icons.Default.Security
                 ) {
                     SettingsItem(
-                        title = stringResource(R.string.settings_data_retention),
-                        subtitle = stringResource(R.string.settings_data_retention_summary),
+                        title = "Хранение данных",
+                        subtitle = "Период хранения истории сканирований",
                         onClick = { /* TODO: Show retention picker */ }
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_export_data),
-                        subtitle = stringResource(R.string.settings_export_data_summary),
+                        title = "Экспорт данных",
+                        subtitle = "Сохранить историю сканирований",
                         onClick = { /* TODO: Export data */ }
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_import_data),
-                        subtitle = stringResource(R.string.settings_import_data_summary),
+                        title = "Импорт данных",
+                        subtitle = "Загрузить историю сканирований",
                         onClick = { /* TODO: Import data */ }
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_clear_data),
-                        subtitle = stringResource(R.string.settings_clear_data_summary),
+                        title = "Очистить данные",
+                        subtitle = "Удалить всю историю сканирований",
                         onClick = { /* TODO: Clear data */ }
                     )
                 }
@@ -115,12 +114,12 @@ fun SettingsScreen(
             // Настройки уведомлений
             item {
                 SettingsSection(
-                    title = stringResource(R.string.settings_notifications),
+                    title = "Уведомления",
                     icon = Icons.Default.Notifications
                 ) {
                     SettingsItem(
-                        title = stringResource(R.string.settings_notifications_enabled),
-                        subtitle = stringResource(R.string.settings_notifications_enabled_summary),
+                        title = "Уведомления об угрозах",
+                        subtitle = "Получать уведомления о критических угрозах",
                         trailing = {
                             Switch(
                                 checked = uiState.notificationsEnabled,
@@ -130,7 +129,7 @@ fun SettingsScreen(
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_notifications_sound),
+                        title = "Звук уведомлений",
                         subtitle = "Звук уведомлений",
                         trailing = {
                             Switch(
@@ -141,7 +140,7 @@ fun SettingsScreen(
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_notifications_vibration),
+                        title = "Вибрация",
                         subtitle = "Вибрация уведомлений",
                         trailing = {
                             Switch(
@@ -156,7 +155,7 @@ fun SettingsScreen(
             // О приложении
             item {
                 SettingsSection(
-                    title = stringResource(R.string.settings_about),
+                    title = "О приложении",
                     icon = Icons.Default.Info
                 ) {
                     SettingsItem(
@@ -166,13 +165,13 @@ fun SettingsScreen(
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_about_privacy),
+                        title = "Политика конфиденциальности",
                         subtitle = "Политика конфиденциальности",
                         onClick = onNavigateToPrivacyPolicy
                     )
                     
                     SettingsItem(
-                        title = stringResource(R.string.settings_about_terms),
+                        title = "Условия использования",
                         subtitle = "Условия использования",
                         onClick = onNavigateToTermsOfService
                     )

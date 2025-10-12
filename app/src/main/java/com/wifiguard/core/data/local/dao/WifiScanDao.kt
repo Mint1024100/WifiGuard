@@ -33,6 +33,18 @@ interface WifiScanDao {
     @Query("SELECT * FROM wifi_scans WHERE isConnected = 1 ORDER BY timestamp DESC LIMIT 1")
     suspend fun getCurrentConnectedNetwork(): WifiScanEntity?
     
+    @Query("SELECT * FROM wifi_scans ORDER BY timestamp DESC LIMIT :limit")
+    fun getLatestScans(limit: Int): Flow<List<WifiScanEntity>>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScanResult(scanResult: WifiScanEntity): Long
+    
+    @Query("DELETE FROM wifi_scans WHERE timestamp < :timestamp")
+    suspend fun clearOldScans(timestamp: Long)
+    
+    @Query("SELECT * FROM wifi_scans WHERE ssid = :ssid ORDER BY timestamp DESC")
+    fun getNetworkStatistics(ssid: String): Flow<List<WifiScanEntity>>
+    
     @Query("SELECT * FROM wifi_scans WHERE timestamp >= :fromTimestamp ORDER BY timestamp DESC")
     fun getScansFromTimestamp(fromTimestamp: Long): Flow<List<WifiScanEntity>>
     

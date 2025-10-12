@@ -8,9 +8,11 @@ import android.content.Context
 import com.wifiguard.core.data.local.converter.DatabaseConverters
 import com.wifiguard.core.data.local.dao.ScanSessionDao
 import com.wifiguard.core.data.local.dao.ThreatDao
+import com.wifiguard.core.data.local.dao.WifiNetworkDao
 import com.wifiguard.core.data.local.dao.WifiScanDao
 import com.wifiguard.core.data.local.entity.ScanSessionEntity
 import com.wifiguard.core.data.local.entity.ThreatEntity
+import com.wifiguard.core.data.local.entity.WifiNetworkEntity
 import com.wifiguard.core.data.local.entity.WifiScanEntity
 
 /**
@@ -19,6 +21,7 @@ import com.wifiguard.core.data.local.entity.WifiScanEntity
 @Database(
     entities = [
         WifiScanEntity::class,
+        WifiNetworkEntity::class,
         ThreatEntity::class,
         ScanSessionEntity::class
     ],
@@ -29,6 +32,7 @@ import com.wifiguard.core.data.local.entity.WifiScanEntity
 abstract class WifiGuardDatabase : RoomDatabase() {
     
     abstract fun wifiScanDao(): WifiScanDao
+    abstract fun wifiNetworkDao(): WifiNetworkDao
     abstract fun threatDao(): ThreatDao
     abstract fun scanSessionDao(): ScanSessionDao
     

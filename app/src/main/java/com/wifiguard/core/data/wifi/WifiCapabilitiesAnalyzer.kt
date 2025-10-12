@@ -1,109 +1,237 @@
 package com.wifiguard.core.data.wifi
 
-import javax.inject.Inject
-import javax.inject.Singleton
-
 /**
  * Анализатор возможностей Wi-Fi сетей
  */
-@Singleton
-class WifiCapabilitiesAnalyzer @Inject constructor() {
-    
+class WifiCapabilitiesAnalyzer {
+
     /**
-     * Получить канал по частоте
+     * Получить производителя устройства по MAC-адресу
+     */
+    fun getVendorFromBssid(bssid: String?): String? {
+        if (bssid.isNullOrEmpty()) return null
+        
+        // Простая реализация - в реальном приложении здесь был бы OUI lookup
+        val oui = bssid.substring(0, 8).replace(":", "").uppercase()
+        
+        return when {
+            oui.startsWith("00:50:56") -> "VMware"
+            oui.startsWith("00:0C:29") -> "VMware"
+            oui.startsWith("00:1C:42") -> "Parallels"
+            oui.startsWith("08:00:27") -> "VirtualBox"
+            oui.startsWith("00:15:5D") -> "Microsoft"
+            oui.startsWith("00:16:3E") -> "Xen"
+            oui.startsWith("00:1B:21") -> "Intel"
+            oui.startsWith("00:1F:5B") -> "Apple"
+            oui.startsWith("00:23:12") -> "Apple"
+            oui.startsWith("00:25:00") -> "Apple"
+            oui.startsWith("00:26:BB") -> "Apple"
+            oui.startsWith("00:26:B0") -> "Apple"
+            oui.startsWith("00:26:4A") -> "Apple"
+            oui.startsWith("00:26:08") -> "Apple"
+            oui.startsWith("00:25:4B") -> "Apple"
+            oui.startsWith("00:25:4C") -> "Apple"
+            oui.startsWith("00:25:4D") -> "Apple"
+            oui.startsWith("00:25:4E") -> "Apple"
+            oui.startsWith("00:25:4F") -> "Apple"
+            oui.startsWith("00:25:50") -> "Apple"
+            oui.startsWith("00:25:51") -> "Apple"
+            oui.startsWith("00:25:52") -> "Apple"
+            oui.startsWith("00:25:53") -> "Apple"
+            oui.startsWith("00:25:54") -> "Apple"
+            oui.startsWith("00:25:55") -> "Apple"
+            oui.startsWith("00:25:56") -> "Apple"
+            oui.startsWith("00:25:57") -> "Apple"
+            oui.startsWith("00:25:58") -> "Apple"
+            oui.startsWith("00:25:59") -> "Apple"
+            oui.startsWith("00:25:5A") -> "Apple"
+            oui.startsWith("00:25:5B") -> "Apple"
+            oui.startsWith("00:25:5C") -> "Apple"
+            oui.startsWith("00:25:5D") -> "Apple"
+            oui.startsWith("00:25:5E") -> "Apple"
+            oui.startsWith("00:25:5F") -> "Apple"
+            oui.startsWith("00:25:60") -> "Apple"
+            oui.startsWith("00:25:61") -> "Apple"
+            oui.startsWith("00:25:62") -> "Apple"
+            oui.startsWith("00:25:63") -> "Apple"
+            oui.startsWith("00:25:64") -> "Apple"
+            oui.startsWith("00:25:65") -> "Apple"
+            oui.startsWith("00:25:66") -> "Apple"
+            oui.startsWith("00:25:67") -> "Apple"
+            oui.startsWith("00:25:68") -> "Apple"
+            oui.startsWith("00:25:69") -> "Apple"
+            oui.startsWith("00:25:6A") -> "Apple"
+            oui.startsWith("00:25:6B") -> "Apple"
+            oui.startsWith("00:25:6C") -> "Apple"
+            oui.startsWith("00:25:6D") -> "Apple"
+            oui.startsWith("00:25:6E") -> "Apple"
+            oui.startsWith("00:25:6F") -> "Apple"
+            oui.startsWith("00:25:70") -> "Apple"
+            oui.startsWith("00:25:71") -> "Apple"
+            oui.startsWith("00:25:72") -> "Apple"
+            oui.startsWith("00:25:73") -> "Apple"
+            oui.startsWith("00:25:74") -> "Apple"
+            oui.startsWith("00:25:75") -> "Apple"
+            oui.startsWith("00:25:76") -> "Apple"
+            oui.startsWith("00:25:77") -> "Apple"
+            oui.startsWith("00:25:78") -> "Apple"
+            oui.startsWith("00:25:79") -> "Apple"
+            oui.startsWith("00:25:7A") -> "Apple"
+            oui.startsWith("00:25:7B") -> "Apple"
+            oui.startsWith("00:25:7C") -> "Apple"
+            oui.startsWith("00:25:7D") -> "Apple"
+            oui.startsWith("00:25:7E") -> "Apple"
+            oui.startsWith("00:25:7F") -> "Apple"
+            oui.startsWith("00:25:80") -> "Apple"
+            oui.startsWith("00:25:81") -> "Apple"
+            oui.startsWith("00:25:82") -> "Apple"
+            oui.startsWith("00:25:83") -> "Apple"
+            oui.startsWith("00:25:84") -> "Apple"
+            oui.startsWith("00:25:85") -> "Apple"
+            oui.startsWith("00:25:86") -> "Apple"
+            oui.startsWith("00:25:87") -> "Apple"
+            oui.startsWith("00:25:88") -> "Apple"
+            oui.startsWith("00:25:89") -> "Apple"
+            oui.startsWith("00:25:8A") -> "Apple"
+            oui.startsWith("00:25:8B") -> "Apple"
+            oui.startsWith("00:25:8C") -> "Apple"
+            oui.startsWith("00:25:8D") -> "Apple"
+            oui.startsWith("00:25:8E") -> "Apple"
+            oui.startsWith("00:25:8F") -> "Apple"
+            oui.startsWith("00:25:90") -> "Apple"
+            oui.startsWith("00:25:91") -> "Apple"
+            oui.startsWith("00:25:92") -> "Apple"
+            oui.startsWith("00:25:93") -> "Apple"
+            oui.startsWith("00:25:94") -> "Apple"
+            oui.startsWith("00:25:95") -> "Apple"
+            oui.startsWith("00:25:96") -> "Apple"
+            oui.startsWith("00:25:97") -> "Apple"
+            oui.startsWith("00:25:98") -> "Apple"
+            oui.startsWith("00:25:99") -> "Apple"
+            oui.startsWith("00:25:9A") -> "Apple"
+            oui.startsWith("00:25:9B") -> "Apple"
+            oui.startsWith("00:25:9C") -> "Apple"
+            oui.startsWith("00:25:9D") -> "Apple"
+            oui.startsWith("00:25:9E") -> "Apple"
+            oui.startsWith("00:25:9F") -> "Apple"
+            oui.startsWith("00:25:A0") -> "Apple"
+            oui.startsWith("00:25:A1") -> "Apple"
+            oui.startsWith("00:25:A2") -> "Apple"
+            oui.startsWith("00:25:A3") -> "Apple"
+            oui.startsWith("00:25:A4") -> "Apple"
+            oui.startsWith("00:25:A5") -> "Apple"
+            oui.startsWith("00:25:A6") -> "Apple"
+            oui.startsWith("00:25:A7") -> "Apple"
+            oui.startsWith("00:25:A8") -> "Apple"
+            oui.startsWith("00:25:A9") -> "Apple"
+            oui.startsWith("00:25:AA") -> "Apple"
+            oui.startsWith("00:25:AB") -> "Apple"
+            oui.startsWith("00:25:AC") -> "Apple"
+            oui.startsWith("00:25:AD") -> "Apple"
+            oui.startsWith("00:25:AE") -> "Apple"
+            oui.startsWith("00:25:AF") -> "Apple"
+            oui.startsWith("00:25:B0") -> "Apple"
+            oui.startsWith("00:25:B1") -> "Apple"
+            oui.startsWith("00:25:B2") -> "Apple"
+            oui.startsWith("00:25:B3") -> "Apple"
+            oui.startsWith("00:25:B4") -> "Apple"
+            oui.startsWith("00:25:B5") -> "Apple"
+            oui.startsWith("00:25:B6") -> "Apple"
+            oui.startsWith("00:25:B7") -> "Apple"
+            oui.startsWith("00:25:B8") -> "Apple"
+            oui.startsWith("00:25:B9") -> "Apple"
+            oui.startsWith("00:25:BA") -> "Apple"
+            oui.startsWith("00:25:BB") -> "Apple"
+            oui.startsWith("00:25:BC") -> "Apple"
+            oui.startsWith("00:25:BD") -> "Apple"
+            oui.startsWith("00:25:BE") -> "Apple"
+            oui.startsWith("00:25:BF") -> "Apple"
+            oui.startsWith("00:25:C0") -> "Apple"
+            oui.startsWith("00:25:C1") -> "Apple"
+            oui.startsWith("00:25:C2") -> "Apple"
+            oui.startsWith("00:25:C3") -> "Apple"
+            oui.startsWith("00:25:C4") -> "Apple"
+            oui.startsWith("00:25:C5") -> "Apple"
+            oui.startsWith("00:25:C6") -> "Apple"
+            oui.startsWith("00:25:C7") -> "Apple"
+            oui.startsWith("00:25:C8") -> "Apple"
+            oui.startsWith("00:25:C9") -> "Apple"
+            oui.startsWith("00:25:CA") -> "Apple"
+            oui.startsWith("00:25:CB") -> "Apple"
+            oui.startsWith("00:25:CC") -> "Apple"
+            oui.startsWith("00:25:CD") -> "Apple"
+            oui.startsWith("00:25:CE") -> "Apple"
+            oui.startsWith("00:25:CF") -> "Apple"
+            oui.startsWith("00:25:D0") -> "Apple"
+            oui.startsWith("00:25:D1") -> "Apple"
+            oui.startsWith("00:25:D2") -> "Apple"
+            oui.startsWith("00:25:D3") -> "Apple"
+            oui.startsWith("00:25:D4") -> "Apple"
+            oui.startsWith("00:25:D5") -> "Apple"
+            oui.startsWith("00:25:D6") -> "Apple"
+            oui.startsWith("00:25:D7") -> "Apple"
+            oui.startsWith("00:25:D8") -> "Apple"
+            oui.startsWith("00:25:D9") -> "Apple"
+            oui.startsWith("00:25:DA") -> "Apple"
+            oui.startsWith("00:25:DB") -> "Apple"
+            oui.startsWith("00:25:DC") -> "Apple"
+            oui.startsWith("00:25:DD") -> "Apple"
+            oui.startsWith("00:25:DE") -> "Apple"
+            oui.startsWith("00:25:DF") -> "Apple"
+            oui.startsWith("00:25:E0") -> "Apple"
+            oui.startsWith("00:25:E1") -> "Apple"
+            oui.startsWith("00:25:E2") -> "Apple"
+            oui.startsWith("00:25:E3") -> "Apple"
+            oui.startsWith("00:25:E4") -> "Apple"
+            oui.startsWith("00:25:E5") -> "Apple"
+            oui.startsWith("00:25:E6") -> "Apple"
+            oui.startsWith("00:25:E7") -> "Apple"
+            oui.startsWith("00:25:E8") -> "Apple"
+            oui.startsWith("00:25:E9") -> "Apple"
+            oui.startsWith("00:25:EA") -> "Apple"
+            oui.startsWith("00:25:EB") -> "Apple"
+            oui.startsWith("00:25:EC") -> "Apple"
+            oui.startsWith("00:25:ED") -> "Apple"
+            oui.startsWith("00:25:EE") -> "Apple"
+            oui.startsWith("00:25:EF") -> "Apple"
+            oui.startsWith("00:25:F0") -> "Apple"
+            oui.startsWith("00:25:F1") -> "Apple"
+            oui.startsWith("00:25:F2") -> "Apple"
+            oui.startsWith("00:25:F3") -> "Apple"
+            oui.startsWith("00:25:F4") -> "Apple"
+            oui.startsWith("00:25:F5") -> "Apple"
+            oui.startsWith("00:25:F6") -> "Apple"
+            oui.startsWith("00:25:F7") -> "Apple"
+            oui.startsWith("00:25:F8") -> "Apple"
+            oui.startsWith("00:25:F9") -> "Apple"
+            oui.startsWith("00:25:FA") -> "Apple"
+            oui.startsWith("00:25:FB") -> "Apple"
+            oui.startsWith("00:25:FC") -> "Apple"
+            oui.startsWith("00:25:FD") -> "Apple"
+            oui.startsWith("00:25:FE") -> "Apple"
+            oui.startsWith("00:25:FF") -> "Apple"
+            else -> null
+        }
+    }
+
+    /**
+     * Получить номер канала по частоте
      */
     fun getChannelFromFrequency(frequency: Int): Int {
         return when {
-            frequency in 2412..2484 -> (frequency - 2412) / 5 + 1
-            frequency in 5170..5825 -> (frequency - 5000) / 5
-            frequency in 5925..7125 -> (frequency - 5925) / 5 + 1
+            frequency in 2412..2484 -> {
+                // 2.4 GHz band
+                (frequency - 2412) / 5 + 1
+            }
+            frequency in 5170..5825 -> {
+                // 5 GHz band
+                (frequency - 5000) / 5
+            }
+            frequency in 5925..7125 -> {
+                // 6 GHz band
+                (frequency - 5925) / 5
+            }
             else -> 0
         }
     }
-    
-    /**
-     * Получить производителя по BSSID
-     */
-    fun getVendorFromBssid(bssid: String?): String? {
-        if (bssid == null) return null
-        
-        val macPrefix = bssid.substring(0, 8).replace(":", "").uppercase()
-        return VENDOR_DATABASE[macPrefix]
-    }
-    
-    /**
-     * Анализировать возможности сети
-     */
-    fun analyzeCapabilities(capabilities: String): NetworkCapabilities {
-        return NetworkCapabilities(
-            hasWpa3 = capabilities.contains("WPA3"),
-            hasWpa2 = capabilities.contains("WPA2"),
-            hasWpa = capabilities.contains("WPA"),
-            hasWep = capabilities.contains("WEP"),
-            hasEap = capabilities.contains("EAP"),
-            hasPsk = capabilities.contains("PSK"),
-            hasEnterprise = capabilities.contains("EAP"),
-            isOpen = capabilities.isEmpty() || capabilities.contains("OPEN"),
-            supports80211n = capabilities.contains("[WPA2-PSK-CCMP]") || capabilities.contains("[WPA2-PSK-TKIP]"),
-            supports80211ac = capabilities.contains("RSN") && capabilities.contains("CCMP"),
-            supports80211ax = capabilities.contains("WPA3")
-        )
-    }
-    
-    companion object {
-        private val VENDOR_DATABASE = mapOf(
-            "001122" to "Unknown",
-            "001E58" to "Cisco",
-            "001F5B" to "Apple",
-            "0022FB" to "Google",
-            "0026B9" to "TP-Link",
-            "0026F2" to "Netgear",
-            "0026F3" to "Netgear",
-            "0026F4" to "Netgear",
-            "0026F5" to "Netgear",
-            "0026F6" to "Netgear",
-            "0026F7" to "Netgear",
-            "0026F8" to "Netgear",
-            "0026F9" to "Netgear",
-            "0026FA" to "Netgear",
-            "0026FB" to "Netgear",
-            "0026FC" to "Netgear",
-            "0026FD" to "Netgear",
-            "0026FE" to "Netgear",
-            "0026FF" to "Netgear",
-            "001A70" to "Cisco",
-            "001A71" to "Cisco",
-            "001A72" to "Cisco",
-            "001A73" to "Cisco",
-            "001A74" to "Cisco",
-            "001A75" to "Cisco",
-            "001A76" to "Cisco",
-            "001A77" to "Cisco",
-            "001A78" to "Cisco",
-            "001A79" to "Cisco",
-            "001A7A" to "Cisco",
-            "001A7B" to "Cisco",
-            "001A7C" to "Cisco",
-            "001A7D" to "Cisco",
-            "001A7E" to "Cisco",
-            "001A7F" to "Cisco"
-        )
-    }
 }
-
-/**
- * Возможности сети
- */
-data class NetworkCapabilities(
-    val hasWpa3: Boolean = false,
-    val hasWpa2: Boolean = false,
-    val hasWpa: Boolean = false,
-    val hasWep: Boolean = false,
-    val hasEap: Boolean = false,
-    val hasPsk: Boolean = false,
-    val hasEnterprise: Boolean = false,
-    val isOpen: Boolean = false,
-    val supports80211n: Boolean = false,
-    val supports80211ac: Boolean = false,
-    val supports80211ax: Boolean = false
-)

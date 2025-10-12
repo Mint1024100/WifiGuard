@@ -27,6 +27,12 @@ interface WifiNetworkDao {
     suspend fun getNetworkByBssid(bssid: String): WifiNetworkEntity?
     
     /**
+     * Получить сеть по SSID
+     */
+    @Query("SELECT * FROM wifi_networks WHERE ssid = :ssid LIMIT 1")
+    suspend fun getNetworkBySSID(ssid: String): WifiNetworkEntity?
+    
+    /**
      * Получить все сети с указанным уровнем угрозы
      */
     @Query("SELECT * FROM wifi_networks WHERE threat_level = :threatLevel ORDER BY last_seen DESC")
