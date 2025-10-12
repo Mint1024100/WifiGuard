@@ -1,188 +1,82 @@
 package com.wifiguard.feature.analysis.presentation
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.wifiguard.core.ui.components.SecurityStatusIndicator
-import com.wifiguard.core.ui.components.NetworkStatsCard
-import com.wifiguard.core.ui.theme.*
-import com.wifiguard.feature.scanner.presentation.SecurityAnalysisViewModel
-import com.wifiguard.feature.scanner.presentation.ThreatFilter
-import com.wifiguard.feature.scanner.presentation.ThreatSeverity
+import com.wifiguard.R
 
 /**
- * Экран анализа безопасности Wi-Fi сетей
+ * Экран анализа безопасности
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(
-    networkId: String,
     onNavigateBack: () -> Unit,
-    viewModel: SecurityAnalysisViewModel = hiltViewModel()
+    onNavigateToSettings: () -> Unit,
+    viewModel: AnalysisViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val securityAnalysis by viewModel.securityAnalysis.collectAsStateWithLifecycle()
-    val securityStatistics by viewModel.securityStatistics.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Анализ безопасности") },
+                title = { 
+                    Text(stringResource(R.string.analysis_title))
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Назад")
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back)
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.startSecurityAnalysis() }) {
-                        Icon(Icons.Default.Refresh, "Обновить")
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.nav_settings)
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                }
             )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (uiState.isAnalyzing) {
-                // Loading state
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CircularProgressIndicator()
-                        Text(
-                            text = "Анализ безопасности...",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
+            when {
+                uiState.isLoading -> {
+                    LoadingContent()
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Security score card
-                    item {
-                        securityStatistics?.let { stats ->
-                            SecurityScoreCard(
-                                score = stats.securityScore,
-                                totalThreats = stats.totalThreats,
-                                highSeverityThreats = stats.highSeverityThreats
-                            )
-                        }
-                    }
-                    
-                    // Network statistics
-                    item {
-                        securityStatistics?.let { stats ->
-                            NetworkStatsCard(
-                                totalNetworks = stats.totalNetworks,
-                                secureNetworks = stats.secureNetworks,
-                                openNetworks = stats.openNetworks
-                            )
-                        }
-                    }
-                    
-                    // Filter chips
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            FilterChip(
-                                selected = uiState.threatFilter == ThreatFilter.ALL,
-                                onClick = { viewModel.updateThreatFilter(ThreatFilter.ALL) },
-                                label = { Text("Все") }
-                            )
-                            FilterChip(
-                                selected = uiState.threatFilter == ThreatFilter.HIGH,
-                                onClick = { viewModel.updateThreatFilter(ThreatFilter.HIGH) },
-                                label = { Text("Высокие") }
-                            )
-                            FilterChip(
-                                selected = uiState.threatFilter == ThreatFilter.MEDIUM,
-                                onClick = { viewModel.updateThreatFilter(ThreatFilter.MEDIUM) },
-                                label = { Text("Средние") }
-                            )
-                            FilterChip(
-                                selected = uiState.threatFilter == ThreatFilter.LOW,
-                                onClick = { viewModel.updateThreatFilter(ThreatFilter.LOW) },
-                                label = { Text("Низкие") }
-                            )
-                        }
-                    }
-                    
-                    // Threats header
-                    item {
-                        Text(
-                            text = "Обнаруженные угрозы (${securityAnalysis.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    
-                    // Threats list
-                    if (securityAnalysis.isEmpty()) {
-                        item {
-                            EmptyThreatsState()
-                        }
-                    } else {
-                        items(
-                            items = securityAnalysis.filter {
-                                when (uiState.threatFilter) {
-                                    ThreatFilter.ALL -> true
-                                    ThreatFilter.HIGH -> it.severity == ThreatSeverity.HIGH
-                                    ThreatFilter.MEDIUM -> it.severity == ThreatSeverity.MEDIUM
-                                    ThreatFilter.LOW -> it.severity == ThreatSeverity.LOW
-                                }
-                            },
-                            key = { "${it.networkSsid}_${it.type}" }
-                        ) { threat ->
-                            ThreatCard(threat = threat)
-                        }
-                    }
+                uiState.error != null -> {
+                    ErrorContent(
+                        error = uiState.error,
+                        onRetry = { viewModel.analyzeNetworks() }
+                    )
                 }
-            }
-            
-            // Error message
-            uiState.errorMessage?.let { error ->
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    action = {
-                        TextButton(onClick = { viewModel.clearError() }) {
-                            Text("OK")
-                        }
-                    }
-                ) {
-                    Text(error)
+                uiState.securityReport != null -> {
+                    SecurityReportContent(
+                        securityReport = uiState.securityReport
+                    )
+                }
+                else -> {
+                    EmptyContent(
+                        onStartAnalysis = { viewModel.analyzeNetworks() }
+                    )
                 }
             }
         }
@@ -190,226 +84,275 @@ fun AnalysisScreen(
 }
 
 @Composable
-private fun SecurityScoreCard(
-    score: Int,
-    totalThreats: Int,
-    highSeverityThreats: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                score >= 80 -> SecureGreen.copy(alpha = 0.1f)
-                score >= 50 -> WarningOrange.copy(alpha = 0.1f)
-                else -> DangerRed.copy(alpha = 0.1f)
-            }
-        )
+private fun LoadingContent() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Оценка безопасности",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = MaterialTheme.colorScheme.primary
             )
-            
-            Box(
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    progress = score / 100f,
-                    modifier = Modifier.size(120.dp),
-                    strokeWidth = 12.dp,
-                    color = when {
-                        score >= 80 -> SecureGreen
-                        score >= 50 -> WarningOrange
-                        else -> DangerRed
-                    },
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "$score",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            score >= 80 -> SecureGreen
-                            score >= 50 -> WarningOrange
-                            else -> DangerRed
-                        }
-                    )
-                    Text(
-                        text = "из 100",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$totalThreats",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Всего угроз",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$highSeverityThreats",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = DangerRed
-                    )
-                    Text(
-                        text = "Критических",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.common_loading),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
 
 @Composable
-private fun ThreatCard(
-    threat: com.wifiguard.feature.scanner.presentation.SecurityThreat
+private fun ErrorContent(
+    error: String,
+    onRetry: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Severity indicator
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        when (threat.severity) {
-                            ThreatSeverity.HIGH -> DangerRed
-                            ThreatSeverity.MEDIUM -> WarningOrange
-                            ThreatSeverity.LOW -> Color(0xFFFFC107)
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = when (threat.severity) {
-                        ThreatSeverity.HIGH -> Icons.Default.Error
-                        ThreatSeverity.MEDIUM -> Icons.Default.Warning
-                        ThreatSeverity.LOW -> Icons.Default.Info
-                    },
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = threat.networkSsid,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                
-                Text(
-                    text = threat.type.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Text(
-                    text = threat.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lightbulb,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Text(
-                            text = threat.recommendation,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyThreatsState() {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.padding(32.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Security,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = SecureGreen
-            )
             Text(
-                text = "Угроз не обнаружено",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = SecureGreen
+                text = stringResource(R.string.common_error),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.error
             )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Все сети безопасны",
+                text = error,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onRetry) {
+                Text(stringResource(R.string.common_retry))
+            }
         }
     }
 }
 
+@Composable
+private fun EmptyContent(
+    onStartAnalysis: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text(
+                text = "Нет данных для анализа",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Выполните сканирование Wi-Fi сетей для получения отчета о безопасности",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onStartAnalysis) {
+                Text("Начать анализ")
+            }
+        }
+    }
+}
 
+@Composable
+private fun SecurityReportContent(
+    securityReport: com.wifiguard.core.security.SecurityReport
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Общая статистика
+        item {
+            SecurityStatsCard(securityReport = securityReport)
+        }
+        
+        // Рекомендации
+        if (securityReport.recommendations.isNotEmpty()) {
+            item {
+                RecommendationsCard(recommendations = securityReport.recommendations)
+            }
+        }
+        
+        // Угрозы
+        if (securityReport.threats.isNotEmpty()) {
+            item {
+                ThreatsCard(threats = securityReport.threats)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SecurityStatsCard(
+    securityReport: com.wifiguard.core.security.SecurityReport
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.analysis_overall_risk),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatItem(
+                    label = "Всего сетей",
+                    value = securityReport.totalNetworks.toString()
+                )
+                StatItem(
+                    label = "Безопасных",
+                    value = securityReport.safeNetworks.toString()
+                )
+                StatItem(
+                    label = "Угроз",
+                    value = securityReport.threats.size.toString()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatItem(
+    label: String,
+    value: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun RecommendationsCard(
+    recommendations: List<String>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.analysis_recommendations),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            recommendations.forEach { recommendation ->
+                Text(
+                    text = "• $recommendation",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThreatsCard(
+    threats: List<com.wifiguard.core.security.SecurityThreat>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Обнаруженные угрозы",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            threats.forEach { threat ->
+                ThreatItem(threat = threat)
+                if (threat != threats.last()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThreatItem(
+    threat: com.wifiguard.core.security.SecurityThreat
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = threat.getShortDescription(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+        
+        Surface(
+            color = when (threat.severity) {
+                com.wifiguard.core.domain.model.ThreatLevel.CRITICAL -> MaterialTheme.colorScheme.error
+                com.wifiguard.core.domain.model.ThreatLevel.HIGH -> MaterialTheme.colorScheme.error
+                com.wifiguard.core.domain.model.ThreatLevel.MEDIUM -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.primary
+            },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = threat.severity.getDescription(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onError,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+    }
+}

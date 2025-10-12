@@ -1,46 +1,50 @@
 package com.wifiguard.feature.settings.presentation
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.wifiguard.R
 
 /**
- * Экран настроек приложения
+ * Экран настроек
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToAbout: () -> Unit,
+    onNavigateToPrivacyPolicy: () -> Unit,
+    onNavigateToTermsOfService: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    var autoScanEnabled by remember { mutableStateOf(true) }
-    var backgroundMonitoring by remember { mutableStateOf(true) }
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var highPriorityNotifications by remember { mutableStateOf(false) }
-    var scanInterval by remember { mutableStateOf(15f) }
-    var threatSensitivity by remember { mutableStateOf(1f) } // 0=Low, 1=Medium, 2=High
-    
-    var showClearDataDialog by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Настройки") },
+                title = { 
+                    Text(stringResource(R.string.settings_title))
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Назад")
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back)
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                }
             )
         }
     ) { paddingValues ->
@@ -51,283 +55,169 @@ fun SettingsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Scanning Settings
+            // Общие настройки
             item {
-                SettingsSectionHeader("Сканирование")
-            }
-            
-            item {
-                SettingsSwitch(
-                    title = "Автоматическое сканирование",
-                    description = "Периодически сканировать Wi-Fi сети",
-                    checked = autoScanEnabled,
-                    onCheckedChange = { autoScanEnabled = it },
-                    icon = Icons.Default.Autorenew
-                )
-            }
-            
-            item {
-                SettingsSwitch(
-                    title = "Фоновый мониторинг",
-                    description = "Сканировать сети в фоновом режиме",
-                    checked = backgroundMonitoring,
-                    onCheckedChange = { backgroundMonitoring = it },
-                    icon = Icons.Default.CloudQueue
-                )
-            }
-            
-            item {
-                SettingsSlider(
-                    title = "Интервал сканирования",
-                    description = "${scanInterval.toInt()} минут",
-                    value = scanInterval,
-                    onValueChange = { scanInterval = it },
-                    valueRange = 5f..60f,
-                    steps = 10,
-                    icon = Icons.Default.Timer
-                )
-            }
-            
-            // Notifications Settings
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SettingsSectionHeader("Уведомления")
-            }
-            
-            item {
-                SettingsSwitch(
-                    title = "Включить уведомления",
-                    description = "Получать уведомления об угрозах",
-                    checked = notificationsEnabled,
-                    onCheckedChange = { notificationsEnabled = it },
-                    icon = Icons.Default.Notifications
-                )
-            }
-            
-            item {
-                SettingsSwitch(
-                    title = "Высокий приоритет",
-                    description = "Показывать уведомления поверх других",
-                    checked = highPriorityNotifications,
-                    onCheckedChange = { highPriorityNotifications = it },
-                    enabled = notificationsEnabled,
-                    icon = Icons.Default.NotificationImportant
-                )
-            }
-            
-            // Security Settings
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SettingsSectionHeader("Безопасность")
-            }
-            
-            item {
-                SettingsSlider(
-                    title = "Чувствительность обнаружения",
-                    description = when (threatSensitivity.toInt()) {
-                        0 -> "Низкая - меньше ложных срабатываний"
-                        1 -> "Средняя - баланс между точностью и охватом"
-                        else -> "Высокая - максимальная защита"
-                    },
-                    value = threatSensitivity,
-                    onValueChange = { threatSensitivity = it },
-                    valueRange = 0f..2f,
-                    steps = 1,
-                    icon = Icons.Default.Security
-                )
-            }
-            
-            // Data Management
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SettingsSectionHeader("Управление данными")
-            }
-            
-            item {
-                SettingsItem(
-                    title = "Очистить историю",
-                    description = "Удалить все сохраненные результаты сканирования",
-                    icon = Icons.Default.DeleteSweep,
-                    onClick = { showClearDataDialog = true }
-                )
-            }
-            
-            item {
-                SettingsItem(
-                    title = "Экспорт данных",
-                    description = "Экспортировать данные в файл",
-                    icon = Icons.Default.Download,
-                    onClick = { /* TODO: Implement export */ }
-                )
-            }
-            
-            // About
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SettingsSectionHeader("О приложении")
-            }
-            
-            item {
-                SettingsItem(
-                    title = "Версия",
-                    description = "1.0.0",
-                    icon = Icons.Default.Info,
-                    onClick = {}
-                )
-            }
-            
-            item {
-                SettingsItem(
-                    title = "Лицензии",
-                    description = "Открытые лицензии и авторские права",
-                    icon = Icons.Default.Description,
-                    onClick = { /* TODO: Show licenses */ }
-                )
-            }
-        }
-    }
-    
-    // Clear data confirmation dialog
-    if (showClearDataDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDataDialog = false },
-            icon = { Icon(Icons.Default.Warning, null) },
-            title = { Text("Очистить историю?") },
-            text = { Text("Это действие удалит все сохраненные результаты сканирования. Это действие нельзя отменить.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        // TODO: Clear data
-                        showClearDataDialog = false
-                    }
+                SettingsSection(
+                    title = stringResource(R.string.settings_general),
+                    icon = Icons.Default.Settings
                 ) {
-                    Text("Очистить")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearDataDialog = false }) {
-                    Text("Отмена")
+                    SettingsItem(
+                        title = stringResource(R.string.settings_auto_scan),
+                        subtitle = stringResource(R.string.settings_auto_scan_summary),
+                        trailing = {
+                            Switch(
+                                checked = uiState.autoScanEnabled,
+                                onCheckedChange = { viewModel.setAutoScanEnabled(it) }
+                            )
+                        }
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_scan_interval),
+                        subtitle = stringResource(R.string.settings_scan_interval_summary),
+                        onClick = { /* TODO: Show interval picker */ }
+                    )
                 }
             }
-        )
-    }
-}
-
-@Composable
-private fun SettingsSectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
-}
-
-@Composable
-private fun SettingsSwitch(
-    title: String,
-    description: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    enabled: Boolean = true
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { onCheckedChange(!checked) }
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
             
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // Настройки безопасности
+            item {
+                SettingsSection(
+                    title = stringResource(R.string.settings_security),
+                    icon = Icons.Default.Security
+                ) {
+                    SettingsItem(
+                        title = stringResource(R.string.settings_data_retention),
+                        subtitle = stringResource(R.string.settings_data_retention_summary),
+                        onClick = { /* TODO: Show retention picker */ }
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_export_data),
+                        subtitle = stringResource(R.string.settings_export_data_summary),
+                        onClick = { /* TODO: Export data */ }
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_import_data),
+                        subtitle = stringResource(R.string.settings_import_data_summary),
+                        onClick = { /* TODO: Import data */ }
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_clear_data),
+                        subtitle = stringResource(R.string.settings_clear_data_summary),
+                        onClick = { /* TODO: Clear data */ }
+                    )
+                }
             }
             
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                enabled = enabled
-            )
+            // Настройки уведомлений
+            item {
+                SettingsSection(
+                    title = stringResource(R.string.settings_notifications),
+                    icon = Icons.Default.Notifications
+                ) {
+                    SettingsItem(
+                        title = stringResource(R.string.settings_notifications_enabled),
+                        subtitle = stringResource(R.string.settings_notifications_enabled_summary),
+                        trailing = {
+                            Switch(
+                                checked = uiState.notificationsEnabled,
+                                onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                            )
+                        }
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_notifications_sound),
+                        subtitle = "Звук уведомлений",
+                        trailing = {
+                            Switch(
+                                checked = uiState.notificationSoundEnabled,
+                                onCheckedChange = { viewModel.setNotificationSoundEnabled(it) }
+                            )
+                        }
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_notifications_vibration),
+                        subtitle = "Вибрация уведомлений",
+                        trailing = {
+                            Switch(
+                                checked = uiState.notificationVibrationEnabled,
+                                onCheckedChange = { viewModel.setNotificationVibrationEnabled(it) }
+                            )
+                        }
+                    )
+                }
+            }
+            
+            // О приложении
+            item {
+                SettingsSection(
+                    title = stringResource(R.string.settings_about),
+                    icon = Icons.Default.Info
+                ) {
+                    SettingsItem(
+                        title = "Версия",
+                        subtitle = "1.0.0",
+                        onClick = onNavigateToAbout
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_about_privacy),
+                        subtitle = "Политика конфиденциальности",
+                        onClick = onNavigateToPrivacyPolicy
+                    )
+                    
+                    SettingsItem(
+                        title = stringResource(R.string.settings_about_terms),
+                        subtitle = "Условия использования",
+                        onClick = onNavigateToTermsOfService
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun SettingsSlider(
+private fun SettingsSection(
     title: String,
-    description: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
                 )
                 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
             
-            Slider(
-                value = value,
-                onValueChange = onValueChange,
-                valueRange = valueRange,
-                steps = steps
-            )
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            content()
         }
     }
 }
@@ -335,50 +225,70 @@ private fun SettingsSlider(
 @Composable
 private fun SettingsItem(
     title: String,
-    description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
+    subtitle: String,
+    onClick: (() -> Unit)? = null,
+    trailing: @Composable (() -> Unit)? = null
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                trailing?.invoke()
             }
-            
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        }
+    } else {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                trailing?.invoke()
+            }
         }
     }
 }
-
-

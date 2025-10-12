@@ -16,38 +16,21 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Primary,
-    secondary = Secondary,
-    tertiary = SecondaryVariant,
-    background = DarkBackground,
-    surface = DarkSurface,
-    onPrimary = OnPrimary,
-    onSecondary = OnSecondary,
-    onTertiary = OnSecondary,
-    onBackground = DarkOnBackground,
-    onSurface = DarkOnSurface,
-    error = Error,
-    onError = OnError
+    primary = Purple80,
+    secondary = PurpleGrey80,
+    tertiary = Pink80
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Primary,
-    secondary = Secondary,
-    tertiary = SecondaryVariant,
-    background = Background,
-    surface = Surface,
-    onPrimary = OnPrimary,
-    onSecondary = OnSecondary,
-    onTertiary = OnSecondary,
-    onBackground = OnBackground,
-    onSurface = OnSurface,
-    error = Error,
-    onError = OnError
+    primary = Purple40,
+    secondary = PurpleGrey40,
+    tertiary = Pink40
 )
 
 @Composable
 fun WifiGuardTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -56,11 +39,10 @@ fun WifiGuardTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        
+
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-    
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -69,7 +51,7 @@ fun WifiGuardTheme(
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
         }
     }
-    
+
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,

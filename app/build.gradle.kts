@@ -26,33 +26,47 @@ android {
         }
         
         // BuildConfig fields for security-sensitive URLs
-        buildConfigField("String", "API_BASE_URL", "\"https://api.wifiguard.com/\"")
-        buildConfigField("String", "SECURE_API_URL", "\"https://secure.wifiguard.com/\"")
-        buildConfigField("String", "ANALYTICS_API_URL", "\"https://analytics.wifiguard.com/\"")
+        buildConfigField("String", "API_BASE_URL", "\"http://localhost:8080/api/\"")
+        buildConfigField("String", "SECURE_API_URL", "\"http://localhost:8080/secure/\"")
+        buildConfigField("String", "ANALYTICS_API_URL", "\"http://localhost:8080/analytics/\"")
         buildConfigField("String", "API_VERSION", "\"v1\"")
         buildConfigField("boolean", "ENABLE_CRASHLYTICS", "false")
         buildConfigField("boolean", "ENABLE_ANALYTICS", "false")
     }
     
     signingConfigs {
-        // Для production используйте реальный keystore
-        // Создайте keystore командой:
-        // keytool -genkey -v -keystore wifiguard.keystore -alias wifiguard -keyalg RSA -keysize 2048 -validity 10000
+        create("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        
         create("release") {
-            // В production эти значения должны браться из gradle.properties или environment variables
-            // storeFile = file(System.getenv("KEYSTORE_FILE") ?: "release.keystore")
-            // storePassword = System.getenv("KEYSTORE_PASSWORD")
-            // keyAlias = System.getenv("KEY_ALIAS")
-            // keyPassword = System.getenv("KEY_PASSWORD")
-            
-            // Временная конфигурация для тестирования (НЕ ИСПОЛЬЗУЙТЕ В PRODUCTION!)
-            // TODO: Настроить реальный keystore для production
+            // Для production используйте реальный keystore
+            // Создайте keystore командой:
+            // keytool -genkey -v -keystore wifiguard.keystore -alias wifiguard -keyalg RSA -keysize 2048 -validity 10000
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            val keystoreProperties = java.util.Properties()
+            if (keystorePropertiesFile.exists()) {
+                keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            } else {
+                // Fallback to debug keystore for testing
+                storeFile = file("debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 
     buildTypes {
         release {
-            // signingConfig = signingConfigs.getByName("release") // Раскомментируйте после настройки keystore
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -71,10 +85,12 @@ android {
             applicationIdSuffix = ".debug"
             isDebuggable = true
             
+            signingConfig = signingConfigs.getByName("debug")
+            
             // Debug-specific BuildConfig fields
-            buildConfigField("String", "API_BASE_URL", "\"https://debug-api.wifiguard.com/\"")
-            buildConfigField("String", "SECURE_API_URL", "\"https://debug-secure.wifiguard.com/\"")
-            buildConfigField("String", "ANALYTICS_API_URL", "\"https://debug-analytics.wifiguard.com/\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://localhost:8080/api/\"")
+            buildConfigField("String", "SECURE_API_URL", "\"http://localhost:8080/secure/\"")
+            buildConfigField("String", "ANALYTICS_API_URL", "\"http://localhost:8080/analytics/\"")
             buildConfigField("boolean", "ENABLE_CRASHLYTICS", "false")
             buildConfigField("boolean", "ENABLE_ANALYTICS", "false")
         }

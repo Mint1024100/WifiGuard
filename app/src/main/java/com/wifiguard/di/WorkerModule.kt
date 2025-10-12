@@ -10,19 +10,12 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Hilt модуль для предоставления WorkManager компонентов.
- * Обеспечивает фоновую обработку для мониторинга Wi-Fi сетей.
+ * Модуль для предоставления зависимостей WorkManager
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object WorkerModule {
     
-    /**
-     * Предоставляет WorkManager экземпляр для управления фоновыми задачами.
-     * 
-     * @param context Контекст приложения
-     * @return WorkManager экземпляр
-     */
     @Provides
     @Singleton
     fun provideWorkManager(

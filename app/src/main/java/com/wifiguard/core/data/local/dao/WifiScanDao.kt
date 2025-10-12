@@ -1,145 +1,168 @@
 package com.wifiguard.core.data.local.dao
 
 import androidx.room.*
-import com.wifiguard.core.data.local.entity.WifiScanResultEntity
+import com.wifiguard.core.data.local.entity.WifiScanEntity
+import com.wifiguard.core.domain.model.SecurityType
+import com.wifiguard.core.domain.model.ThreatLevel
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Data Access Object для работы с результатами сканирования Wi-Fi.
- * 
- * Предоставляет методы для сохранения и анализа исторических данных
- * сканирования, мониторинга сигналов и геолокации.
+ * DAO для операций с историей сканирований Wi-Fi
  */
 @Dao
 interface WifiScanDao {
     
-    /**
-     * Получить все результаты сканирования
-     */
-    @Query("SELECT * FROM wifi_scan_results ORDER BY scan_timestamp DESC")
-    fun getAllScanResults(): Flow<List<WifiScanResultEntity>>
+    @Query("SELECT * FROM wifi_scans ORDER BY timestamp DESC")
+    fun getAllScans(): Flow<List<WifiScanEntity>>
     
-    /**
-     * Получить результаты для конкретной сети
-     */
-    @Query("SELECT * FROM wifi_scan_results WHERE network_id = :networkId ORDER BY scan_timestamp DESC")
-    fun getScanResultsForNetwork(networkId: Long): Flow<List<WifiScanResultEntity>>
+    @Query("SELECT * FROM wifi_scans WHERE scanSessionId = :sessionId ORDER BY timestamp DESC")
+    fun getScansBySession(sessionId: String): Flow<List<WifiScanEntity>>
     
-    /**
-     * Получить результаты за период
-     */
-    @Query("SELECT * FROM wifi_scan_results WHERE scan_timestamp BETWEEN :startTime AND :endTime ORDER BY scan_timestamp DESC")
-    fun getScanResultsInPeriod(startTime: Long, endTime: Long): Flow<List<WifiScanResultEntity>>
+    @Query("SELECT * FROM wifi_scans WHERE ssid = :ssid ORDER BY timestamp DESC")
+    fun getScansBySsid(ssid: String): Flow<List<WifiScanEntity>>
     
-    /**
-     * Получить результаты по сессии сканирования
-     */
-    @Query("SELECT * FROM wifi_scan_results WHERE scan_session_id = :sessionId ORDER BY scan_timestamp ASC")
-    fun getScanResultsBySession(sessionId: String): Flow<List<WifiScanResultEntity>>
+    @Query("SELECT * FROM wifi_scans WHERE bssid = :bssid ORDER BY timestamp DESC")
+    fun getScansByBssid(bssid: String): Flow<List<WifiScanEntity>>
     
-    /**
-     * Получить последние результаты для каждой сети
-     */
-    @Query("""
-        SELECT sr.* FROM wifi_scan_results sr
-        INNER JOIN (
-            SELECT network_id, MAX(scan_timestamp) as max_timestamp 
-            FROM wifi_scan_results 
-            GROUP BY network_id
-        ) latest ON sr.network_id = latest.network_id 
-        AND sr.scan_timestamp = latest.max_timestamp
-        ORDER BY sr.scan_timestamp DESC
-    """)
-    fun getLatestScanForEachNetwork(): Flow<List<WifiScanResultEntity>>
+    @Query("SELECT * FROM wifi_scans WHERE threatLevel = :threatLevel ORDER BY timestamp DESC")
+    fun getScansByThreatLevel(threatLevel: ThreatLevel): Flow<List<WifiScanEntity>>
     
-    /**
-     * Получить статистику мощности сигнала для сети
-     */
+    @Query("SELECT * FROM wifi_scans WHERE securityType = :securityType ORDER BY timestamp DESC")
+    fun getScansBySecurityType(securityType: SecurityType): Flow<List<WifiScanEntity>>
+    
+    @Query("SELECT * FROM wifi_scans WHERE isConnected = 1 ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getCurrentConnectedNetwork(): WifiScanEntity?
+    
+    @Query("SELECT * FROM wifi_scans WHERE timestamp >= :fromTimestamp ORDER BY timestamp DESC")
+    fun getScansFromTimestamp(fromTimestamp: Long): Flow<List<WifiScanEntity>>
+    
+    @Query("SELECT * FROM wifi_scans WHERE timestamp BETWEEN :fromTimestamp AND :toTimestamp ORDER BY timestamp DESC")
+    fun getScansInTimeRange(fromTimestamp: Long, toTimestamp: Long): Flow<List<WifiScanEntity>>
+    
+    @Query("SELECT DISTINCT ssid FROM wifi_scans WHERE ssid IS NOT NULL AND ssid != '' ORDER BY ssid")
+    fun getAllUniqueSsids(): Flow<List<String>>
+    
+    @Query("SELECT * FROM wifi_scans WHERE ssid = :ssid AND bssid = :bssid ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLatestScanForNetwork(ssid: String, bssid: String): WifiScanEntity?
+    
+    @Query("SELECT COUNT(*) FROM wifi_scans")
+    suspend fun getTotalScansCount(): Int
+    
+    @Query("SELECT COUNT(*) FROM wifi_scans WHERE threatLevel = :threatLevel")
+    suspend fun getScansCountByThreatLevel(threatLevel: ThreatLevel): Int
+    
+    @Query("SELECT COUNT(*) FROM wifi_scans WHERE securityType = :securityType")
+    suspend fun getScansCountBySecurityType(securityType: SecurityType): Int
+    
+    @Query("SELECT * FROM wifi_scans WHERE isHidden = 1 ORDER BY timestamp DESC")
+    fun getHiddenNetworks(): Flow<List<WifiScanEntity>>
+    
+    @Query("SELECT * FROM wifi_scans WHERE vendor = :vendor ORDER BY timestamp DESC")
+    fun getScansByVendor(vendor: String): Flow<List<WifiScanEntity>>
+    
+    @Query("SELECT * FROM wifi_scans WHERE frequency BETWEEN :minFreq AND :maxFreq ORDER BY timestamp DESC")
+    fun getScansByFrequencyRange(minFreq: Int, maxFreq: Int): Flow<List<WifiScanEntity>>
+    
+    @Query("SELECT * FROM wifi_scans WHERE level >= :minLevel ORDER BY timestamp DESC")
+    fun getScansBySignalStrength(minLevel: Int): Flow<List<WifiScanEntity>>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScan(scan: WifiScanEntity): Long
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScans(scans: List<WifiScanEntity>): List<Long>
+    
+    @Update
+    suspend fun updateScan(scan: WifiScanEntity)
+    
+    @Delete
+    suspend fun deleteScan(scan: WifiScanEntity)
+    
+    @Query("DELETE FROM wifi_scans WHERE id = :scanId")
+    suspend fun deleteScanById(scanId: Long)
+    
+    @Query("DELETE FROM wifi_scans WHERE timestamp < :timestamp")
+    suspend fun deleteScansOlderThan(timestamp: Long)
+    
+    @Query("DELETE FROM wifi_scans WHERE scanSessionId = :sessionId")
+    suspend fun deleteScansBySession(sessionId: String)
+    
+    @Query("DELETE FROM wifi_scans")
+    suspend fun deleteAllScans()
+    
+    // Статистические запросы
     @Query("""
         SELECT 
-            MIN(signal_strength) as min_signal,
-            MAX(signal_strength) as max_signal,
-            AVG(signal_strength) as avg_signal,
-            COUNT(*) as scan_count
-        FROM wifi_scan_results 
-        WHERE network_id = :networkId
+            securityType,
+            COUNT(*) as count
+        FROM wifi_scans 
+        GROUP BY securityType 
+        ORDER BY count DESC
     """)
-    suspend fun getSignalStatistics(networkId: Long): SignalStatistics?
+    suspend fun getSecurityTypeStatistics(): List<SecurityTypeCount>
     
-    /**
-     * Получить количество сканирований за период
-     */
-    @Query("SELECT COUNT(*) FROM wifi_scan_results WHERE scan_timestamp BETWEEN :startTime AND :endTime")
-    suspend fun getScanCountInPeriod(startTime: Long, endTime: Long): Int
-    
-    /**
-     * Получить результаты в радиусе от указанной точки
-     */
     @Query("""
-        SELECT * FROM wifi_scan_results 
-        WHERE location_latitude IS NOT NULL 
-        AND location_longitude IS NOT NULL
-        AND (
-            (location_latitude BETWEEN :lat - :radiusDegrees AND :lat + :radiusDegrees)
-            AND (location_longitude BETWEEN :lng - :radiusDegrees AND :lng + :radiusDegrees)
-        )
-        ORDER BY scan_timestamp DESC
+        SELECT 
+            threatLevel,
+            COUNT(*) as count
+        FROM wifi_scans 
+        GROUP BY threatLevel 
+        ORDER BY count DESC
     """)
-    fun getScanResultsInRadius(
-        lat: Double, 
-        lng: Double, 
-        radiusDegrees: Double = 0.001 // ~100m
-    ): Flow<List<WifiScanResultEntity>>
+    suspend fun getThreatLevelStatistics(): List<ThreatLevelCount>
     
-    /**
-     * Добавить результат сканирования
-     */
-    @Insert
-    suspend fun insertScanResult(scanResult: WifiScanResultEntity): Long
+    @Query("""
+        SELECT 
+            DATE(timestamp/1000, 'unixepoch') as date,
+            COUNT(*) as count
+        FROM wifi_scans 
+        GROUP BY DATE(timestamp/1000, 'unixepoch')
+        ORDER BY date DESC
+        LIMIT 30
+    """)
+    suspend fun getDailyScanStatistics(): List<DailyScanCount>
     
-    /**
-     * Добавить несколько результатов сканирования
-     */
-    @Insert
-    suspend fun insertScanResults(scanResults: List<WifiScanResultEntity>): List<Long>
-    
-    /**
-     * Обновить результат сканирования
-     */
-    @Update
-    suspend fun updateScanResult(scanResult: WifiScanResultEntity)
-    
-    /**
-     * Удалить результат сканирования
-     */
-    @Delete
-    suspend fun deleteScanResult(scanResult: WifiScanResultEntity)
-    
-    /**
-     * Удалить все результаты сканирования
-     */
-    @Query("DELETE FROM wifi_scan_results")
-    suspend fun deleteAllScanResults()
-    
-    /**
-     * Удалить старые результаты (старше 30 дней)
-     */
-    @Query("DELETE FROM wifi_scan_results WHERE scan_timestamp < :cutoffTimestamp")
-    suspend fun deleteOldScanResults(cutoffTimestamp: Long)
-    
-    /**
-     * Удалить результаты для конкретной сети
-     */
-    @Query("DELETE FROM wifi_scan_results WHERE network_id = :networkId")
-    suspend fun deleteScanResultsForNetwork(networkId: Long)
+    @Query("""
+        SELECT 
+            vendor,
+            COUNT(*) as count
+        FROM wifi_scans 
+        WHERE vendor IS NOT NULL
+        GROUP BY vendor 
+        ORDER BY count DESC
+        LIMIT 20
+    """)
+    suspend fun getVendorStatistics(): List<VendorCount>
 }
 
 /**
- * Data class для статистики сигналов
+ * Результат статистики по типам безопасности
  */
-data class SignalStatistics(
-    val min_signal: Int,
-    val max_signal: Int,
-    val avg_signal: Double,
-    val scan_count: Int
+data class SecurityTypeCount(
+    val securityType: SecurityType,
+    val count: Int
+)
+
+/**
+ * Результат статистики по уровням угроз
+ */
+data class ThreatLevelCount(
+    val threatLevel: ThreatLevel,
+    val count: Int
+)
+
+/**
+ * Результат статистики по дням
+ */
+data class DailyScanCount(
+    val date: String,
+    val count: Int
+)
+
+/**
+ * Результат статистики по производителям
+ */
+data class VendorCount(
+    val vendor: String,
+    val count: Int
 )

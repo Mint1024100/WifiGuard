@@ -1,34 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Исключаем чувствительные данные из backup -->
+    <!-- Правила резервного копирования для WifiGuard -->
     
-    <!-- База данных с Wi-Fi информацией -->
-    <exclude domain="database" path="wifi_guard_database"/>
-    <exclude domain="database" path="wifi_guard_database-shm"/>
-    <exclude domain="database" path="wifi_guard_database-wal"/>
+    <!-- Исключить чувствительные данные из резервного копирования -->
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="external" path="." />
     
-    <!-- SharedPreferences с чувствительными данными -->
-    <exclude domain="sharedpref" path="wifi_guard_preferences.xml"/>
-    <exclude domain="sharedpref" path="security_preferences.xml"/>
-    <exclude domain="sharedpref" path="encryption_keys.xml"/>
+    <!-- Исключить временные файлы -->
+    <exclude domain="file" path="temp/" />
+    <exclude domain="file" path="cache/" />
+    <exclude domain="file" path="logs/" />
     
-    <!-- Кэш с потенциально чувствительной информацией -->
-    <exclude domain="cache" path="wifi_scan_cache/"/>
-    <exclude domain="cache" path="security_analysis_cache/"/>
+    <!-- Исключить файлы с чувствительными данными -->
+    <exclude domain="file" path="wifi_scan_history.db" />
+    <exclude domain="file" path="threat_database.db" />
+    <exclude domain="file" path="encrypted_data/" />
     
-    <!-- Временные файлы -->
-    <exclude domain="file" path="temp/"/>
-    <exclude domain="file" path="logs/"/>
+    <!-- Исключить keystore файлы -->
+    <exclude domain="file" path="*.keystore" />
+    <exclude domain="file" path="*.jks" />
     
-    <!-- Криптографические ключи -->
-    <exclude domain="file" path="keystore/"/>
-    <exclude domain="file" path="keys/"/>
+    <!-- Разрешить только базовые настройки приложения -->
+    <include domain="sharedpref" path="app_preferences.xml" />
     
-    <!-- Включаем только безопасные данные -->
-    <include domain="sharedpref" path="app_settings.xml"/>
-    <include domain="sharedpref" path="ui_preferences.xml"/>
-    
-    <!-- Включаем только публичные ресурсы -->
-    <include domain="file" path="public/"/>
+    <!-- Исключить все остальные файлы по умолчанию -->
+    <exclude domain="file" path="." />
 </full-backup-content>
-
