@@ -21,7 +21,8 @@ class WifiMonitoringWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val wifiRepository: WifiRepository,
-    private val wifiManager: WifiManager
+    private val wifiManager: WifiManager,
+    private val wifiScannerService: com.wifiguard.core.data.wifi.WifiScannerService
 ) : CoroutineWorker(context, workerParams) {
     
     companion object {
@@ -111,23 +112,58 @@ class WifiMonitoringWorker @AssistedInject constructor(
             val scanStarted = wifiManager.startScan()
             
             if (scanStarted) {
-                // Мок результат фонового сканирования
-                // TODO: Заменить на реальную обработку результатов
-                val backgroundScanResult = WifiScanResult(
-                    ssid = "BackgroundNetwork",
-                    bssid = "AA:BB:CC:DD:EE:FF",
-                    signalStrength = -60,
-                    frequency = 5200,
-                    channel = 40,
-                    timestamp = System.currentTimeMillis(),
-                    scanType = WifiScanResult.ScanType.BACKGROUND
-                )
+                // Ждем немного для завершения сканирования
+                kotlinx.coroutines.delay(2000)
                 
-                // Сохраняем результат
-                wifiRepository.insertScanResult(backgroundScanResult)
+                // Получаем реальные результаты сканирования
+                val scanResults = wifiManager.scanResults
                 
-                // Анализируем на подозрительность
-                analyzeNetworkSecurity(backgroundScanResult)
+                if (scanResults.isEmpty()) {
+                    return
+                }
+                
+                // Обрабатываем каждый результат
+                scanResults.forEach { androidScanResult ->
+                    try {
+                        val wifiScanResult = wifiScannerService.scanResultToWifiScanResult(
+                            androidScanResult,
+                            WifiScanResult.ScanType.BACKGROUND
+                        )
+                        
+                        // Сохраняем результат
+                        wifiRepository.insertScanResult(wifiScanResult)
+                        
+                        // Анализируем на подозрительность
+                        analyzeNetworkSecurity(wifiScanResult)
+                        
+                        // Обновляем информацию о сети
+                        val existingNetwork = wifiRepository.getNetworkBySSID(wifiScanResult.ssid)
+                        if (existingNetwork != null) {
+                            val updatedNetwork = existingNetwork.copy(
+                                lastSeen = wifiScanResult.timestamp,
+                                lastUpdated = System.currentTimeMillis(),
+                                signalStrength = wifiScanResult.signalStrength
+                            )
+                            wifiRepository.updateNetwork(updatedNetwork)
+                        } else {
+                            val newNetwork = com.wifiguard.core.domain.model.WifiNetwork(
+                                ssid = wifiScanResult.ssid,
+                                bssid = wifiScanResult.bssid,
+                                securityType = wifiScanResult.securityType ?: com.wifiguard.core.domain.model.SecurityType.UNKNOWN,
+                                signalStrength = wifiScanResult.signalStrength,
+                                frequency = wifiScanResult.frequency,
+                                channel = wifiScanResult.channel,
+                                firstSeen = wifiScanResult.timestamp,
+                                lastSeen = wifiScanResult.timestamp,
+                                lastUpdated = System.currentTimeMillis()
+                            )
+                            wifiRepository.insertNetwork(newNetwork)
+                        }
+                    } catch (e: Exception) {
+                        // Логируем ошибку, но продолжаем обработку других результатов
+                        android.util.Log.e(TAG, "Ошибка обработки результата сканирования", e)
+                    }
+                }
             }
             
         } catch (e: SecurityException) {

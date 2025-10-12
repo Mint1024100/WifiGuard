@@ -35,6 +35,9 @@ object Constants {
     const val KEY_ALIAS = "WifiGuardSecretKey"
     const val KEYSTORE_PROVIDER = "AndroidKeyStore"
     
+    // Logging
+    const val LOG_TAG = "WifiGuard"
+    
     // Notifications
     const val NOTIFICATION_CHANNEL_ID = "wifi_security_alerts"
     const val NOTIFICATION_CHANNEL_NAME = "WiFi Security Alerts"

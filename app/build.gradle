@@ -4,6 +4,9 @@ plugins {
     id 'kotlin-kapt'
     id 'dagger.hilt.android.plugin'
     id 'kotlin-parcelize'
+    // Firebase plugins (закомментированы - требуют настройки Firebase проекта)
+    // id 'com.google.gms.google-services'
+    // id 'com.google.firebase.crashlytics'
 }
 
 android {
@@ -21,16 +24,38 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+        
+        // BuildConfig fields for security-sensitive URLs
+        buildConfigField "String", "API_BASE_URL", "\"https://api.wifiguard.com/\""
+        buildConfigField "String", "SECURE_API_URL", "\"https://secure.wifiguard.com/\""
+        buildConfigField "String", "ANALYTICS_API_URL", "\"https://analytics.wifiguard.com/\""
+        buildConfigField "String", "API_VERSION", "\"v1\""
+        buildConfigField "boolean", "ENABLE_CRASHLYTICS", "false"
+        buildConfigField "boolean", "ENABLE_ANALYTICS", "false"
     }
 
     buildTypes {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Release-specific BuildConfig fields
+            buildConfigField "String", "API_BASE_URL", "\"https://api.wifiguard.com/\""
+            buildConfigField "String", "SECURE_API_URL", "\"https://secure.wifiguard.com/\""
+            buildConfigField "String", "ANALYTICS_API_URL", "\"https://analytics.wifiguard.com/\""
+            buildConfigField "boolean", "ENABLE_CRASHLYTICS", "true"
+            buildConfigField "boolean", "ENABLE_ANALYTICS", "true"
         }
         debug {
             applicationIdSuffix ".debug"
             debuggable true
+            
+            // Debug-specific BuildConfig fields
+            buildConfigField "String", "API_BASE_URL", "\"https://debug-api.wifiguard.com/\""
+            buildConfigField "String", "SECURE_API_URL", "\"https://debug-secure.wifiguard.com/\""
+            buildConfigField "String", "ANALYTICS_API_URL", "\"https://debug-analytics.wifiguard.com/\""
+            buildConfigField "boolean", "ENABLE_CRASHLYTICS", "false"
+            buildConfigField "boolean", "ENABLE_ANALYTICS", "false"
         }
     }
     
@@ -103,6 +128,11 @@ dependencies {
     
     // Security
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    
+    // Firebase Crashlytics (закомментировано - требует настройки Firebase проекта)
+    // implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    // implementation 'com.google.firebase:firebase-crashlytics-ktx'
+    // implementation 'com.google.firebase:firebase-analytics-ktx'
     
     // Testing
     testImplementation 'junit:junit:4.13.2'

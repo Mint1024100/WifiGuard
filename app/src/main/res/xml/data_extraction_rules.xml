@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <!-- Правила для извлечения данных приложения -->
+    
+    <!-- Запрещаем извлечение чувствительных данных -->
+    <cloud-backup>
+        <!-- Исключаем из cloud backup -->
+        <exclude domain="database" path="wifi_guard_database"/>
+        <exclude domain="sharedpref" path="wifi_guard_preferences.xml"/>
+        <exclude domain="sharedpref" path="security_preferences.xml"/>
+        <exclude domain="file" path="keystore/"/>
+        <exclude domain="file" path="logs/"/>
+        <exclude domain="cache" path="wifi_scan_cache/"/>
+    </cloud-backup>
+    
+    <!-- Запрещаем извлечение при переносе на новое устройство -->
+    <device-transfer>
+        <!-- Исключаем из device transfer -->
+        <exclude domain="database" path="wifi_guard_database"/>
+        <exclude domain="sharedpref" path="wifi_guard_preferences.xml"/>
+        <exclude domain="sharedpref" path="security_preferences.xml"/>
+        <exclude domain="file" path="keystore/"/>
+        <exclude domain="file" path="keys/"/>
+        <exclude domain="cache" path="wifi_scan_cache/"/>
+        <exclude domain="cache" path="security_analysis_cache/"/>
+    </device-transfer>
+    
+    <!-- Разрешаем извлечение только безопасных данных -->
+    <cloud-backup>
+        <include domain="sharedpref" path="app_settings.xml"/>
+        <include domain="sharedpref" path="ui_preferences.xml"/>
+    </cloud-backup>
+    
+    <device-transfer>
+        <include domain="sharedpref" path="app_settings.xml"/>
+        <include domain="sharedpref" path="ui_preferences.xml"/>
+    </device-transfer>
+</data-extraction-rules>
+
