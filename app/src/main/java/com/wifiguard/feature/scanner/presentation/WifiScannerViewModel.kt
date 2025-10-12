@@ -1,6 +1,7 @@
 package com.wifiguard.feature.scanner.presentation
 
 import android.net.wifi.WifiManager
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wifiguard.core.domain.model.WifiNetwork
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class WifiScannerViewModel @Inject constructor(
     private val wifiRepository: WifiRepository,
     private val wifiManager: WifiManager,
+    private val wifiScannerService: com.wifiguard.core.data.wifi.WifiScannerService,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
     
@@ -169,22 +171,70 @@ class WifiScannerViewModel @Inject constructor(
     
     /**
      * Обработать результаты сканирования
-     * TODO: Заменить на реальную обработку результатов сканирования
      */
     private suspend fun processScanResults() {
-        // Мок результаты для тестирования
-        val mockScanResult = WifiScanResult(
-            ssid = "TestNetwork",
-            bssid = "00:11:22:33:44:55",
-            signalStrength = -45,
-            frequency = 2450,
-            channel = 6,
-            timestamp = System.currentTimeMillis(),
-            scanType = WifiScanResult.ScanType.MANUAL
-        )
-        
-        // Сохранить результат сканирования
-        wifiRepository.insertScanResult(mockScanResult)
+        try {
+            // Получаем реальные результаты сканирования
+            val scanResults = wifiManager.scanResults
+            
+            if (scanResults.isEmpty()) {
+                Log.d("WifiScannerViewModel", "Нет результатов сканирования")
+                return
+            }
+            
+            Log.d("WifiScannerViewModel", "Обработка ${scanResults.size} результатов сканирования")
+            
+            // Преобразуем и сохраняем каждый результат
+            scanResults.forEach { androidScanResult ->
+                try {
+                    val wifiScanResult = wifiScannerService.scanResultToWifiScanResult(
+                        androidScanResult,
+                        com.wifiguard.core.domain.model.ScanType.MANUAL
+                    )
+                    wifiRepository.insertScanResult(wifiScanResult)
+                    
+                    // Также обновляем/создаем запись о сети
+                    val existingNetwork = wifiRepository.getNetworkBySSID(wifiScanResult.ssid)
+                    if (existingNetwork != null) {
+                        // Обновляем существующую сеть
+                        val updatedNetwork = existingNetwork.copy(
+                            lastSeen = wifiScanResult.timestamp,
+                            lastUpdated = System.currentTimeMillis(),
+                            signalStrength = wifiScanResult.signalStrength
+                        )
+                        wifiRepository.updateNetwork(updatedNetwork)
+                    } else {
+                        // Создаем новую сеть
+                        val newNetwork = com.wifiguard.core.domain.model.WifiNetwork(
+                            ssid = wifiScanResult.ssid,
+                            bssid = wifiScanResult.bssid,
+                            securityType = wifiScanResult.securityType ?: com.wifiguard.core.domain.model.SecurityType.UNKNOWN,
+                            signalStrength = wifiScanResult.signalStrength,
+                            frequency = wifiScanResult.frequency,
+                            channel = wifiScanResult.channel,
+                            firstSeen = wifiScanResult.timestamp,
+                            lastSeen = wifiScanResult.timestamp,
+                            lastUpdated = System.currentTimeMillis()
+                        )
+                        wifiRepository.insertNetwork(newNetwork)
+                    }
+                } catch (e: Exception) {
+                    Log.e("WifiScannerViewModel", "Ошибка обработки результата: ${e.message}")
+                }
+            }
+            
+            Log.d("WifiScannerViewModel", "Результаты сканирования успешно обработаны")
+        } catch (e: SecurityException) {
+            Log.e("WifiScannerViewModel", "Нет разрешений для получения результатов", e)
+            _uiState.update { 
+                it.copy(errorMessage = "Нет разрешений для получения результатов сканирования")
+            }
+        } catch (e: Exception) {
+            Log.e("WifiScannerViewModel", "Ошибка обработки результатов", e)
+            _uiState.update { 
+                it.copy(errorMessage = "Ошибка обработки результатов: ${e.message}")
+            }
+        }
     }
 }
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Исключаем чувствительные данные из backup -->
+    
+    <!-- База данных с Wi-Fi информацией -->
+    <exclude domain="database" path="wifi_guard_database"/>
+    <exclude domain="database" path="wifi_guard_database-shm"/>
+    <exclude domain="database" path="wifi_guard_database-wal"/>
+    
+    <!-- SharedPreferences с чувствительными данными -->
+    <exclude domain="sharedpref" path="wifi_guard_preferences.xml"/>
+    <exclude domain="sharedpref" path="security_preferences.xml"/>
+    <exclude domain="sharedpref" path="encryption_keys.xml"/>
+    
+    <!-- Кэш с потенциально чувствительной информацией -->
+    <exclude domain="cache" path="wifi_scan_cache/"/>
+    <exclude domain="cache" path="security_analysis_cache/"/>
+    
+    <!-- Временные файлы -->
+    <exclude domain="file" path="temp/"/>
+    <exclude domain="file" path="logs/"/>
+    
+    <!-- Криптографические ключи -->
+    <exclude domain="file" path="keystore/"/>
+    <exclude domain="file" path="keys/"/>
+    
+    <!-- Включаем только безопасные данные -->
+    <include domain="sharedpref" path="app_settings.xml"/>
+    <include domain="sharedpref" path="ui_preferences.xml"/>
+    
+    <!-- Включаем только публичные ресурсы -->
+    <include domain="file" path="public/"/>
+</full-backup-content>
+

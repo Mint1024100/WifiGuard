@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Конфигурация для production -->
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Certificate pinning для основных API endpoints -->
+        <domain includeSubdomains="true">api.wifiguard.com</domain>
+        <domain includeSubdomains="true">secure.wifiguard.com</domain>
+        <domain includeSubdomains="true">analytics.wifiguard.com</domain>
+        
+        <!-- Certificate pinning с SHA-256 fingerprints -->
+        <!-- 
+        ВАЖНО: Замените placeholder значения на реальные certificate fingerprints!
+        
+        Как получить certificate fingerprints:
+        1. Для production сертификата:
+           keytool -list -v -keystore your-release-key.keystore -alias your-key-alias
+        
+        2. Для debug сертификата:
+           keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+        
+        3. Для сертификата сервера:
+           openssl s_client -connect api.wifiguard.com:443 -servername api.wifiguard.com | openssl x509 -pubkey -noout | openssl rsa -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
+        
+        4. Альтернативный способ:
+           echo | openssl s_client -servername api.wifiguard.com -connect api.wifiguard.com:443 2>/dev/null | openssl x509 -pubkey -noout | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -binary | openssl enc -base64
+        
+        Обязательно добавьте backup certificate для ротации!
+        -->
+        <pin-set expiration="2025-12-31">
+            <!-- Primary certificate - ЗАМЕНИТЕ НА РЕАЛЬНЫЙ FINGERPRINT -->
+            <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin>
+            <!-- Backup certificate - ЗАМЕНИТЕ НА РЕАЛЬНЫЙ FINGERPRINT -->
+            <pin digest="SHA-256">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=</pin>
+        </pin-set>
+        
+        <!-- Trust anchors -->
+        <trust-anchors>
+            <!-- System CA certificates -->
+            <certificates src="system"/>
+            <!-- User added CA certificates (если нужно) -->
+            <!-- <certificates src="user"/> -->
+        </trust-anchors>
+    </domain-config>
+    
+    <!-- Конфигурация для debug/development -->
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Разрешаем пользовательские сертификаты в debug режиме -->
+            <certificates src="user"/>
+            <certificates src="system"/>
+        </trust-anchors>
+    </debug-overrides>
+    
+    <!-- Базовые настройки безопасности -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Только системные сертификаты -->
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Исключения для localhost (только для разработки) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
+

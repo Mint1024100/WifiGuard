@@ -20,6 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SecurityAnalysisViewModel @Inject constructor(
     private val wifiRepository: WifiRepository,
+    private val securityManager: com.wifiguard.core.security.SecurityManager,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
     
@@ -107,66 +108,48 @@ class SecurityAnalysisViewModel @Inject constructor(
     }
     
     /**
-     * Проанализировать угрозы безопасности
+     * Проанализировать угрозы безопасности с использованием SecurityManager
      */
     private fun analyzeSecurityThreats(networks: List<WifiNetwork>): List<SecurityThreat> {
         val threats = mutableListOf<SecurityThreat>()
         
         networks.forEach { network ->
-            // 1. Открытые сети
-            if (network.securityType == SecurityType.OPEN) {
-                threats.add(
-                    SecurityThreat(
-                        networkSsid = network.ssid,
-                        type = ThreatType.OPEN_NETWORK,
-                        severity = ThreatSeverity.MEDIUM,
-                        description = "Открытая сеть без шифрования",
-                        recommendation = "Избегайте передачи конфиденциальных данных",
-                        detectedAt = System.currentTimeMillis()
-                    )
+            try {
+                // Преобразуем WifiNetwork в WifiInfo для SecurityManager
+                val wifiInfo = com.wifiguard.feature.scanner.domain.model.WifiInfo(
+                    ssid = network.ssid,
+                    bssid = network.bssid,
+                    capabilities = "",
+                    level = network.signalStrength,
+                    frequency = network.frequency,
+                    timestamp = network.lastSeen,
+                    encryptionType = network.securityType,
+                    signalStrength = network.signalStrength,
+                    channel = network.channel,
+                    bandwidth = null,
+                    isHidden = network.ssid.isEmpty()
                 )
-            }
-            
-            // 2. Слабое шифрование WEP
-            if (network.securityType == SecurityType.WEP) {
-                threats.add(
-                    SecurityThreat(
-                        networkSsid = network.ssid,
-                        type = ThreatType.WEAK_ENCRYPTION,
-                        severity = ThreatSeverity.HIGH,
-                        description = "Устаревшее шифрование WEP",
-                        recommendation = "Не подключайтесь к этой сети",
-                        detectedAt = System.currentTimeMillis()
+                
+                // Используем SecurityManager для анализа
+                val analysisResult = securityManager.analyzeNetworkSecurity(wifiInfo)
+                
+                // Преобразуем результаты SecurityManager в наши угрозы
+                analysisResult.threats.forEach { securityThreat ->
+                    val (type, severity, description, recommendation) = mapSecurityThreat(securityThreat)
+                    
+                    threats.add(
+                        SecurityThreat(
+                            networkSsid = network.ssid,
+                            type = type,
+                            severity = severity,
+                            description = description,
+                            recommendation = recommendation,
+                            detectedAt = analysisResult.analysisTimestamp
+                        )
                     )
-                )
-            }
-            
-            // 3. Подозрительные сети (искусственная точка доступа)
-            if (network.isSuspicious) {
-                threats.add(
-                    SecurityThreat(
-                        networkSsid = network.ssid,
-                        type = ThreatType.ROGUE_ACCESS_POINT,
-                        severity = ThreatSeverity.HIGH,
-                        description = network.suspiciousReason ?: "Подозрительная точка доступа",
-                        recommendation = "Не подключайтесь к этой сети",
-                        detectedAt = System.currentTimeMillis()
-                    )
-                )
-            }
-            
-            // 4. Подозрительные имена сетей
-            if (isSuspiciousNetworkName(network.ssid)) {
-                threats.add(
-                    SecurityThreat(
-                        networkSsid = network.ssid,
-                        type = ThreatType.SUSPICIOUS_NAME,
-                        severity = ThreatSeverity.LOW,
-                        description = "Подозрительное имя сети",
-                        recommendation = "Проверьте подлинность сети",
-                        detectedAt = System.currentTimeMillis()
-                    )
-                )
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SecurityAnalysisViewModel", "Error analyzing network ${network.ssid}", e)
             }
         }
         
@@ -174,19 +157,66 @@ class SecurityAnalysisViewModel @Inject constructor(
     }
     
     /**
-     * Проверить, является ли имя сети подозрительным
+     * Преобразует угрозу из SecurityManager в нашу модель
      */
-    private fun isSuspiciousNetworkName(ssid: String): Boolean {
-        val suspiciousPatterns = listOf(
-            "free", "wifi", "internet", "бесплатно",
-            "hack", "test", "default", "linksys",
-            "netgear", "dlink", "admin", "password"
-        )
-        
-        return suspiciousPatterns.any { pattern ->
-            ssid.contains(pattern, ignoreCase = true)
+    private fun mapSecurityThreat(
+        threat: com.wifiguard.core.security.SecurityThreat
+    ): Quadruple<ThreatType, ThreatSeverity, String, String> {
+        return when (threat) {
+            com.wifiguard.core.security.SecurityThreat.OPEN_NETWORK -> Quadruple(
+                ThreatType.OPEN_NETWORK,
+                ThreatSeverity.MEDIUM,
+                "Открытая сеть без шифрования",
+                "Избегайте передачи конфиденциальных данных"
+            )
+            com.wifiguard.core.security.SecurityThreat.WEAK_ENCRYPTION -> Quadruple(
+                ThreatType.WEAK_ENCRYPTION,
+                ThreatSeverity.HIGH,
+                "Устаревшее или слабое шифрование",
+                "Не подключайтесь к этой сети"
+            )
+            com.wifiguard.core.security.SecurityThreat.EVIL_TWIN_DETECTED -> Quadruple(
+                ThreatType.ROGUE_ACCESS_POINT,
+                ThreatSeverity.HIGH,
+                "Обнаружена поддельная точка доступа (Evil Twin)",
+                "Немедленно отключитесь от этой сети"
+            )
+            com.wifiguard.core.security.SecurityThreat.SUSPICIOUS_NAME -> Quadruple(
+                ThreatType.SUSPICIOUS_NAME,
+                ThreatSeverity.LOW,
+                "Подозрительное имя сети",
+                "Проверьте подлинность сети"
+            )
+            com.wifiguard.core.security.SecurityThreat.SUSPICIOUS_MAC_ADDRESS -> Quadruple(
+                ThreatType.ROGUE_ACCESS_POINT,
+                ThreatSeverity.MEDIUM,
+                "Подозрительный MAC-адрес",
+                "Будьте осторожны при подключении"
+            )
+            com.wifiguard.core.security.SecurityThreat.SIGNAL_ANOMALY -> Quadruple(
+                ThreatType.ROGUE_ACCESS_POINT,
+                ThreatSeverity.MEDIUM,
+                "Обнаружена аномалия сигнала",
+                "Возможна атака на сеть"
+            )
+            else -> Quadruple(
+                ThreatType.SUSPICIOUS_NAME,
+                ThreatSeverity.LOW,
+                "Обнаружена потенциальная угроза",
+                "Будьте внимательны"
+            )
         }
     }
+    
+    /**
+     * Вспомогательный класс для возврата четырех значений
+     */
+    private data class Quadruple<A, B, C, D>(
+        val first: A,
+        val second: B,
+        val third: C,
+        val fourth: D
+    )
     
     /**
      * Обновить статистику безопасности

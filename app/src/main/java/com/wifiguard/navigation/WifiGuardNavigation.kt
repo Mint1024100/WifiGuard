@@ -5,16 +5,17 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.wifiguard.feature.scanner.presentation.ScannerScreen
-import com.wifiguard.feature.settings.presentation.SettingsScreen
 import com.wifiguard.feature.analysis.presentation.AnalysisScreen
+import com.wifiguard.feature.settings.presentation.SettingsScreen
 import com.wifiguard.feature.notifications.presentation.NotificationsScreen
 
 @Composable
 fun WifiGuardNavigation(
-    navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
+    val navController = rememberNavController()
     NavHost(
         navController = navController,
         startDestination = Screen.Scanner.route,
