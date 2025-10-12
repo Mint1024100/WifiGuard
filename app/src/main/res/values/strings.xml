@@ -1,100 +1,185 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- App Name -->
+    <!-- App name -->
     <string name="app_name">WifiGuard</string>
     
-    <!-- Main Activity -->
-    <string name="loading">Загрузка…</string>
-    
-    <!-- Permission Screens -->
-    <string name="permissions_required_title">Требуются разрешения</string>
-    <string name="permissions_required_message">Для анализа Wi-Fi сетей требуются\nразрешения на доступ к\nместоположению и уведомлениям</string>
-    <string name="permissions_blocked_title">Разрешения заблокированы</string>
-    <string name="permissions_blocked_message">Разрешения были заблокированы.\nОткройте настройки приложения\nи предоставьте необходимые разрешения</string>
-    <string name="grant_permissions">Предоставить разрешения</string>
-    <string name="open_settings">Открыть настройки</string>
-    
     <!-- Navigation -->
-    <string name="scanner_tab">Сканер</string>
-    <string name="analyzer_tab">Анализатор</string>
-    <string name="history_tab">История</string>
-    <string name="settings_tab">Настройки</string>
+    <string name="nav_scanner">Сканер</string>
+    <string name="nav_analysis">Анализ</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="nav_notifications">Уведомления</string>
     
     <!-- Scanner Screen -->
-    <string name="scan_wifi_networks">Сканировать сети</string>
-    <string name="scanning">Сканирование…</string>
-    <string name="scan_complete">Сканирование завершено</string>
-    <string name="scan_error">Ошибка сканирования</string>
-    <string name="no_networks_found">Wi-Fi сети не найдены</string>
-    <string name="networks_found">Найдено сетей: %1$d</string>
+    <string name="scanner_title">Wi-Fi Сканер</string>
+    <string name="scanner_scan_button">Сканировать</string>
+    <string name="scanner_scanning">Сканирование...</string>
+    <string name="scanner_no_networks">Сети не найдены</string>
+    <string name="scanner_wifi_disabled">Wi-Fi отключен</string>
+    <string name="scanner_permission_required">Требуется разрешение на геолокацию</string>
+    <string name="scanner_permission_denied">Разрешение на геолокацию отклонено</string>
+    <string name="scanner_scan_failed">Ошибка сканирования</string>
+    <string name="scanner_pull_to_refresh">Потяните для обновления</string>
+    <string name="scanner_networks_found">Найдено сетей: %d</string>
+    <string name="scanner_last_scan">Последнее сканирование: %s</string>
     
-    <!-- Network Details -->
-    <string name="network_name">Имя сети</string>
-    <string name="signal_strength">Сила сигнала</string>
-    <string name="security_type">Тип защиты</string>
-    <string name="frequency">Частота</string>
-    <string name="channel">Канал</string>
-    <string name="bssid">BSSID</string>
+    <!-- Network Card -->
+    <string name="network_connected">Подключено</string>
+    <string name="network_hidden">Скрытая сеть</string>
+    <string name="network_open">Открытая</string>
+    <string name="network_secured">Защищенная</string>
+    <string name="network_signal_strength">Сила сигнала: %s</string>
+    <string name="network_frequency">Частота: %d МГц</string>
+    <string name="network_channel">Канал: %d</string>
+    <string name="network_vendor">Производитель: %s</string>
+    <string name="network_security_type">Тип безопасности: %s</string>
+    <string name="network_threat_level">Уровень угрозы: %s</string>
     
-    <!-- Security Levels -->
-    <string name="security_level_secure">Безопасно</string>
-    <string name="security_level_warning">Внимание</string>
-    <string name="security_level_danger">Опасно</string>
-    <string name="security_level_critical">Критично</string>
+    <!-- Security Types -->
+    <string name="security_open">Открытая</string>
+    <string name="security_wep">WEP</string>
+    <string name="security_wpa">WPA</string>
+    <string name="security_wpa2">WPA2</string>
+    <string name="security_wpa3">WPA3</string>
+    <string name="security_wpa2_wpa3">WPA2/WPA3</string>
+    <string name="security_eap">EAP</string>
+    <string name="security_unknown">Неизвестно</string>
     
-    <!-- Encryption Types -->
-    <string name="encryption_none">Без защиты</string>
-    <string name="encryption_wep">WEP</string>
-    <string name="encryption_wpa">WPA</string>
-    <string name="encryption_wpa2">WPA2</string>
-    <string name="encryption_wpa3">WPA3</string>
-    <string name="encryption_unknown">Неизвестно</string>
+    <!-- Threat Levels -->
+    <string name="threat_safe">Безопасно</string>
+    <string name="threat_low">Низкий риск</string>
+    <string name="threat_medium">Средний риск</string>
+    <string name="threat_high">Высокий риск</string>
+    <string name="threat_critical">Критический риск</string>
+    <string name="threat_unknown">Неизвестно</string>
+    
+    <!-- Signal Strength -->
+    <string name="signal_excellent">Отличный</string>
+    <string name="signal_good">Хороший</string>
+    <string name="signal_fair">Средний</string>
+    <string name="signal_weak">Слабый</string>
+    <string name="signal_very_weak">Очень слабый</string>
+    <string name="signal_critical">Критически слабый</string>
     
     <!-- Analysis Screen -->
-    <string name="analyze_network">Анализировать сеть</string>
-    <string name="analysis_complete">Анализ завершен</string>
-    <string name="security_assessment">Оценка безопасности</string>
-    <string name="threat_level">Уровень угрозы</string>
-    <string name="recommendations">Рекомендации</string>
+    <string name="analysis_title">Анализ безопасности</string>
+    <string name="analysis_overall_risk">Общий уровень риска</string>
+    <string name="analysis_networks_analyzed">Проанализировано сетей: %d</string>
+    <string name="analysis_safe_networks">Безопасных сетей: %d</string>
+    <string name="analysis_threats_found">Найдено угроз: %d</string>
+    <string name="analysis_recommendations">Рекомендации</string>
+    <string name="analysis_no_recommendations">Рекомендации отсутствуют</string>
+    <string name="analysis_security_score">Оценка безопасности: %d/100</string>
+    <string name="analysis_threats_by_type">Угрозы по типам</string>
+    <string name="analysis_networks_by_security">Сети по типам безопасности</string>
     
     <!-- Settings Screen -->
-    <string name="general_settings">Общие настройки</string>
-    <string name="scan_interval">Интервал сканирования</string>
-    <string name="auto_scan">Автосканирование</string>
-    <string name="notifications_enabled">Уведомления включены</string>
-    <string name="dark_theme">Темная тема</string>
-    <string name="language">Язык</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_general">Общие</string>
+    <string name="settings_security">Безопасность</string>
+    <string name="settings_notifications">Уведомления</string>
+    <string name="settings_about">О приложении</string>
     
-    <!-- Notifications -->
-    <string name="security_alert">Предупреждение безопасности</string>
-    <string name="suspicious_network_detected">Обнаружена подозрительная сеть</string>
-    <string name="weak_encryption_warning">Слабое шифрование обнаружено</string>
-    <string name="open_network_warning">Открытая сеть без защиты</string>
+    <string name="settings_auto_scan">Автоматическое сканирование</string>
+    <string name="settings_auto_scan_summary">Периодическое сканирование в фоне</string>
+    <string name="settings_scan_interval">Интервал сканирования</string>
+    <string name="settings_scan_interval_summary">Частота автоматического сканирования</string>
+    <string name="settings_scan_interval_5min">5 минут</string>
+    <string name="settings_scan_interval_15min">15 минут</string>
+    <string name="settings_scan_interval_30min">30 минут</string>
+    <string name="settings_scan_interval_1hour">1 час</string>
+    
+    <string name="settings_notifications_enabled">Уведомления об угрозах</string>
+    <string name="settings_notifications_enabled_summary">Получать уведомления о критических угрозах</string>
+    <string name="settings_notifications_sound">Звук уведомлений</string>
+    <string name="settings_notifications_vibration">Вибрация</string>
+    
+    <string name="settings_data_retention">Хранение данных</string>
+    <string name="settings_data_retention_summary">Период хранения истории сканирований</string>
+    <string name="settings_data_retention_1day">1 день</string>
+    <string name="settings_data_retention_1week">1 неделя</string>
+    <string name="settings_data_retention_1month">1 месяц</string>
+    <string name="settings_data_retention_3months">3 месяца</string>
+    <string name="settings_data_retention_forever">Навсегда</string>
+    
+    <string name="settings_export_data">Экспорт данных</string>
+    <string name="settings_export_data_summary">Сохранить историю сканирований</string>
+    <string name="settings_import_data">Импорт данных</string>
+    <string name="settings_import_data_summary">Загрузить историю сканирований</string>
+    <string name="settings_clear_data">Очистить данные</string>
+    <string name="settings_clear_data_summary">Удалить всю историю сканирований</string>
+    
+    <string name="settings_about_version">Версия: %s</string>
+    <string name="settings_about_build">Сборка: %d</string>
+    <string name="settings_about_privacy">Политика конфиденциальности</string>
+    <string name="settings_about_terms">Условия использования</string>
+    <string name="settings_about_github">GitHub</string>
+    <string name="settings_about_license">Лицензия</string>
+    
+    <!-- Notifications Screen -->
+    <string name="notifications_title">Уведомления</string>
+    <string name="notifications_no_notifications">Уведомления отсутствуют</string>
+    <string name="notifications_mark_all_read">Отметить все как прочитанные</string>
+    <string name="notifications_clear_all">Очистить все</string>
+    
+    <!-- Threat Types -->
+    <string name="threat_open_network">Открытая сеть</string>
+    <string name="threat_weak_encryption">Слабое шифрование</string>
+    <string name="threat_duplicate_ssid">Дублирующийся SSID</string>
+    <string name="threat_suspicious_ssid">Подозрительное имя</string>
+    <string name="threat_wps_vulnerability">Уязвимость WPS</string>
+    <string name="threat_weak_signal">Слабый сигнал</string>
+    <string name="threat_unknown_encryption">Неизвестное шифрование</string>
+    <string name="threat_multiple_duplicates">Множественные дубликаты</string>
+    <string name="threat_suspicious_activity">Подозрительная активность</string>
+    <string name="threat_suspicious_bssid">Подозрительный MAC-адрес</string>
+    
+    <!-- Common -->
+    <string name="common_ok">ОК</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_retry">Повторить</string>
+    <string name="common_refresh">Обновить</string>
+    <string name="common_loading">Загрузка...</string>
+    <string name="common_error">Ошибка</string>
+    <string name="common_success">Успешно</string>
+    <string name="common_warning">Предупреждение</string>
+    <string name="common_info">Информация</string>
+    <string name="common_yes">Да</string>
+    <string name="common_no">Нет</string>
+    <string name="common_save">Сохранить</string>
+    <string name="common_delete">Удалить</string>
+    <string name="common_edit">Изменить</string>
+    <string name="common_share">Поделиться</string>
+    <string name="common_copy">Копировать</string>
+    <string name="common_close">Закрыть</string>
+    <string name="common_back">Назад</string>
+    <string name="common_next">Далее</string>
+    <string name="common_previous">Предыдущий</string>
+    <string name="common_done">Готово</string>
+    <string name="common_skip">Пропустить</string>
+    <string name="common_continue">Продолжить</string>
+    <string name="common_finish">Завершить</string>
+    
+    <!-- Permissions -->
+    <string name="permission_location_title">Разрешение на геолокацию</string>
+    <string name="permission_location_message">Для сканирования Wi-Fi сетей требуется разрешение на геолокацию</string>
+    <string name="permission_notification_title">Разрешение на уведомления</string>
+    <string name="permission_notification_message">Для получения уведомлений об угрозах требуется разрешение на уведомления</string>
     
     <!-- Errors -->
-    <string name="error_generic">Произошла ошибка</string>
-    <string name="error_no_wifi">Wi-Fi недоступен</string>
-    <string name="error_permission_denied">Отказано в разрешении</string>
-    <string name="error_location_disabled">Местоположение отключено</string>
     <string name="error_network_unavailable">Сеть недоступна</string>
+    <string name="error_permission_denied">Разрешение отклонено</string>
+    <string name="error_wifi_disabled">Wi-Fi отключен</string>
+    <string name="error_scan_failed">Ошибка сканирования</string>
+    <string name="error_database_error">Ошибка базы данных</string>
+    <string name="error_unknown">Неизвестная ошибка</string>
     
-    <!-- Actions -->
-    <string name="retry">Повторить</string>
-    <string name="cancel">Отмена</string>
-    <string name="ok">OK</string>
-    <string name="yes">Да</string>
-    <string name="no">Нет</string>
-    <string name="back">Назад</string>
-    <string name="next">Далее</string>
-    <string name="save">Сохранить</string>
-    <string name="delete">Удалить</string>
-    <string name="edit">Изменить</string>
-    <string name="share">Поделиться</string>
-    
-    <!-- Content Descriptions -->
-    <string name="wifi_signal_icon">Иконка силы Wi-Fi сигнала</string>
-    <string name="security_level_icon">Иконка уровня безопасности</string>
-    <string name="scan_button">Кнопка сканирования</string>
-    <string name="settings_button">Кнопка настроек</string>
-    
+    <!-- Recommendations -->
+    <string name="recommendation_avoid_open_networks">Избегайте подключения к открытым Wi-Fi сетям</string>
+    <string name="recommendation_use_strong_encryption">Используйте сети с WPA2 или WPA3 шифрованием</string>
+    <string name="recommendation_avoid_weak_encryption">Не используйте сети с WEP или WPA шифрованием</string>
+    <string name="recommendation_beware_duplicate_ssid">Остерегайтесь дублирующихся SSID - возможна атака Evil Twin</string>
+    <string name="recommendation_avoid_suspicious_names">Не подключайтесь к сетям с подозрительными именами</string>
+    <string name="recommendation_disable_wps">Отключите WPS в настройках роутера</string>
+    <string name="recommendation_use_vpn">Используйте VPN при подключении к общественным сетям</string>
+    <string name="recommendation_keep_updated">Регулярно обновляйте прошивку роутера</string>
 </resources>

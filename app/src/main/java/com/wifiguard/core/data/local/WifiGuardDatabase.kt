@@ -5,66 +5,51 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
-import com.wifiguard.core.data.local.dao.WifiNetworkDao
-import com.wifiguard.core.data.local.dao.WifiScanDao
-import com.wifiguard.core.data.local.entity.WifiNetworkEntity
-import com.wifiguard.core.data.local.entity.WifiScanResultEntity
 import com.wifiguard.core.data.local.converter.DatabaseConverters
+import com.wifiguard.core.data.local.dao.ScanSessionDao
+import com.wifiguard.core.data.local.dao.ThreatDao
+import com.wifiguard.core.data.local.dao.WifiScanDao
+import com.wifiguard.core.data.local.entity.ScanSessionEntity
+import com.wifiguard.core.data.local.entity.ThreatEntity
+import com.wifiguard.core.data.local.entity.WifiScanEntity
 
 /**
- * Основная база данных WifiGuard с использованием Room.
- * 
- * Содержит:
- * - Информацию о Wi-Fi сетях
- * - Результаты сканирования
- * - Настройки безопасности
- * 
- * @version 1 - начальная схема базы данных
+ * Основная база данных WifiGuard
  */
 @Database(
     entities = [
-        WifiNetworkEntity::class,
-        WifiScanResultEntity::class
+        WifiScanEntity::class,
+        ThreatEntity::class,
+        ScanSessionEntity::class
     ],
     version = 1,
-    exportSchema = false // В продакшне установить true и создать schemas/
+    exportSchema = false
 )
 @TypeConverters(DatabaseConverters::class)
 abstract class WifiGuardDatabase : RoomDatabase() {
     
-    /**
-     * DAO для работы с Wi-Fi сетями
-     */
-    abstract fun wifiNetworkDao(): WifiNetworkDao
-    
-    /**
-     * DAO для работы с результатами сканирования
-     */
     abstract fun wifiScanDao(): WifiScanDao
+    abstract fun threatDao(): ThreatDao
+    abstract fun scanSessionDao(): ScanSessionDao
     
     companion object {
-        /**
-         * Имя файла базы данных
-         */
-        const val DATABASE_NAME = "wifi_guard_database"
+        const val DATABASE_NAME = "wifiguard_database"
         
-        /**
-         * Версия базы данных
-         */
-        const val DATABASE_VERSION = 1
+        @Volatile
+        private var INSTANCE: WifiGuardDatabase? = null
         
-        /**
-         * Удобный метод для создания экземпляра базы данных
-         * (для тестов и debug-сборок)
-         */
-        fun create(context: Context): WifiGuardDatabase {
-            return Room.databaseBuilder(
-                context = context,
-                klass = WifiGuardDatabase::class.java,
-                name = DATABASE_NAME
-            )
+        fun getDatabase(context: Context): WifiGuardDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    WifiGuardDatabase::class.java,
+                    DATABASE_NAME
+                )
                 .fallbackToDestructiveMigration()
                 .build()
+                INSTANCE = instance
+                instance
+            }
         }
     }
 }

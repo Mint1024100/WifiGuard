@@ -1,36 +1,25 @@
 package com.wifiguard.navigation
 
-import androidx.navigation.NamedNavArgument
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
-
+/**
+ * Определение экранов приложения
+ */
 sealed class Screen(val route: String) {
+    object Scanner : Screen("scanner")
+    object Analysis : Screen("analysis")
+    object Settings : Screen("settings")
+    object Notifications : Screen("notifications")
     
-    data object Scanner : Screen("scanner")
-    
-    data object Analysis : Screen("analysis/{networkId}") {
-        const val ARG_NETWORK_ID = "networkId"
-        
-        fun createRoute(networkId: String): String {
-            return "analysis/$networkId"
-        }
-        
-        val arguments: List<NamedNavArgument> = listOf(
-            navArgument(ARG_NETWORK_ID) {
-                type = NavType.StringType
-                nullable = false
-            }
-        )
+    // Дополнительные экраны
+    object NetworkDetails : Screen("network_details/{networkId}") {
+        fun createRoute(networkId: String) = "network_details/$networkId"
     }
     
-    data object Settings : Screen("settings")
+    object ThreatDetails : Screen("threat_details/{threatId}") {
+        fun createRoute(threatId: String) = "threat_details/$threatId"
+    }
     
-    data object Notifications : Screen("notifications")
+    object SecurityReport : Screen("security_report")
+    object About : Screen("about")
+    object PrivacyPolicy : Screen("privacy_policy")
+    object TermsOfService : Screen("terms_of_service")
 }
-
-// Navigation destinations for bottom navigation
-val bottomNavigationScreens = listOf(
-    Screen.Scanner,
-    Screen.Notifications,
-    Screen.Settings
-)

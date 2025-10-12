@@ -1,39 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
-    <!-- Правила для извлечения данных приложения -->
+    <!-- Правила извлечения данных для Android 12+ (API 31+) -->
     
-    <!-- Запрещаем извлечение чувствительных данных -->
+    <!-- Настройки для полного резервного копирования -->
     <cloud-backup>
-        <!-- Исключаем из cloud backup -->
-        <exclude domain="database" path="wifi_guard_database"/>
-        <exclude domain="sharedpref" path="wifi_guard_preferences.xml"/>
-        <exclude domain="sharedpref" path="security_preferences.xml"/>
-        <exclude domain="file" path="keystore/"/>
-        <exclude domain="file" path="logs/"/>
-        <exclude domain="cache" path="wifi_scan_cache/"/>
+        <!-- Исключить чувствительные данные из облачного резервного копирования -->
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="external" path="." />
+        
+        <!-- Разрешить только настройки приложения -->
+        <include domain="sharedpref" path="app_preferences.xml" />
     </cloud-backup>
     
-    <!-- Запрещаем извлечение при переносе на новое устройство -->
+    <!-- Настройки для извлечения данных устройства -->
     <device-transfer>
-        <!-- Исключаем из device transfer -->
-        <exclude domain="database" path="wifi_guard_database"/>
-        <exclude domain="sharedpref" path="wifi_guard_preferences.xml"/>
-        <exclude domain="sharedpref" path="security_preferences.xml"/>
-        <exclude domain="file" path="keystore/"/>
-        <exclude domain="file" path="keys/"/>
-        <exclude domain="cache" path="wifi_scan_cache/"/>
-        <exclude domain="cache" path="security_analysis_cache/"/>
+        <!-- Исключить все данные при передаче устройства -->
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="external" path="." />
+        
+        <!-- Разрешить только базовые настройки -->
+        <include domain="sharedpref" path="app_preferences.xml" />
     </device-transfer>
     
-    <!-- Разрешаем извлечение только безопасных данных -->
-    <cloud-backup>
-        <include domain="sharedpref" path="app_settings.xml"/>
-        <include domain="sharedpref" path="ui_preferences.xml"/>
-    </cloud-backup>
-    
-    <device-transfer>
-        <include domain="sharedpref" path="app_settings.xml"/>
-        <include domain="sharedpref" path="ui_preferences.xml"/>
-    </device-transfer>
+    <!-- Дополнительные правила безопасности -->
+    <key-value>
+        <!-- Исключить все ключи из резервного копирования -->
+        <exclude key="*" />
+    </key-value>
 </data-extraction-rules>
-

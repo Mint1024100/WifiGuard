@@ -1,201 +1,189 @@
 package com.wifiguard.core.background
 
 import android.content.Context
-import android.net.wifi.WifiManager
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import com.wifiguard.core.data.wifi.WifiScanner
+import com.wifiguard.core.security.SecurityAnalyzer
+import com.wifiguard.core.data.local.WifiGuardDatabase
+import com.wifiguard.core.data.local.dao.WifiScanDao
+import com.wifiguard.core.data.local.dao.ThreatDao
+import com.wifiguard.core.data.local.dao.ScanSessionDao
+import com.wifiguard.core.data.local.entity.WifiScanEntity
+import com.wifiguard.core.data.local.entity.ThreatEntity
+import com.wifiguard.core.data.local.entity.ScanSessionEntity
 import com.wifiguard.core.domain.model.WifiScanResult
-import com.wifiguard.core.domain.repository.WifiRepository
+import com.wifiguard.core.security.SecurityThreat
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
+import java.util.*
 
 /**
- * WorkManager Worker для фонового мониторинга Wi-Fi сетей.
- * Выполняет периодическое сканирование и обнаружение новых сетей.
+ * Фоновый воркер для мониторинга Wi-Fi сетей
  */
 @HiltWorker
 class WifiMonitoringWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val wifiRepository: WifiRepository,
-    private val wifiManager: WifiManager,
-    private val wifiScannerService: com.wifiguard.core.data.wifi.WifiScannerService
+    private val wifiScanner: WifiScanner,
+    private val securityAnalyzer: SecurityAnalyzer,
+    private val database: WifiGuardDatabase
 ) : CoroutineWorker(context, workerParams) {
     
-    companion object {
-        const val WORK_NAME = "wifi_monitoring_work"
-        const val TAG = "WifiMonitoringWorker"
-        
-        private const val MONITORING_INTERVAL_MINUTES = 15L
-        private const val FLEX_INTERVAL_MINUTES = 5L
-        
-        /**
-         * Запланировать периодический мониторинг
-         */
-        fun schedulePeriodicMonitoring(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.NOT_REQUIRED) // Не требует сети
-                .setRequiresBatteryNotLow(true) // Не работает при низком заряде
-                .setRequiresDeviceIdle(false) // Может работать при активном устройстве
-                .build()
-            
-            val periodicWorkRequest = PeriodicWorkRequestBuilder<WifiMonitoringWorker>(
-                repeatInterval = MONITORING_INTERVAL_MINUTES,
-                repeatIntervalTimeUnit = TimeUnit.MINUTES,
-                flexTimeInterval = FLEX_INTERVAL_MINUTES,
-                flexTimeIntervalUnit = TimeUnit.MINUTES
-            )
-                .setConstraints(constraints)
-                .addTag(TAG)
-                .setBackoffCriteria(
-                    BackoffPolicy.LINEAR,
-                    OneTimeWorkRequest.MIN_BACKOFF_MILLIS,
-                    TimeUnit.MILLISECONDS
-                )
-                .build()
-            
-            WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(
-                    WORK_NAME,
-                    ExistingPeriodicWorkPolicy.KEEP, // Сохраняем существующую задачу
-                    periodicWorkRequest
-                )
-        }
-        
-        /**
-         * Отменить мониторинг
-         */
-        fun cancelMonitoring(context: Context) {
-            WorkManager.getInstance(context)
-                .cancelUniqueWork(WORK_NAME)
-        }
-    }
+    private val wifiScanDao: WifiScanDao = database.wifiScanDao()
+    private val threatDao: ThreatDao = database.threatDao()
+    private val scanSessionDao: ScanSessionDao = database.scanSessionDao()
     
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            // Проверка состояния Wi-Fi
-            if (!wifiManager.isWifiEnabled) {
+            Log.d(TAG, "Starting Wi-Fi monitoring work")
+            
+            // Проверяем, включен ли Wi-Fi
+            if (!wifiScanner.isWifiEnabled()) {
+                Log.w(TAG, "Wi-Fi is disabled, skipping scan")
                 return@withContext Result.success()
             }
             
-            // Фоновое сканирование
-            performBackgroundScan()
+            // Создаем сессию сканирования
+            val sessionId = UUID.randomUUID().toString()
+            val session = ScanSessionEntity(
+                sessionId = sessionId,
+                startTimestamp = System.currentTimeMillis(),
+                isBackgroundScan = true
+            )
+            scanSessionDao.insertSession(session)
             
-            // Очистка старых данных (старше 30 дней)
-            val thirtyDaysAgo = System.currentTimeMillis() - (30 * 24 * 60 * 60 * 1000L)
-            wifiRepository.clearOldScans(thirtyDaysAgo)
+            // Выполняем сканирование
+            val scanResult = wifiScanner.startScan()
+            if (scanResult.isFailure) {
+                Log.e(TAG, "Wi-Fi scan failed", scanResult.exceptionOrNull())
+                return@withContext Result.failure()
+            }
             
+            val scanResults = scanResult.getOrNull() ?: emptyList()
+            Log.d(TAG, "Found ${scanResults.size} networks")
+            
+            // Сохраняем результаты сканирования
+            val scanEntities = scanResults.map { scanResult ->
+                convertToEntity(scanResult, sessionId)
+            }
+            wifiScanDao.insertScans(scanEntities)
+            
+            // Анализируем безопасность
+            val securityReport = securityAnalyzer.analyzeNetworks(scanResults)
+            
+            // Сохраняем угрозы
+            val threatEntities = securityReport.threats.map { threat ->
+                ThreatEntity(
+                    scanId = 0, // Будет обновлено после получения ID
+                    threatType = threat.type,
+                    severity = threat.severity,
+                    description = threat.description,
+                    networkSsid = threat.networkSsid,
+                    networkBssid = threat.networkBssid,
+                    additionalInfo = threat.additionalInfo,
+                    timestamp = threat.timestamp
+                )
+            }
+            threatDao.insertThreats(threatEntities)
+            
+            // Обновляем статистику сессии
+            scanSessionDao.updateSessionStatistics(
+                sessionId = sessionId,
+                totalNetworks = securityReport.totalNetworks,
+                safeNetworks = securityReport.safeNetworks,
+                lowRiskNetworks = securityReport.lowRiskNetworks,
+                mediumRiskNetworks = securityReport.mediumRiskNetworks,
+                highRiskNetworks = securityReport.highRiskNetworks,
+                criticalRiskNetworks = securityReport.criticalRiskNetworks,
+                overallRiskLevel = securityReport.overallRiskLevel,
+                totalThreats = securityReport.threats.size
+            )
+            
+            // Завершаем сессию
+            scanSessionDao.endSession(sessionId, System.currentTimeMillis())
+            
+            // Запускаем уведомления о критических угрозах
+            if (securityReport.hasCriticalThreats()) {
+                scheduleThreatNotification(securityReport.threats.filter { it.severity.isCritical() })
+            }
+            
+            Log.d(TAG, "Wi-Fi monitoring work completed successfully")
             Result.success()
             
-        } catch (e: SecurityException) {
-            // Не хватает разрешений - пропускаем это выполнение
-            Result.success()
         } catch (e: Exception) {
-            // При ошибке - повторяем попытку позже
-            if (runAttemptCount < 3) {
-                Result.retry()
-            } else {
-                Result.failure()
-            }
+            Log.e(TAG, "Wi-Fi monitoring work failed", e)
+            Result.failure()
         }
     }
     
-    /**
-     * Выполнить фоновое сканирование
-     */
-    private suspend fun performBackgroundScan() {
+    private fun convertToEntity(scanResult: WifiScanResult, sessionId: String): WifiScanEntity {
+        return WifiScanEntity(
+            ssid = scanResult.ssid,
+            bssid = scanResult.bssid,
+            capabilities = scanResult.capabilities,
+            frequency = scanResult.frequency,
+            level = scanResult.level,
+            timestamp = scanResult.timestamp,
+            securityType = scanResult.securityType,
+            threatLevel = scanResult.threatLevel,
+            isConnected = scanResult.isConnected,
+            isHidden = scanResult.isHidden,
+            vendor = scanResult.vendor,
+            channel = scanResult.channel,
+            standard = scanResult.standard,
+            scanSessionId = sessionId
+        )
+    }
+    
+    private fun scheduleThreatNotification(threats: List<SecurityThreat>) {
         try {
-            // Запуск сканирования
-            val scanStarted = wifiManager.startScan()
+            val notificationRequest = OneTimeWorkRequestBuilder<ThreatNotificationWorker>()
+                .addTag(WORK_TAG_THREAT_NOTIFICATION)
+                .setInputData(
+                    Data.Builder()
+                        .putInt("threat_count", threats.size)
+                        .putString("threat_types", threats.map { it.type.name }.joinToString(","))
+                        .build()
+                )
+                .build()
             
-            if (scanStarted) {
-                // Ждем немного для завершения сканирования
-                kotlinx.coroutines.delay(2000)
-                
-                // Получаем реальные результаты сканирования
-                val scanResults = wifiManager.scanResults
-                
-                if (scanResults.isEmpty()) {
-                    return
-                }
-                
-                // Обрабатываем каждый результат
-                scanResults.forEach { androidScanResult ->
-                    try {
-                        val wifiScanResult = wifiScannerService.scanResultToWifiScanResult(
-                            androidScanResult,
-                            WifiScanResult.ScanType.BACKGROUND
-                        )
-                        
-                        // Сохраняем результат
-                        wifiRepository.insertScanResult(wifiScanResult)
-                        
-                        // Анализируем на подозрительность
-                        analyzeNetworkSecurity(wifiScanResult)
-                        
-                        // Обновляем информацию о сети
-                        val existingNetwork = wifiRepository.getNetworkBySSID(wifiScanResult.ssid)
-                        if (existingNetwork != null) {
-                            val updatedNetwork = existingNetwork.copy(
-                                lastSeen = wifiScanResult.timestamp,
-                                lastUpdated = System.currentTimeMillis(),
-                                signalStrength = wifiScanResult.signalStrength
-                            )
-                            wifiRepository.updateNetwork(updatedNetwork)
-                        } else {
-                            val newNetwork = com.wifiguard.core.domain.model.WifiNetwork(
-                                ssid = wifiScanResult.ssid,
-                                bssid = wifiScanResult.bssid,
-                                securityType = wifiScanResult.securityType ?: com.wifiguard.core.domain.model.SecurityType.UNKNOWN,
-                                signalStrength = wifiScanResult.signalStrength,
-                                frequency = wifiScanResult.frequency,
-                                channel = wifiScanResult.channel,
-                                firstSeen = wifiScanResult.timestamp,
-                                lastSeen = wifiScanResult.timestamp,
-                                lastUpdated = System.currentTimeMillis()
-                            )
-                            wifiRepository.insertNetwork(newNetwork)
-                        }
-                    } catch (e: Exception) {
-                        // Логируем ошибку, но продолжаем обработку других результатов
-                        android.util.Log.e(TAG, "Ошибка обработки результата сканирования", e)
-                    }
-                }
-            }
-            
-        } catch (e: SecurityException) {
-            // Не хватает разрешений
-            throw e
+            WorkManager.getInstance(applicationContext)
+                .enqueueUniqueWork(
+                    WORK_NAME_THREAT_NOTIFICATION,
+                    ExistingWorkPolicy.REPLACE,
+                    notificationRequest
+                )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to schedule threat notification", e)
         }
     }
     
-    /**
-     * Простой анализ безопасности сети
-     * TODO: Расширить логику анализа
-     */
-    private suspend fun analyzeNetworkSecurity(scanResult: WifiScanResult) {
-        // Пример простого анализа
-        val isSuspicious = when {
-            scanResult.ssid.isBlank() -> true // Скрытое имя
-            scanResult.ssid.contains("free", ignoreCase = true) -> true // Подозрительное имя
-            scanResult.ssid.equals("AndroidAP", ignoreCase = true) -> true // Точка доступа Android
-            scanResult.signalStrength > -20 -> true // Очень сильный сигнал (возможно, рядом)
-            else -> false
+    companion object {
+        private const val TAG = "WifiMonitoringWorker"
+        private const val WORK_NAME_THREAT_NOTIFICATION = "threat_notification_work"
+        private const val WORK_TAG_THREAT_NOTIFICATION = "threat_notification"
+        
+        /**
+         * Создать периодическую работу для мониторинга
+         */
+        fun createPeriodicWork(): PeriodicWorkRequest {
+            return PeriodicWorkRequestBuilder<WifiMonitoringWorker>(
+                15, java.util.concurrent.TimeUnit.MINUTES
+            )
+            .addTag(WORK_TAG_WIFI_MONITORING)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                    .setRequiresBatteryNotLow(true)
+                    .build()
+            )
+            .build()
         }
         
-        if (isSuspicious) {
-            val reason = when {
-                scanResult.ssid.isBlank() -> "Скрытое имя сети"
-                scanResult.ssid.contains("free", ignoreCase = true) -> "Подозрительное имя сети"
-                scanResult.ssid.equals("AndroidAP", ignoreCase = true) -> "Возможная точка доступа"
-                scanResult.signalStrength > -20 -> "Подозрительно сильный сигнал"
-                else -> "Неизвестная причина"
-            }
-            
-            wifiRepository.markNetworkAsSuspicious(scanResult.ssid, reason)
-        }
+        private const val WORK_TAG_WIFI_MONITORING = "wifi_monitoring"
     }
 }
