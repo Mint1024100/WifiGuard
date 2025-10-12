@@ -1,26 +1,32 @@
 package com.wifiguard.feature.settings.domain.repository
 
+import com.wifiguard.core.data.preferences.AppSettings
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Интерфейс репозитория для настроек
+ * Repository interface for managing app settings
  */
 interface SettingsRepository {
+    
     fun getAutoScanEnabled(): Flow<Boolean>
     suspend fun setAutoScanEnabled(enabled: Boolean)
     
-    fun getBackgroundMonitoring(): Flow<Boolean>
-    suspend fun setBackgroundMonitoring(enabled: Boolean)
+    fun getScanIntervalMinutes(): Flow<Int>
+    suspend fun setScanIntervalMinutes(minutes: Int)
     
     fun getNotificationsEnabled(): Flow<Boolean>
     suspend fun setNotificationsEnabled(enabled: Boolean)
     
-    fun getHighPriorityNotifications(): Flow<Boolean>
-    suspend fun setHighPriorityNotifications(enabled: Boolean)
+    fun getNotificationSoundEnabled(): Flow<Boolean>
+    suspend fun setNotificationSoundEnabled(enabled: Boolean)
     
-    fun getScanInterval(): Flow<Int>
-    suspend fun setScanInterval(intervalMinutes: Int)
+    fun getNotificationVibrationEnabled(): Flow<Boolean>
+    suspend fun setNotificationVibrationEnabled(enabled: Boolean)
     
-    fun getThreatSensitivity(): Flow<Int>
-    suspend fun setThreatSensitivity(sensitivity: Int)
+    fun getDataRetentionDays(): Flow<Int>
+    suspend fun setDataRetentionDays(days: Int)
+    
+    fun getAllSettings(): Flow<AppSettings>
+    suspend fun updateSettings(settings: AppSettings)
+    suspend fun clearAllSettings()
 }

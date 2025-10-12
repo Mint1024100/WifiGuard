@@ -24,7 +24,7 @@ class NotificationsViewModel @Inject constructor(
         loadNotifications()
     }
     
-    private fun loadNotifications() {
+    fun loadNotifications() {
         viewModelScope.launch {
             // TODO: Load notifications from repository
             val mockNotifications = listOf(

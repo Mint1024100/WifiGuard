@@ -23,6 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.WorkManager
+import com.wifiguard.core.background.WifiMonitoringWorker
 import com.wifiguard.core.common.Constants
 import com.wifiguard.core.ui.theme.WifiGuardTheme
 import com.wifiguard.navigation.WifiGuardNavigation
@@ -79,6 +82,9 @@ class MainActivity : ComponentActivity() {
         try {
             // Сразу проверяем разрешения
             checkAndRequestPermissions()
+            
+            // Инициализируем фоновый мониторинг
+            setupBackgroundMonitoring()
             
             setContent {
                 WifiGuardTheme {
@@ -399,6 +405,29 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         Log.d(TAG, "🔄 MainActivity возобновлено")
         checkAndRequestPermissions()
+    }
+    
+    /**
+     * Настройка фонового мониторинга Wi-Fi
+     */
+    private fun setupBackgroundMonitoring() {
+        try {
+            val workManager = WorkManager.getInstance(this)
+            
+            // Создаем периодическую работу для мониторинга Wi-Fi
+            val periodicWork = WifiMonitoringWorker.createPeriodicWork()
+            
+            // Запускаем уникальную периодическую работу
+            workManager.enqueueUniquePeriodicWork(
+                "wifi_monitoring_periodic",
+                ExistingPeriodicWorkPolicy.KEEP,
+                periodicWork
+            )
+            
+            Log.d(TAG, "✅ Фоновый мониторинг Wi-Fi настроен")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Ошибка настройки фонового мониторинга: ${e.message}", e)
+        }
     }
     
     override fun onDestroy() {
