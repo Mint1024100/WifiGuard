@@ -36,4 +36,7 @@ object Constants {
     // Network
     const val SCAN_TIMEOUT_MS = 5000L
     const val MAX_NETWORKS_PER_SCAN = 100
+    
+    // Preferences
+    const val PREFERENCES_NAME = "wifiguard_preferences"
 }

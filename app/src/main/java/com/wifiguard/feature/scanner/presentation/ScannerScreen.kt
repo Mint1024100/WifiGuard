@@ -15,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.wifiguard.R
 import com.wifiguard.core.ui.components.NetworkCard
 import com.wifiguard.core.ui.components.StatusIndicator
 
@@ -35,25 +34,25 @@ fun ScannerScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(stringResource(R.string.scanner_title))
+                    Text("Wi-Fi Сканер")
                 },
                 actions = {
                     IconButton(onClick = { viewModel.startScan() }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.common_refresh)
+                            contentDescription = "Обновить"
                         )
                     }
                     IconButton(onClick = onNavigateToAnalysis) {
                         Icon(
                             imageVector = Icons.Default.Analytics,
-                            contentDescription = stringResource(R.string.nav_analysis)
+                            contentDescription = "Анализ"
                         )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.nav_settings)
+                            contentDescription = "Настройки"
                         )
                     }
                 }
@@ -119,7 +118,7 @@ private fun ScanningContent() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = stringResource(R.string.scanner_scanning),
+                text = "Сканирование...",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -141,7 +140,7 @@ private fun ErrorContent(
             modifier = Modifier.padding(32.dp)
         ) {
             Text(
-                text = stringResource(R.string.common_error),
+                text = "Ошибка",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.error
             )
@@ -154,7 +153,7 @@ private fun ErrorContent(
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = onRetry) {
-                Text(stringResource(R.string.common_retry))
+                Text("Повторить")
             }
         }
     }
@@ -175,9 +174,9 @@ private fun EmptyContent(
         ) {
             Text(
                 text = if (isWifiEnabled) {
-                    stringResource(R.string.scanner_no_networks)
+                    "Сети не найдены"
                 } else {
-                    stringResource(R.string.scanner_wifi_disabled)
+                    "Wi-Fi отключен"
                 },
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -186,7 +185,7 @@ private fun EmptyContent(
             Spacer(modifier = Modifier.height(24.dp))
             if (isWifiEnabled) {
                 Button(onClick = onStartScan) {
-                    Text(stringResource(R.string.scanner_scan_button))
+                    Text("Сканировать")
                 }
             }
         }

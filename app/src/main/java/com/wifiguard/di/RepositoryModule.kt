@@ -1,11 +1,14 @@
 package com.wifiguard.di
 
-import com.wifiguard.core.data.repository.SettingsRepositoryImpl
+import com.wifiguard.core.common.WifiNetworkDomainToEntityMapper
+import com.wifiguard.core.common.WifiNetworkEntityToDomainMapper
+import com.wifiguard.core.common.WifiScanDomainToEntityMapper
+import com.wifiguard.core.common.WifiScanEntityToDomainMapper
 import com.wifiguard.core.data.repository.WifiRepositoryImpl
 import com.wifiguard.core.domain.repository.WifiRepository
-import com.wifiguard.feature.settings.domain.repository.SettingsRepository
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
@@ -32,16 +35,31 @@ abstract class RepositoryModule {
         wifiRepositoryImpl: WifiRepositoryImpl
     ): WifiRepository
     
-    /**
-     * Биндит интерфейс SettingsRepository к его реализации SettingsRepositoryImpl.
-     * Обеспечивает связь между интерфейсом настроек и DataStore реализацией.
-     * 
-     * @param settingsRepositoryImpl Реализация репозитория настроек
-     * @return Интерфейс SettingsRepository
-     */
-    @Binds
-    @Singleton
-    abstract fun bindSettingsRepository(
-        settingsRepositoryImpl: SettingsRepositoryImpl
-    ): SettingsRepository
+    companion object {
+        @Provides
+        @Singleton
+        fun provideWifiNetworkEntityToDomainMapper(): WifiNetworkEntityToDomainMapper {
+            return WifiNetworkEntityToDomainMapper()
+        }
+        
+        @Provides
+        @Singleton
+        fun provideWifiNetworkDomainToEntityMapper(): WifiNetworkDomainToEntityMapper {
+            return WifiNetworkDomainToEntityMapper()
+        }
+        
+        @Provides
+        @Singleton
+        fun provideWifiScanEntityToDomainMapper(): WifiScanEntityToDomainMapper {
+            return WifiScanEntityToDomainMapper()
+        }
+        
+        @Provides
+        @Singleton
+        fun provideWifiScanDomainToEntityMapper(): WifiScanDomainToEntityMapper {
+            return WifiScanDomainToEntityMapper()
+        }
+    }
+    
+    // SettingsRepository биндится в DataModule.kt
 }

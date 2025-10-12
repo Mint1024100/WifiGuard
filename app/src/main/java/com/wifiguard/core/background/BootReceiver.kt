@@ -4,53 +4,46 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.WorkManager
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
+import com.wifiguard.core.common.Constants
 
 /**
- * Получатель системных событий для запуска фонового мониторинга
+ * Receiver для обработки событий загрузки системы
  */
-@AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
-    
-    @Inject
-    lateinit var workManager: WorkManager
-    
+
+    companion object {
+        private const val TAG = "${Constants.LOG_TAG}_BootReceiver"
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_PACKAGE_REPLACED -> {
-                Log.d(TAG, "System event received: ${intent.action}")
+                Log.d(TAG, "System boot completed, starting background monitoring")
                 startBackgroundMonitoring(context)
             }
         }
     }
-    
+
     private fun startBackgroundMonitoring(context: Context) {
         try {
-            val wifiMonitoringRequest = OneTimeWorkRequestBuilder<WifiMonitoringWorker>()
-                .addTag(WORK_TAG_WIFI_MONITORING)
-                .build()
+            val workManager = WorkManager.getInstance(context)
             
-            workManager.enqueueUniqueWork(
-                WORK_NAME_WIFI_MONITORING,
-                ExistingWorkPolicy.REPLACE,
-                wifiMonitoringRequest
+            // Запускаем периодический мониторинг Wi-Fi
+            val periodicWork = WifiMonitoringWorker.createPeriodicWork()
+            
+            workManager.enqueueUniquePeriodicWork(
+                "wifi_monitoring_periodic",
+                ExistingPeriodicWorkPolicy.KEEP,
+                periodicWork
             )
             
-            Log.d(TAG, "Background monitoring started")
+            Log.d(TAG, "Background monitoring started successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start background monitoring", e)
+            Log.e(TAG, "Failed to start background monitoring: ${e.message}", e)
         }
-    }
-    
-    companion object {
-        private const val TAG = "BootReceiver"
-        private const val WORK_NAME_WIFI_MONITORING = "wifi_monitoring_work"
-        private const val WORK_TAG_WIFI_MONITORING = "wifi_monitoring"
     }
 }

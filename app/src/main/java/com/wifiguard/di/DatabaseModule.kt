@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.wifiguard.core.data.local.WifiGuardDatabase
 import com.wifiguard.core.data.local.dao.ScanSessionDao
 import com.wifiguard.core.data.local.dao.ThreatDao
+import com.wifiguard.core.data.local.dao.WifiNetworkDao
 import com.wifiguard.core.data.local.dao.WifiScanDao
 import dagger.Module
 import dagger.Provides
@@ -37,6 +38,11 @@ object DatabaseModule {
     @Provides
     fun provideWifiScanDao(database: WifiGuardDatabase): WifiScanDao {
         return database.wifiScanDao()
+    }
+    
+    @Provides
+    fun provideWifiNetworkDao(database: WifiGuardDatabase): WifiNetworkDao {
+        return database.wifiNetworkDao()
     }
     
     @Provides

@@ -1,11 +1,16 @@
 package com.wifiguard.core.data.repository
 
+import com.wifiguard.core.common.WifiNetworkDomainToEntityMapper
+import com.wifiguard.core.common.WifiNetworkEntityToDomainMapper
+import com.wifiguard.core.common.WifiScanDomainToEntityMapper
+import com.wifiguard.core.common.WifiScanEntityToDomainMapper
 import com.wifiguard.core.data.local.dao.WifiNetworkDao
 import com.wifiguard.core.data.local.dao.WifiScanDao
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.domain.repository.WifiRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,56 +21,69 @@ import javax.inject.Singleton
 @Singleton
 class WifiRepositoryImpl @Inject constructor(
     private val wifiNetworkDao: WifiNetworkDao,
-    private val wifiScanDao: WifiScanDao
+    private val wifiScanDao: WifiScanDao,
+    private val wifiNetworkEntityToDomainMapper: WifiNetworkEntityToDomainMapper,
+    private val wifiNetworkDomainToEntityMapper: WifiNetworkDomainToEntityMapper,
+    private val wifiScanEntityToDomainMapper: WifiScanEntityToDomainMapper,
+    private val wifiScanDomainToEntityMapper: WifiScanDomainToEntityMapper
 ) : WifiRepository {
 
     /**
      * Получить все сохранённые Wi-Fi сети
      */
     override fun getAllNetworks(): Flow<List<WifiNetwork>> {
-        return wifiNetworkDao.getAllNetworks()
+        return wifiNetworkDao.getAllNetworks().map { entities ->
+            entities.map { wifiNetworkEntityToDomainMapper.map(it) }
+        }
     }
 
     /**
      * Получить сеть по SSID
      */
     override suspend fun getNetworkBySSID(ssid: String): WifiNetwork? {
-        return wifiNetworkDao.getNetworkBySSID(ssid)
+        val entity = wifiNetworkDao.getNetworkBySSID(ssid)
+        return entity?.let { wifiNetworkEntityToDomainMapper.map(it) }
     }
 
     /**
      * Сохранить Wi-Fi сеть
      */
     override suspend fun insertNetwork(network: WifiNetwork) {
-        wifiNetworkDao.insertNetwork(network)
+        val entity = wifiNetworkDomainToEntityMapper.map(network)
+        wifiNetworkDao.insertNetwork(entity)
     }
 
     /**
      * Обновить информацию о сети
      */
     override suspend fun updateNetwork(network: WifiNetwork) {
-        wifiNetworkDao.updateNetwork(network)
+        val entity = wifiNetworkDomainToEntityMapper.map(network)
+        wifiNetworkDao.updateNetwork(entity)
     }
 
     /**
      * Удалить сеть
      */
     override suspend fun deleteNetwork(network: WifiNetwork) {
-        wifiNetworkDao.deleteNetwork(network)
+        val entity = wifiNetworkDomainToEntityMapper.map(network)
+        wifiNetworkDao.deleteNetwork(entity)
     }
 
     /**
      * Получить последние результаты сканирования
      */
     override fun getLatestScans(limit: Int): Flow<List<WifiScanResult>> {
-        return wifiScanDao.getLatestScans(limit)
+        return wifiScanDao.getLatestScans(limit).map { entities ->
+            entities.map { wifiScanEntityToDomainMapper.map(it) }
+        }
     }
 
     /**
      * Сохранить результат сканирования
      */
     override suspend fun insertScanResult(scanResult: WifiScanResult) {
-        wifiScanDao.insertScanResult(scanResult)
+        val entity = wifiScanDomainToEntityMapper.map(scanResult)
+        wifiScanDao.insertScanResult(entity)
     }
 
     /**
@@ -78,8 +96,10 @@ class WifiRepositoryImpl @Inject constructor(
     /**
      * Получить статистику по сети
      */
-    override suspend fun getNetworkStatistics(ssid: String): Flow<List<WifiScanResult>> {
-        return wifiScanDao.getNetworkStatistics(ssid)
+    override fun getNetworkStatistics(ssid: String): Flow<List<WifiScanResult>> {
+        return wifiScanDao.getNetworkStatistics(ssid).map { entities ->
+            entities.map { wifiScanEntityToDomainMapper.map(it) }
+        }
     }
 
     /**
@@ -102,6 +122,8 @@ class WifiRepositoryImpl @Inject constructor(
      * Получить подозрительные сети
      */
     override fun getSuspiciousNetworks(): Flow<List<WifiNetwork>> {
-        return wifiNetworkDao.getSuspiciousNetworks()
+        return wifiNetworkDao.getSuspiciousNetworks().map { entities ->
+            entities.map { wifiNetworkEntityToDomainMapper.map(it) }
+        }
     }
 }

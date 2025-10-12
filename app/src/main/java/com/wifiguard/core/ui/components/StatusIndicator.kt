@@ -12,16 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.wifiguard.R
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Индикатор статуса сканирования
+ * Индикатор статуса Wi-Fi сканирования
  */
 @Composable
 fun StatusIndicator(
@@ -34,83 +31,72 @@ fun StatusIndicator(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                !isWifiEnabled -> MaterialTheme.colorScheme.errorContainer
-                isScanning -> MaterialTheme.colorScheme.primaryContainer
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Иконка статуса
-            Icon(
-                imageVector = getStatusIcon(isWifiEnabled, isScanning),
-                contentDescription = null,
-                tint = getStatusColor(isWifiEnabled, isScanning),
-                modifier = Modifier.size(24.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            // Информация о статусе
-            Column(
-                modifier = Modifier.weight(1f)
+            // Статус Wi-Fi
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = getStatusText(isWifiEnabled, isScanning),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = getStatusColor(isWifiEnabled, isScanning)
+                Icon(
+                    imageVector = if (isWifiEnabled) Icons.Default.Wifi else Icons.Default.WifiOff,
+                    contentDescription = null,
+                    tint = if (isWifiEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
                 )
                 
-                if (isWifiEnabled && !isScanning) {
-                    Text(
-                        text = stringResource(R.string.scanner_networks_found, networksCount),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Text(
+                    text = if (isWifiEnabled) "Wi-Fi включен" else "Wi-Fi отключен",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isWifiEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Статус сканирования
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isScanning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                    
-                    lastScanTime?.let { time ->
-                        Text(
-                            text = stringResource(
-                                R.string.scanner_last_scan,
-                                formatTime(time)
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                } else {
+                    Icon(
+                        imageVector = if (networksCount > 0) Icons.Default.CheckCircle else Icons.Default.Error,
+                        contentDescription = null,
+                        tint = if (networksCount > 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Text(
+                    text = if (isScanning) "Сканирование..." else "Найдено сетей: $networksCount",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            // Время последнего сканирования
+            if (lastScanTime != null && !isScanning) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Последнее сканирование: ${formatTime(lastScanTime)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
-    }
-}
-
-private fun getStatusIcon(isWifiEnabled: Boolean, isScanning: Boolean): ImageVector {
-    return when {
-        !isWifiEnabled -> Icons.Default.WifiOff
-        isScanning -> Icons.Default.Wifi
-        else -> Icons.Default.CheckCircle
-    }
-}
-
-private fun getStatusColor(isWifiEnabled: Boolean, isScanning: Boolean): Color {
-    return when {
-        !isWifiEnabled -> MaterialTheme.colorScheme.error
-        isScanning -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.primary
-    }
-}
-
-private fun getStatusText(isWifiEnabled: Boolean, isScanning: Boolean): String {
-    return when {
-        !isWifiEnabled -> stringResource(R.string.scanner_wifi_disabled)
-        isScanning -> stringResource(R.string.scanner_scanning)
-        else -> "Wi-Fi активен"
     }
 }
 
