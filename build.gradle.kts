@@ -1,21 +1,5 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
-buildscript {
-    extra.apply {
-        set("compose_version", "1.5.8")
-        set("compose_compiler_version", "1.5.8")
-        set("kotlin_version", "1.9.22")
-        set("hilt_version", "2.50")
-        set("room_version", "2.6.1")
-        set("coroutines_version", "1.7.3")
-        set("lifecycle_version", "2.7.0")
-        set("navigation_version", "2.7.6")
-        set("okhttp_version", "4.12.0")
-        set("retrofit_version", "2.9.0")
-        set("gson_version", "2.10.1")
-    }
-}
-
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
@@ -76,7 +60,7 @@ subprojects {
                     }
                     
                     composeOptions {
-                        kotlinCompilerExtensionVersion = rootProject.extra["compose_compiler_version"] as String
+                        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
                     }
                 }
                 

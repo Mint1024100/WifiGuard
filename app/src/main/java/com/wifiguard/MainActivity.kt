@@ -105,8 +105,8 @@ class MainActivity : ComponentActivity() {
         ) {
             when (currentPermissionState) {
                 PermissionState.GRANTED -> {
-                    // ВРЕМЕННОЕ РЕШЕНИЕ: Простой экран вместо навигации пока Screen классы не созданы
-                    TemporaryMainScreen()
+                    // Используем навигацию WifiGuard
+                    WifiGuardNavigation()
                 }
                 PermissionState.DENIED,
                 PermissionState.PERMANENTLY_DENIED -> {
@@ -129,41 +129,6 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    /**
-     * ВРЕМЕННЫЙ экран для демонстрации работы (пока не созданы Screen классы)
-     */
-    @Composable
-    private fun TemporaryMainScreen() {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "🛡️ WifiGuard",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Приложение успешно запущено!\nВсе разрешения получены.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = {
-                        // TODO: Запустить сканирование когда будет реализован WifiScanner
-                        Log.d(TAG, "🔍 Кнопка сканирования нажата")
-                    }
-                ) {
-                    Text("Начать сканирование")
-                }
-            }
-        }
-    }
     
     @Composable
     private fun LoadingScreen() {
