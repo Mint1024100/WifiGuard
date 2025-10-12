@@ -33,6 +33,8 @@ object Constants {
     const val AES_KEY_LENGTH = 256
     const val AES_ALGORITHM = "AES/GCM/NoPadding"
     const val KEY_ALIAS = "WifiGuardSecretKey"
+    const val AES_KEY_ALIAS = "WifiGuardAESKey"
+    const val HMAC_KEY_ALIAS = "WifiGuardHMACKey"
     const val KEYSTORE_PROVIDER = "AndroidKeyStore"
     
     // Logging
