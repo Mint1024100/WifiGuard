@@ -23,7 +23,11 @@ cd wifiguard
 #### Debug сборка
 
 ```bash
+# Linux/Mac
 ./gradlew assembleDebug
+
+# Windows
+gradlew.bat assembleDebug
 ```
 
 APK будет создан в: `app/build/outputs/apk/debug/app-debug.apk`
@@ -31,12 +35,28 @@ APK будет создан в: `app/build/outputs/apk/debug/app-debug.apk`
 #### Release сборка
 
 ```bash
+# Linux/Mac
 ./gradlew assembleRelease
+
+# Windows
+gradlew.bat assembleRelease
 ```
 
 APK будет создан в: `app/build/outputs/apk/release/app-release.apk`
 
 **Примечание**: Release сборка использует debug keystore для тестирования. Для production создайте собственный keystore (см. раздел "Настройка Signing Config").
+
+### 3. Установка на устройство
+
+```bash
+# Linux/Mac
+./gradlew installDebug
+
+# Windows
+gradlew.bat installDebug
+```
+
+Или используйте Android Studio: `Run → Run 'app'`
 
 #### Установка на устройство
 
@@ -248,6 +268,8 @@ Release сборка использует ProGuard rules (`app/proguard-rules.pr
 - `ACCESS_FINE_LOCATION` — для сканирования Wi-Fi (требование Android 6+)
 - `ACCESS_COARSE_LOCATION` — грубое местоположение
 - `POST_NOTIFICATIONS` — уведомления (Android 13+)
+- `WAKE_LOCK` — для фонового мониторинга
+- `RECEIVE_BOOT_COMPLETED` — для возобновления мониторинга после перезагрузки
 - `INTERNET` — для обновлений базы угроз
 
 ## ✅ Статус реализации
@@ -261,6 +283,10 @@ Release сборка использует ProGuard rules (`app/proguard-rules.pr
 - ✅ **Ресурсы**: Строки, цвета, темы, иконки
 - ✅ **Тесты**: Основные unit тесты
 - ✅ **Конфигурация**: Signing config, XML ресурсы
+- ✅ **Политика конфиденциальности**: Полнофункциональный экран политики
+- ✅ **Условия использования**: Экран условий использования
+- ✅ **О приложении**: Информационный экран
+- ✅ **Конфиденциальность данных**: Полная защита данных пользователя
 
 ### Готово к production:
 - ✅ Debug и release сборки
