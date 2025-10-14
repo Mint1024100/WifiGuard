@@ -1,30 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Правила резервного копирования для WifiGuard -->
-    
-    <!-- Исключить чувствительные данные из резервного копирования -->
-    <exclude domain="sharedpref" path="." />
-    <exclude domain="database" path="." />
-    <exclude domain="file" path="." />
-    <exclude domain="external" path="." />
-    
-    <!-- Исключить временные файлы -->
-    <exclude domain="file" path="temp/" />
-    <exclude domain="file" path="cache/" />
-    <exclude domain="file" path="logs/" />
-    
-    <!-- Исключить файлы с чувствительными данными -->
-    <exclude domain="file" path="wifi_scan_history.db" />
-    <exclude domain="file" path="threat_database.db" />
-    <exclude domain="file" path="encrypted_data/" />
-    
-    <!-- Исключить keystore файлы -->
-    <exclude domain="file" path="*.keystore" />
-    <exclude domain="file" path="*.jks" />
-    
-    <!-- Разрешить только базовые настройки приложения -->
-    <include domain="sharedpref" path="app_preferences.xml" />
-    
-    <!-- Исключить все остальные файлы по умолчанию -->
-    <exclude domain="file" path="." />
+    <!-- Include preferences but exclude sensitive data -->
+    <include domain="sharedpref" path="."/>
+    <exclude domain="database" path="."/> <!-- Don't backup database with security info -->
+    <exclude domain="file" path="encryption_keys/"/> <!-- Exclude encryption key files -->
 </full-backup-content>

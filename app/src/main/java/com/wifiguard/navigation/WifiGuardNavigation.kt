@@ -5,10 +5,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.wifiguard.feature.about.presentation.AboutScreen
 import com.wifiguard.feature.analysis.presentation.AnalysisScreen
 import com.wifiguard.feature.notifications.presentation.NotificationsScreen
+import com.wifiguard.feature.privacypolicy.presentation.PrivacyPolicyScreen
 import com.wifiguard.feature.scanner.presentation.ScannerScreen
 import com.wifiguard.feature.settings.presentation.SettingsScreen
+import com.wifiguard.feature.termsofservice.presentation.TermsOfServiceScreen
 
 /**
  * Навигационный граф приложения
@@ -69,38 +72,26 @@ fun WifiGuardNavigation(
         }
         
         composable(Screen.About.route) {
-            // TODO: Implement AboutScreen
-            SettingsScreen(
-                onNavigateBack = {
+            AboutScreen(
+                onBack = {
                     navController.popBackStack()
-                },
-                onNavigateToAbout = { },
-                onNavigateToPrivacyPolicy = { },
-                onNavigateToTermsOfService = { }
+                }
             )
         }
         
         composable(Screen.PrivacyPolicy.route) {
-            // TODO: Implement PrivacyPolicyScreen
-            SettingsScreen(
-                onNavigateBack = {
+            PrivacyPolicyScreen(
+                onBack = {
                     navController.popBackStack()
-                },
-                onNavigateToAbout = { },
-                onNavigateToPrivacyPolicy = { },
-                onNavigateToTermsOfService = { }
+                }
             )
         }
         
         composable(Screen.TermsOfService.route) {
-            // TODO: Implement TermsOfServiceScreen
-            SettingsScreen(
-                onNavigateBack = {
+            TermsOfServiceScreen(
+                onBack = {
                     navController.popBackStack()
-                },
-                onNavigateToAbout = { },
-                onNavigateToPrivacyPolicy = { },
-                onNavigateToTermsOfService = { }
+                }
             )
         }
     }
