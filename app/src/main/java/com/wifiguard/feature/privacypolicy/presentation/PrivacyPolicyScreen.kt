@@ -222,7 +222,23 @@ fun PrivacyPolicyContent(onLinkClick: (String) -> Unit) {
         )
         
         val contactAnnotatedString = buildAnnotatedString {
-            append("Если у вас есть вопросы или предложения относительно нашей " +
+            append("Полная версия политики конфиденциальности доступна по адресу: ")
+            
+            pushStringAnnotation(
+                tag = "web",
+                annotation = "https://mint1024100.github.io/WifiGuard/privacy_policy.html"
+            )
+            withStyle(
+                style = SpanStyle(
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline
+                )
+            ) {
+                append("https://mint1024100.github.io/WifiGuard/privacy_policy.html")
+            }
+            pop()
+            
+            append("\n\nЕсли у вас есть вопросы или предложения относительно нашей " +
                    "политики конфиденциальности, вы можете связаться с нами по " +
                    "адресу: ")
             
@@ -245,9 +261,14 @@ fun PrivacyPolicyContent(onLinkClick: (String) -> Unit) {
             text = contactAnnotatedString,
             style = MaterialTheme.typography.bodyLarge,
             onClick = { offset ->
-                contactAnnotatedString.getStringAnnotations("email", offset, offset)
+                contactAnnotatedString.getStringAnnotations("web", offset, offset)
                     .firstOrNull()?.let { span ->
                         onLinkClick(span.item)
+                    } ?: run {
+                        contactAnnotatedString.getStringAnnotations("email", offset, offset)
+                            .firstOrNull()?.let { span ->
+                                onLinkClick(span.item)
+                            }
                     }
             }
         )

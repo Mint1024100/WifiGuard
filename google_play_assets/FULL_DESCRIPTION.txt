@@ -1,0 +1,90 @@
+🛡️ **WIFIGUARD - YOUR WI-FI SECURITY GUARDIAN**
+
+WifiGuard is a powerful Wi-Fi security analysis tool that protects your data from cyber threats by scanning and analyzing network security.
+
+🔍 **KEY FEATURES:**
+
+✅ **Fast Wi-Fi Network Scanning**
+Quickly discover all available networks in your surroundings
+
+✅ **Security Encryption Analysis**
+Identify encryption types: WEP, WPA, WPA2, WPA3, Open
+Warn about insecure encryption protocols
+
+✅ **Threat Detection**
+Detect Evil Twin attacks
+Identify fake access points
+Spot Man-in-the-Middle attacks
+Weak encryption warnings
+
+✅ **Background Monitoring**
+Continuous 24/7 protection
+Instant threat notifications
+Automatic network surveillance
+
+✅ **Scanning History**
+Track network environment changes
+Compare previous scans
+Threat detection timeline
+
+✅ **Detailed Statistics**
+Security analytics dashboard
+Network analysis reports
+Recommendation suggestions
+
+🔐 **SECURITY & PRIVACY:**
+
+• All data stored ONLY on your device
+• AES-256 encryption for local database
+• NO data collection or transmission
+• NO tracking or monitoring of your location
+• Open source code available on GitHub
+
+⚡ **WHY WIFIGUARD?**
+
+📱 **Simple & Intuitive Interface**
+Material Design 3, dark and light themes
+
+🚀 **Fast Performance**
+Optimized code, low battery consumption
+
+🎯 **Accurate Analysis**
+Advanced threat detection algorithms
+
+🔔 **Smart Notifications**
+Only real threat alerts
+
+💾 **Minimal Size**
+Lightweight app without unnecessary libraries
+
+🌐 **Offline Functionality**
+Works without internet connection
+
+🆓 **COMPLETELY FREE**
+
+• No advertisements
+• No in-app purchases
+• No subscriptions
+• All features available immediately
+
+📊 **FOR WHOM?**
+
+• Cybersecurity specialists
+• IT administrators
+• Public Wi-Fi users
+• Home network owners
+• Everyone caring about data security
+
+⚠️ **IMPORTANT INFORMATION:**
+
+Location permission is required by Android for Wi-Fi scanning (since Android 6.0). This is an operating system requirement, not our app's decision. We DO NOT track your location and DO NOT use GPS.
+
+📝 **Open Source:**
+Code available at: github.com/Mint1024100/WifiGuard
+
+🤝 **Support:**
+Found a bug? Have suggestions? Contact us!
+
+Protect your data with WifiGuard! Download free today.
+
+**#WiFiSecurity #CyberSecurity #NetworkAnalysis #PrivacyProtection**

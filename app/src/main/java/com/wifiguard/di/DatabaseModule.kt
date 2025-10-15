@@ -31,7 +31,16 @@ object DatabaseModule {
             WifiGuardDatabase::class.java,
             WifiGuardDatabase.DATABASE_NAME
         )
-        .fallbackToDestructiveMigration()
+        // Добавляем миграции в порядке возрастания версий
+        .addMigrations(
+            WifiGuardDatabase.MIGRATION_1_2,
+            WifiGuardDatabase.MIGRATION_2_3,
+            WifiGuardDatabase.MIGRATION_3_4
+            // Добавляйте новые миграции по мере необходимости
+        )
+        // НЕ ИСПОЛЬЗОВАТЬ fallbackToDestructiveMigration в production!
+        // Только для разработки
+        // .fallbackToDestructiveMigration()
         .build()
     }
     

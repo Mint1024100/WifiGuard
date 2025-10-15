@@ -1,5 +1,7 @@
 package com.wifiguard.feature.scanner.presentation
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,11 +13,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.wifiguard.core.common.PermissionHandler
+import com.wifiguard.core.common.Result
 import com.wifiguard.core.ui.components.NetworkCard
+import com.wifiguard.core.ui.components.PermissionRationaleDialog
 import com.wifiguard.core.ui.components.StatusIndicator
 
 /**
@@ -29,6 +35,48 @@ fun ScannerScreen(
     viewModel: ScannerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val permissionState by viewModel.permissionState.collectAsState()
+    val scanResult by viewModel.scanResult.collectAsState()
+    val context = LocalContext.current
+
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        // Check if any permission was permanently denied (no rationale)
+        val shouldShowRationale = permissions.entries.any { 
+            !it.value && androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+                context as android.app.Activity, 
+                it.key
+            ) 
+        }
+        
+        viewModel.onPermissionResult(allGranted, !shouldShowRationale)
+    }
+    
+    // Показать диалог если нужно
+    showPermissionDialog = when (permissionState) {
+        ScannerViewModel.PermissionState.ShouldShowRationale,
+        ScannerViewModel.PermissionState.NotGranted -> true
+        else -> false
+    }
+    
+    if (showPermissionDialog) {
+        PermissionRationaleDialog(
+            onDismiss = { /* Do nothing */ },
+            onConfirm = {
+                permissionLauncher.launch(
+                    viewModel.permissionHandler.getRequiredWifiPermissions()
+                )
+            },
+            onOpenSettings = {
+                viewModel.permissionHandler.openAppSettings(context)
+            },
+            isPermanentlyDenied = permissionState is ScannerViewModel.PermissionState.PermanentlyDenied
+        )
+    }
     
     Scaffold(
         topBar = {
@@ -37,7 +85,13 @@ fun ScannerScreen(
                     Text("Wi-Fi Сканер")
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.startScan() }) {
+                    IconButton(onClick = { 
+                        if (viewModel.hasWifiPermissions()) {
+                            viewModel.startScan()
+                        } else {
+                            showPermissionDialog = true
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Обновить"
@@ -67,34 +121,47 @@ fun ScannerScreen(
             // Статус индикатор
             StatusIndicator(
                 isWifiEnabled = uiState.isWifiEnabled,
-                isScanning = uiState.isScanning,
-                networksCount = uiState.networks.size,
+                isScanning = scanResult is Result.Loading,
+                networksCount = if (scanResult is Result.Success) scanResult.data.size else uiState.networks.size,
                 lastScanTime = uiState.lastScanTime,
                 modifier = Modifier.padding(16.dp)
             )
             
             // Основной контент
-            when {
-                uiState.isScanning -> {
+            when (scanResult) {
+                is Result.Loading -> {
                     ScanningContent()
                 }
-                uiState.error != null -> {
+                is Result.Success -> {
+                    if (scanResult.data.isEmpty()) {
+                        EmptyContent(
+                            isWifiEnabled = uiState.isWifiEnabled,
+                            onStartScan = { 
+                                if (viewModel.hasWifiPermissions()) {
+                                    viewModel.startScan()
+                                } else {
+                                    showPermissionDialog = true
+                                }
+                            }
+                        )
+                    } else {
+                        NetworksList(
+                            networks = scanResult.data,
+                            onNetworkClick = { network ->
+                                // TODO: Navigate to network details
+                            }
+                        )
+                    }
+                }
+                is Result.Error -> {
                     ErrorContent(
-                        error = uiState.error,
-                        onRetry = { viewModel.startScan() }
-                    )
-                }
-                uiState.networks.isEmpty() -> {
-                    EmptyContent(
-                        isWifiEnabled = uiState.isWifiEnabled,
-                        onStartScan = { viewModel.startScan() }
-                    )
-                }
-                else -> {
-                    NetworksList(
-                        networks = uiState.networks,
-                        onNetworkClick = { network ->
-                            // TODO: Navigate to network details
+                        error = scanResult.message ?: scanResult.exception.message ?: "Неизвестная ошибка",
+                        onRetry = { 
+                            if (viewModel.hasWifiPermissions()) {
+                                viewModel.retry()
+                            } else {
+                                showPermissionDialog = true
+                            }
                         }
                     )
                 }

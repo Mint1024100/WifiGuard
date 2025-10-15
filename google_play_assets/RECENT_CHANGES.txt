@@ -1,0 +1,17 @@
+**Version 1.0.0 - Initial Release! 🎉**
+
+✨ **What's Included:**
+• Wi-Fi Network Scanning
+• Security Analysis (WEP, WPA, WPA2, WPA3)
+• Evil Twin Attack Detection
+• 24/7 Background Monitoring
+• Scan History
+• Detailed Statistics
+• Instant Threat Notifications
+
+🔐 **Security:**
+• All data only on your device
+• AES-256 Encryption
+• No Ads
+
+Thank you for your support! Leave a review ⭐
