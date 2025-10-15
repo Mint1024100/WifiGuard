@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,19 +11,25 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Загрузка keystore properties
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.wifiguard"
+    namespace = "com.wifiguard.app"  // ПРОВЕРИТЬ ПРАВИЛЬНЫЙ PACKAGE NAME
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.wifiguard"
+        applicationId = "com.wifiguard.app"  // ПРОВЕРИТЬ УНИКАЛЬНОСТЬ
         minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()  // ДОЛЖНО БЫТЬ 34 минимум для новых приложений
         versionCode = 1
         versionName = "1.0.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -43,79 +52,42 @@ android {
         }
         
         create("release") {
-            // Для production используйте реальный keystore
-            // Создайте keystore командой:
-            // keytool -genkey -v -keystore wifiguard.keystore -alias wifiguard -keyalg RSA -keysize 2048 -validity 10000
-            val keystorePropertiesFile = rootProject.file("keystore.properties")
-            val keystoreProperties = java.util.Properties()
             if (keystorePropertiesFile.exists()) {
-                keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
-                
-                // Validate required properties exist
-                val storeFileValue = keystoreProperties["storeFile"] as String?
-                val storePasswordValue = keystoreProperties["storePassword"] as String?
-                val keyAliasValue = keystoreProperties["keyAlias"] as String?
-                val keyPasswordValue = keystoreProperties["keyPassword"] as String?
-                
-                if (storeFileValue != null && storePasswordValue != null && 
-                    keyAliasValue != null && keyPasswordValue != null) {
-                    val actualStoreFile = file(storeFileValue)
-                    if (actualStoreFile.exists()) {
-                        storeFile = actualStoreFile
-                        storePassword = storePasswordValue
-                        keyAlias = keyAliasValue
-                        keyPassword = keyPasswordValue
-                    } else {
-                        throw GradleException("Release build failed: Store file does not exist at path: $storeFileValue")
-                    }
-                } else {
-                    throw GradleException("Release build failed: Missing required keystore properties. Required: storeFile, storePassword, keyAlias, keyPassword")
-                }
-            } else {
-                throw GradleException("Release build failed: keystore.properties file not found. Create it with storeFile, storePassword, keyAlias, and keyPassword properties.")
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
             }
         }
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-DEBUG"
+            isDebuggable = true
+            isMinifyEnabled = false
+        }
+        
         release {
-            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            
-            // Поля BuildConfig для релизной сборки
-            buildConfigField("String", "API_BASE_URL", "\"https://api.wifiguard.com/\"")
-            buildConfigField("String", "SECURE_API_URL", "\"https://secure.wifiguard.com/\"")
-            buildConfigField("String", "ANALYTICS_API_URL", "\"https://analytics.wifiguard.com/\"")
-            buildConfigField("boolean", "ENABLE_CRASHLYTICS", "true")
-            buildConfigField("boolean", "ENABLE_ANALYTICS", "true")
-        }
-        debug {
-            applicationIdSuffix = ".debug"
-            isDebuggable = true
-            
-            signingConfig = signingConfigs.getByName("debug")
-            
-            // Поля BuildConfig для отладочной сборки
-            buildConfigField("String", "API_BASE_URL", "\"http://localhost:8080/api/\"")
-            buildConfigField("String", "SECURE_API_URL", "\"http://localhost:8080/secure/\"")
-            buildConfigField("String", "ANALYTICS_API_URL", "\"http://localhost:8080/analytics/\"")
-            buildConfigField("boolean", "ENABLE_CRASHLYTICS", "false")
-            buildConfigField("boolean", "ENABLE_ANALYTICS", "false")
+            // КРИТИЧНО: Использовать production signing
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
     }
     
     buildFeatures {
@@ -133,6 +105,12 @@ android {
             excludes += "/META-INF/INDEX.LIST"
             excludes += "/META-INF/DEPENDENCIES"
         }
+    }
+    
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.incremental", "true")
+        arg("room.expandProjection", "true")
     }
 }
 

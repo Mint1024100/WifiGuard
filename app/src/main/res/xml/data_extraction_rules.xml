@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Используйте <include> и <exclude> для контроля резервного копирования.
-        В настоящее время только зашифрованное хранилище устройства поддерживается для данных безопасности Wi-Fi.
-        -->
-        <include domain="device_encrypted" path="."/>
+        <!-- Отключаем облачный backup для безопасности -->
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
     </cloud-backup>
-    <!-- Нет роуминг резервного копирования для данных, чувствительных к безопасности -->
+    
     <device-transfer>
-        <include domain="device_encrypted" path="."/>
+        <!-- Разрешаем только перенос настроек между устройствами -->
+        <include domain="sharedpref" path="settings.preferences_pb" />
     </device-transfer>
 </data-extraction-rules>

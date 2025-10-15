@@ -1,234 +1,252 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# WifiGuard ProGuard Rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ===== ОСНОВНЫЕ ПРАВИЛА =====
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep application class
+-keep class com.wifiguard.WifiGuardApplication { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep all classes with @Inject constructor (Hilt)
+-keepclasseswithmembers class * {
+    @javax.inject.Inject <init>(...);
+}
 
-# ===========================================
-# WifiGuard Security Rules
-# ===========================================
+# ===== KOTLIN =====
 
-# Keep all classes with @Keep annotation
--keep @androidx.annotation.Keep class * { *; }
--keep @kotlinx.parcelize.Parcelize class * { *; }
+# Kotlin Metadata
+-keep class kotlin.Metadata { *; }
 
-# ===========================================
-# Hilt Dependency Injection
-# ===========================================
+# Kotlin Coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}
 
-# Keep Hilt generated classes
+# Kotlin Serialization (если используется)
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+
+# ===== JETPACK COMPOSE =====
+
+# Compose Runtime
+-keep class androidx.compose.** { *; }
+-keep class androidx.compose.runtime.** { *; }
+-dontwarn androidx.compose.**
+
+# Compose UI
+-keep class androidx.compose.ui.** { *; }
+-dontwarn androidx.compose.ui.**
+
+# Material3
+-keep class androidx.compose.material3.** { *; }
+-dontwarn androidx.compose.material3.**
+
+# ===== HILT / DAGGER =====
+
+# Hilt
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
 
-# Keep @Inject annotated classes
--keep @javax.inject.Inject class * { *; }
--keep @dagger.hilt.android.lifecycle.HiltViewModel class * { *; }
+# Dagger
+-dontwarn com.google.errorprone.annotations.**
+-keep class dagger.** { *; }
+-keep class * extends dagger.internal.Binding
+-keep class * extends dagger.internal.ModuleAdapter
+-keep class * extends dagger.internal.StaticInjection
 
-# Keep Hilt modules
--keep @dagger.Module class * { *; }
--keep @dagger.hilt.InstallIn class * { *; }
+# Generated Hilt classes
+-keep class **_HiltModules { *; }
+-keep class **_HiltComponents { *; }
+-keep class **_Impl { *; }
+-keep class **_Factory { *; }
+-keep class **_MembersInjector { *; }
 
-# ===========================================
-# Room Database
-# ===========================================
+# ===== ROOM DATABASE =====
 
-# Keep Room entities
--keep @androidx.room.Entity class * { *; }
--keep @androidx.room.Dao class * { *; }
--keep @androidx.room.Database class * { *; }
+# Room
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
 
-# Keep Room generated classes
--keep class * extends androidx.room.RoomDatabase { *; }
--keep class * extends androidx.room.RoomDatabase$Callback { *; }
 -dontwarn androidx.room.paging.**
 
-# ===========================================
-# Jetpack Compose
-# ===========================================
+# Keep database classes
+-keep class com.wifiguard.core.data.local.** { *; }
 
-# Keep Compose classes
--keep class androidx.compose.** { *; }
--keep class kotlin.Metadata { *; }
+# ===== DATA CLASSES =====
 
-# Keep Compose functions
--keepclassmembers class * {
-    @androidx.compose.runtime.Composable <methods>;
+# Keep data classes used by Room
+-keep class com.wifiguard.core.data.local.entity.** { *; }
+
+# Keep domain models
+-keep class com.wifiguard.core.domain.model.** { *; }
+
+# Keep data transfer objects
+-keep class com.wifiguard.core.data.*.dto.** { *; }
+
+# ===== ANDROID =====
+
+# Keep native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
 }
 
-# ===========================================
-# Security Classes - Obfuscate but keep functionality
-# ===========================================
-
-# Keep security classes but obfuscate internal methods
--keep class com.wifiguard.core.security.AesEncryption { 
-    public <methods>;
-    public <fields>;
+# Keep custom views
+-keep public class * extends android.view.View {
+    public <init>(android.content.Context);
+    public <init>(android.content.Context, android.util.AttributeSet);
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+    public void set*(...);
 }
 
--keep class com.wifiguard.core.security.SecurityManager { 
-    public <methods>;
-    public <fields>;
+# Keep Android Parcelable
+-keepclassmembers class * implements android.os.Parcelable {
+    public static final ** CREATOR;
 }
 
-# Keep security enums
--keep enum com.wifiguard.core.security.SecurityThreat { *; }
--keep enum com.wifiguard.core.security.RiskLevel { *; }
-
-# Keep EncryptedData class
--keep class com.wifiguard.core.security.EncryptedData { *; }
-
-# ===========================================
-# Domain Models - Keep for serialization
-# ===========================================
-
-# Keep WifiInfo and related models
--keep class com.wifiguard.feature.scanner.domain.model.WifiInfo { *; }
--keep class com.wifiguard.feature.scanner.domain.model.EncryptionType { *; }
--keep class com.wifiguard.feature.scanner.domain.model.SecurityLevel { *; }
--keep class com.wifiguard.feature.scanner.domain.model.SignalQuality { *; }
-
-# ===========================================
-# Constants - Obfuscate sensitive values
-# ===========================================
-
-# Obfuscate Constants class but keep structure
--keep class com.wifiguard.core.common.Constants {
-    public static final java.lang.String DATABASE_NAME;
-    public static final java.lang.String PREFERENCES_NAME;
-    public static final long SCAN_INTERVAL_MS;
-    public static final long MIN_SCAN_INTERVAL_MS;
-    public static final java.lang.String LOG_TAG;
-    public static final java.lang.String NOTIFICATION_CHANNEL_ID;
-    public static final java.lang.String NOTIFICATION_CHANNEL_NAME;
-    public static final java.lang.String WIFI_MONITOR_WORK_NAME;
-    public static final int WEAK_SIGNAL_THRESHOLD;
-    public static final int SUSPICIOUS_NETWORK_COUNT;
+# Keep Serializable
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+    private static final java.io.ObjectStreamField[] serialPersistentFields;
+    private void writeObject(java.io.ObjectOutputStream);
+    private void readObject(java.io.ObjectInputStream);
+    java.lang.Object writeReplace();
+    java.lang.Object readResolve();
 }
 
-# Obfuscate security-related constants
--keep class com.wifiguard.core.common.Constants {
-    public static final java.lang.String AES_KEY_ALIAS;
-    public static final java.lang.String HMAC_KEY_ALIAS;
-    public static final java.lang.String KEYSTORE_PROVIDER;
-}
+# ===== WORKMANAGER =====
 
-# ===========================================
 # WorkManager
-# ===========================================
-
-# Keep WorkManager classes
+-keep class * extends androidx.work.Worker
+-keep class * extends androidx.work.InputMerger
 -keep class androidx.work.** { *; }
--keep class * extends androidx.work.Worker { *; }
--keep class * extends androidx.work.CoroutineWorker { *; }
+-dontwarn androidx.work.**
 
-# ===========================================
+# Keep Worker classes
+-keep class com.wifiguard.core.background.** { *; }
+
+# ===== DATASTORE =====
+
 # DataStore
-# ===========================================
-
-# Keep DataStore classes
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
 -keep class androidx.datastore.** { *; }
 
-# ===========================================
-# Navigation
-# ===========================================
+# ===== SECURITY =====
 
-# Keep Navigation classes
--keep class androidx.navigation.** { *; }
--keep class * extends androidx.navigation.NavType { *; }
+# Keep security classes (важно для шифрования)
+-keep class com.wifiguard.core.security.** { *; }
 
-# ===========================================
-# ViewModels
-# ===========================================
+# Android KeyStore
+-keep class javax.crypto.** { *; }
+-keep class java.security.** { *; }
+-dontwarn javax.crypto.**
 
-# Keep ViewModels
--keep class * extends androidx.lifecycle.ViewModel { *; }
--keep class * extends androidx.lifecycle.AndroidViewModel { *; }
+# ===== GSON (если используется) =====
 
-# ===========================================
-# Serialization
-# ===========================================
-
-# Keep serialization classes
--keep class kotlinx.serialization.** { *; }
--keep @kotlinx.serialization.Serializable class * { *; }
-
-# ===========================================
-# Kotlin Coroutines
-# ===========================================
-
--keepclassmembernames class kotlinx.** {
-    volatile <fields>;
-}
-
-# ===========================================
-# Android System Classes
-# ===========================================
-
-# Keep Android system classes
--keep class android.** { *; }
--keep class androidx.** { *; }
-
-# Keep Parcelable classes
--keep class * implements android.os.Parcelable {
-    public static final android.os.Parcelable$Creator *;
-}
-
-# ===========================================
-# Logging - Remove in release
-# ===========================================
-
-# Remove logging in release builds
--assumenosideeffects class android.util.Log {
-    public static boolean isLoggable(java.lang.String, int);
-    public static int v(...);
-    public static int i(...);
-    public static int w(...);
-    public static int d(...);
-    public static int e(...);
-}
-
-# ===========================================
-# Optimization Rules
-# ===========================================
-
-# Remove unused code
--dontwarn **
--ignorewarnings
-
-# Optimize code
--optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
--optimizationpasses 5
--allowaccessmodification
--dontpreverify
-
-# Keep generic signatures
+# Gson
 -keepattributes Signature
 -keepattributes *Annotation*
--keepattributes EnclosingMethod
--keepattributes InnerClasses
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
 
-# ===========================================
-# Debug Information
-# ===========================================
+# Prevent proguard from stripping interface information from TypeAdapter
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
 
-# Keep source file names for debugging
+# ===== RETROFIT (если используется) =====
+
+# Retrofit
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keepattributes AnnotationDefault
+
+-keepclassmembers,allowshrinking,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+
+-dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
+-dontwarn javax.annotation.**
+-dontwarn kotlin.Unit
+-dontwarn retrofit2.KotlinExtensions
+-dontwarn retrofit2.KotlinExtensions$*
+
+# OkHttp
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
+
+# ===== NAVIGATION =====
+
+# Navigation Component
+-keepnames class androidx.navigation.fragment.NavHostFragment
+-keep class * extends androidx.navigation.Navigator
+
+# ===== VIEWMODEL =====
+
+# ViewModel
+-keep class * extends androidx.lifecycle.ViewModel {
+    <init>();
+}
+-keep class * extends androidx.lifecycle.AndroidViewModel {
+    <init>(android.app.Application);
+}
+
+# ===== LOGGING =====
+
+# Remove logging in release
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# ===== WARNINGS =====
+
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+
+# ===== OPTIMIZATIONS =====
+
+# Optimization is turned on by default
+-optimizationpasses 5
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
+
+# Preserve line numbers for debugging stack traces
 -keepattributes SourceFile,LineNumberTable
+
+# Rename source file attribute to "SourceFile"
 -renamesourcefileattribute SourceFile
 
+# ===== CUSTOM APPLICATION RULES =====
+
+# Keep WifiGuard specific classes that must not be obfuscated
+
+# Security analyzer
+-keep class com.wifiguard.core.security.SecurityAnalyzer { *; }
+-keep class com.wifiguard.core.security.ThreatDetector { *; }
+
+# Encryption
+-keep class com.wifiguard.core.security.AesEncryption { *; }
+-keep class com.wifiguard.core.security.EncryptionManager { *; }
+
+# Wi-Fi Scanner (критично!)
+-keep class com.wifiguard.core.data.wifi.WifiScanner { *; }
+-keep class com.wifiguard.core.data.wifi.WifiScannerImpl { *; }
+-keep class com.wifiguard.core.data.wifi.WifiScanResult { *; }
+-keep class com.wifiguard.core.data.wifi.SecurityType { *; }
+
+# Notification
+-keep class com.wifiguard.feature.notifications.** { *; }
+
+# ===== TESTING =====
+-dontwarn org.junit.**
+-dontwarn org.mockito.**
+-dontwarn org.robolectric.**
