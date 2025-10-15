@@ -46,9 +46,9 @@ kotlinx-coroutines-test = "1.7.3"
 
 # Plugins
 ksp = "1.9.22-1.0.17"
-kotlin-serialization = "1.9.22"
-kotlin-parcelize = "1.9.22"
-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = "2.0.0"
+kotlin-parcelize = "2.0.0"
+compose-compiler = "2.0.0"
 
 [libraries]
 # Core Android
