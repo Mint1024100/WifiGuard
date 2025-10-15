@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Include preferences but exclude sensitive data -->
+    <!-- Включить настройки, но исключить чувствительные данные -->
     <include domain="sharedpref" path="."/>
-    <exclude domain="database" path="."/> <!-- Don't backup database with security info -->
-    <exclude domain="file" path="encryption_keys/"/> <!-- Exclude encryption key files -->
+    <exclude domain="database" path="."/> <!-- Не резервировать базу данных с информацией безопасности -->
+    <exclude domain="file" path="encryption_keys/"/> <!-- Исключить файлы ключей шифрования -->
 </full-backup-content>

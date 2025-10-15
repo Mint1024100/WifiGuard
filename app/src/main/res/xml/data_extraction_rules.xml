@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        Currently, only device encrypted storage is supported for Wi-Fi security data.
+        <!-- TODO: Используйте <include> и <exclude> для контроля резервного копирования.
+        В настоящее время только зашифрованное хранилище устройства поддерживается для данных безопасности Wi-Fi.
         -->
         <include domain="device_encrypted" path="."/>
     </cloud-backup>
-    <!-- No roaming backup for security-sensitive data -->
+    <!-- Нет роуминг резервного копирования для данных, чувствительных к безопасности -->
     <device-transfer>
         <include domain="device_encrypted" path="."/>
     </device-transfer>

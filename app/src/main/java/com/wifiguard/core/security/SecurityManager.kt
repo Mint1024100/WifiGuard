@@ -80,12 +80,12 @@ class SecurityManager @Inject constructor(
             result
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error during security analysis: ${e.message}", e)
+            Log.e(TAG, "Ошибка при анализе безопасности: ${e.message}", e)
             SecurityAnalysisResult(
                 networkId = wifiInfo.bssid,
                 riskLevel = RiskLevel.HIGH,
                 threats = listOf(SecurityThreat.ANALYSIS_ERROR),
-                recommendations = listOf("Security analysis failed - treat as high risk"),
+                recommendations = listOf("Анализ безопасности не удался - считать высокий риск"),
                 analysisTimestamp = System.currentTimeMillis()
             )
         }

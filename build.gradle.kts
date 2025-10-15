@@ -1,4 +1,4 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+// Файл сборки верхнего уровня, в котором можно добавить общие для всех подпроектов/модулей параметры конфигурации.
 
 plugins {
     alias(libs.plugins.android.application) apply false
@@ -11,26 +11,26 @@ plugins {
     alias(libs.plugins.room) apply false
 }
 
-// Clean task for all projects
+// Задача очистки для всех проектов
 tasks.register("clean", Delete::class) {
     delete(rootProject.buildDir)
 }
 
-// Configuration for all projects
+// Конфигурация для всех проектов
 allprojects {
-    // Common repositories for all modules
+    // Общие репозитории для всех модулей
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
-        // JitPack for GitHub libraries
+        // JitPack для библиотек GitHub
         maven { url = uri("https://jitpack.io") }
     }
 }
 
-// Configuration for subprojects only
+// Конфигурация только для подпроектов
 subprojects {
-    // Apply common configurations
+    // Применить общие конфигурации
     afterEvaluate {
         if (hasProperty("android")) {
             configure<com.android.build.gradle.BaseExtension> {
@@ -42,7 +42,7 @@ subprojects {
                     
                     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                     
-                    // Vector drawables support
+                    // Поддержка векторных рисунков
                     vectorDrawables {
                         useSupportLibrary = true
                     }
@@ -53,7 +53,7 @@ subprojects {
                     targetCompatibility = JavaVersion.VERSION_17
                 }
                 
-                // Compose configuration for app modules
+                // Конфигурация Compose для модулей приложения
                 if (hasProperty("buildFeatures")) {
                     buildFeatures {
                         compose = true
@@ -64,7 +64,7 @@ subprojects {
                     }
                 }
                 
-                // Common packaging options
+                // Общие параметры упаковки
                 packagingOptions {
                     resources {
                         excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -75,7 +75,7 @@ subprojects {
             }
         }
         
-        // Kotlin compile options for all modules
+        // Параметры компиляции Kotlin для всех модулей
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
             kotlinOptions {
                 jvmTarget = "17"
@@ -91,10 +91,10 @@ subprojects {
     }
 }
 
-// Gradle configuration
+// Конфигурация Gradle
 gradle {
     beforeProject {
-        // Configure project properties
+        // Настроить свойства проекта
         extra.apply {
             set("APP_NAME", "WifiGuard")
             set("APP_ID", "com.wifiguard")

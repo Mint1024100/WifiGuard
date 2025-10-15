@@ -1,0 +1,5 @@
+First version of WifiGuard:
+- Wi-Fi network scanning
+- Security analysis
+- Threat detection
+- Background monitoring
