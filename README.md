@@ -317,7 +317,6 @@ Release сборка использует ProGuard rules (`app/proguard-rules.pr
 ## 📞 Контакты
 
 - **GitHub**: [https://github.com/Mint1024100/wifiguard](https://github.com/Mint1024100/wifiguard)
-- **Issues**: [https://github.com/Mint1024100/wifiguard/issues](https://github.com/Mint1024100/wifiguard/issues)
 
 ---
 
