@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Restrict cleartext traffic to specific domains only -->
+    <!-- Ограничить передачу открытого текста только определенными доменами -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">wifiguard.com</domain>
         <domain includeSubdomains="true">api.wifiguard.com</domain>
@@ -8,20 +8,20 @@
         <domain includeSubdomains="true">analytics.wifiguard.com</domain>
     </domain-config>
     
-    <!-- Base configuration -->
+    <!-- Базовая конфигурация -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
-            <!-- Trust system-provided CAs -->
+            <!-- Доверять CA, предоставленным системой -->
             <certificates src="system"/>
-            <!-- Trust user-provided CAs -->
+            <!-- Доверять CA, предоставленным пользователем -->
             <certificates src="user"/>
         </trust-anchors>
     </base-config>
     
-    <!-- Debug config to allow local development -->
+    <!-- Конфигурация отладки для локальной разработки -->
     <debug-overrides>
         <trust-anchors>
-            <!-- Trust user-provided CAs while debuggable -->
+            <!-- Доверять CA, предоставленным пользователем, в режиме отладки -->
             <certificates src="user"/>
         </trust-anchors>
     </debug-overrides>

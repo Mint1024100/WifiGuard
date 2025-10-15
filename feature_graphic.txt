@@ -1,0 +1,2 @@
+This is a placeholder for the feature graphic (1024x500) required for Google Play Store listing.
+The actual graphic should display key app features like Wi-Fi scanning, security analysis, threat detection.

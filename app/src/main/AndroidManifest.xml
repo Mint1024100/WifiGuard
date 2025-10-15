@@ -2,27 +2,40 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Wi-Fi and location permissions -->
+    <!-- Разрешения Wi-Fi и местоположения -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     
-    <!-- Location permissions for Wi-Fi scanning (required on Android 6+) -->
+    <!-- Разрешения местоположения для сканирования Wi-Fi (требуется в Android 6+) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     
-    <!-- Notification permission (Android 13+) -->
+    <!-- Разрешение фонового местоположения (требуется для Android 10+) -->
+    <uses-permission 
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:targetApi="q" />
+        
+    <!-- Разрешение фоновой службы -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    
+    <!-- Тип фоновой службы для местоположения (требуется для Android 14+) -->
+    <uses-permission 
+        android:name="android.permission.FOREGROUND_SERVICE_LOCATION"
+        android:minSdkVersion="34" />
+    
+    <!-- Разрешение уведомлений (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
-    <!-- Background work -->
+    <!-- Фоновая работа -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     
-    <!-- Internet for potential threat database updates -->
+    <!-- Интернет для потенциальных обновлений базы угроз -->
     <uses-permission android:name="android.permission.INTERNET" />
     
-    <!-- Required hardware features -->
+    <!-- Требуемые функции оборудования -->
     <uses-feature
         android:name="android.hardware.wifi"
         android:required="true" />
@@ -61,7 +74,7 @@
         <!-- Background Wi-Fi monitoring worker -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="location"
             tools:node="merge" />
             
         <!-- Boot receiver for background monitoring -->

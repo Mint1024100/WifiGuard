@@ -14,8 +14,8 @@
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/Mint1024100/wifiguard.git
-cd wifiguard
+git clone https://github.com/Mint1024100/WifiGuard.git
+cd WifiGuard
 ```
 
 ### 2. Сборка проекта

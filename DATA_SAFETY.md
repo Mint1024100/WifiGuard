@@ -1,72 +1,72 @@
-# Data Safety Section for Google Play Console
+# Раздел безопасности данных для Google Play Console
 
-## Data Collection and Security Practices
+## Практики сбора данных и безопасности
 
-### Data types collected
-- **Wi-Fi network information**: SSID, BSSID, signal strength, encryption type, frequency and channel.
-  - Collected: Yes (on device)
-  - Shared: No
-  - Required: Yes
-  - Purposes: Security analysis, threat detection
-  - Security practices: Stored locally on device, encrypted with AES
+### Типы собираемых данных
+- **Информация о Wi-Fi сетях**: SSID, BSSID, уровень сигнала, тип шифрования, частота и канал.
+  - Сбор: Да (на устройстве)
+  - Передача: Нет
+  - Требуется: Да
+  - Цели: Анализ безопасности, обнаружение угроз
+  - Практики безопасности: Хранение локально на устройстве, шифрование с помощью AES
 
-- **Location information**: Approximate location to enable Wi-Fi scanning.
-  - Collected: Yes (on device)
-  - Shared: No
-  - Required: Yes
-  - Purposes: Enable Wi-Fi network discovery
-  - Security practices: Not stored permanently, used only during scanning
+- **Информация о местоположении**: Приблизительное местоположение для включения сканирования Wi-Fi.
+  - Сбор: Да (на устройстве)
+  - Передача: Нет
+  - Требуется: Да
+  - Цели: Включение обнаружения Wi-Fi сетей
+  - Практики безопасности: Не хранится постоянно, используется только во время сканирования
 
-- **App usage data**: Information about when and how the app is used.
-  - Collected: No
-  - Shared: N/A
+- **Данные об использовании приложения**: Информация о том, когда и как используется приложение.
+  - Сбор: Нет
+  - Передача: Н/Д
 
-### Security practices
-- All sensitive data is encrypted using AES encryption
-- No data is transmitted to any server
-- All analysis is performed locally on the device
-- Data is stored locally and can be cleared by user at any time
-- Android Keystore is used for secure key management
-- No third-party analytics or tracking software is used
+### Практики безопасности
+- Все конфиденциальные данные шифруются с использованием AES шифрования
+- Данные не передаются ни на какие серверы
+- Всё анализирование выполняется локально на устройстве
+- Данные хранятся локально и могут быть очищены пользователем в любое время
+- Android Keystore используется для безопасного управления ключами
+- Не используется аналитика или программное обеспечение для отслеживания от третьих лиц
 
-### Data sharing
-- No data is shared with third parties
-- No data is transmitted to external servers
-- All processing happens locally on the device
+### Обмен данными
+- Данные не передаются третьим лицам
+- Данные не передаются на внешние серверы
+- Вся обработка происходит локально на устройстве
 
-## Permissions Explanation
+## Объяснение разрешений
 
-### Required Permissions
-- `ACCESS_WIFI_STATE`: Required to scan for Wi-Fi networks and analyze their security
-- `CHANGE_WIFI_STATE`: Required to connect/disconnect from networks for testing purposes
-- `ACCESS_FINE_LOCATION`: Required by Android for Wi-Fi scanning starting from Android 6+
-- `ACCESS_COARSE_LOCATION`: Alternative location permission for Wi-Fi scanning
-- `POST_NOTIFICATIONS`: Required to alert users of security threats (Android 13+)
-- `WAKE_LOCK`: Required for background security monitoring
-- `RECEIVE_BOOT_COMPLETED`: Required to resume background monitoring after device restart
+### Обязательные разрешения
+- `ACCESS_WIFI_STATE`: Необходимо для сканирования Wi-Fi сетей и анализа их безопасности
+- `CHANGE_WIFI_STATE`: Необходимо для подключения/отключения от сетей в целях тестирования
+- `ACCESS_FINE_LOCATION`: Требуется Android для сканирования Wi-Fi, начиная с Android 6+
+- `ACCESS_COARSE_LOCATION`: Альтернативное разрешение местоположения для сканирования Wi-Fi
+- `POST_NOTIFICATIONS`: Необходимо для оповещения пользователей о безопасности угроз (Android 13+)
+- `WAKE_LOCK`: Необходимо для фонового мониторинга безопасности
+- `RECEIVE_BOOT_COMPLETED`: Необходимо для возобновления фонового мониторинга после перезагрузки устройства
 
-### Hardware Features
-- `android.hardware.wifi`: Required for Wi-Fi analysis functionality
-- `android.hardware.location`: Optional, for enhanced location features
+### Функции оборудования
+- `android.hardware.wifi`: Необходимо для функциональности анализа Wi-Fi
+- `android.hardware.location`: Необязательно, для расширенных функций местоположения
 
-## Security Analysis Functionality
+## Функциональность анализа безопасности
 
-The WifiGuard app performs security analysis of Wi-Fi networks to help users identify potential security risks. This functionality:
-- Analyzes encryption types (WEP, WPA, WPA2, WPA3)
-- Identifies open and unsecured networks
-- Detects potential threats like Evil Twin attacks
-- Provides security recommendations
-- All analysis is performed locally on the device
-- No network data is transmitted to external servers
+Приложение WifiGuard выполняет анализ безопасности Wi-Fi сетей, чтобы помочь пользователям идентифицировать потенциальные риски безопасности. Эта функциональность:
+- Анализирует типы шифрования (WEP, WPA, WPA2, WPA3)
+- Определяет открытые и небезопасные сети
+- Обнаруживает потенциальные угрозы, такие как атаки Evil Twin
+- Предоставляет рекомендации по безопасности
+- Весь анализ выполняется локально на устройстве
+- Данные сети не передаются на внешние серверы
 
-## Data Retention and Deletion
+## Хранение и удаление данных
 
-Users can:
-- Clear all stored scan history from Settings
-- Control data retention periods in Settings
-- Export their data to local files
-- Uninstall the app to remove all data
+Пользователи могут:
+- Очистить всю сохраненную историю сканирования в настройках
+- Контролировать периоды хранения данных в настройках
+- Экспортировать свои данные в локальные файлы
+- Удалить приложение, чтобы удалить все данные
 
-## Compliance Statement
+## Заявление о соответствии
 
-WifiGuard is a security analysis tool designed to help users evaluate the security of Wi-Fi networks. All functionality is clearly disclosed to users in the app UI. The app does not perform any unauthorized network access or engage in malicious activity. The app is designed for legitimate security analysis and network safety purposes.
+WifiGuard - это инструмент анализа безопасности, предназначенный для помощи пользователям в оценке безопасности Wi-Fi сетей. Вся функциональность четко раскрывается пользователям в пользовательском интерфейсе приложения. Приложение не выполняет никакого несанкционированного доступа к сети или участия в вредоносной деятельности. Приложение разработано для легального анализа безопасности и целей сетевой безопасности.

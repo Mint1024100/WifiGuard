@@ -17,7 +17,7 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -25,7 +25,7 @@ android {
             useSupportLibrary = true
         }
         
-        // BuildConfig fields for security-sensitive URLs
+        // Поля BuildConfig для URL, чувствительных к безопасности
         buildConfigField("String", "API_BASE_URL", "\"http://localhost:8080/api/\"")
         buildConfigField("String", "SECURE_API_URL", "\"http://localhost:8080/secure/\"")
         buildConfigField("String", "ANALYTICS_API_URL", "\"http://localhost:8080/analytics/\"")
@@ -50,16 +50,29 @@ android {
             val keystoreProperties = java.util.Properties()
             if (keystorePropertiesFile.exists()) {
                 keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
+                
+                // Validate required properties exist
+                val storeFileValue = keystoreProperties["storeFile"] as String?
+                val storePasswordValue = keystoreProperties["storePassword"] as String?
+                val keyAliasValue = keystoreProperties["keyAlias"] as String?
+                val keyPasswordValue = keystoreProperties["keyPassword"] as String?
+                
+                if (storeFileValue != null && storePasswordValue != null && 
+                    keyAliasValue != null && keyPasswordValue != null) {
+                    val actualStoreFile = file(storeFileValue)
+                    if (actualStoreFile.exists()) {
+                        storeFile = actualStoreFile
+                        storePassword = storePasswordValue
+                        keyAlias = keyAliasValue
+                        keyPassword = keyPasswordValue
+                    } else {
+                        throw GradleException("Release build failed: Store file does not exist at path: $storeFileValue")
+                    }
+                } else {
+                    throw GradleException("Release build failed: Missing required keystore properties. Required: storeFile, storePassword, keyAlias, keyPassword")
+                }
             } else {
-                // Fallback to debug keystore for testing
-                storeFile = file("debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
+                throw GradleException("Release build failed: keystore.properties file not found. Create it with storeFile, storePassword, keyAlias, and keyPassword properties.")
             }
         }
     }
@@ -74,7 +87,7 @@ android {
                 "proguard-rules.pro"
             )
             
-            // Release-specific BuildConfig fields
+            // Поля BuildConfig для релизной сборки
             buildConfigField("String", "API_BASE_URL", "\"https://api.wifiguard.com/\"")
             buildConfigField("String", "SECURE_API_URL", "\"https://secure.wifiguard.com/\"")
             buildConfigField("String", "ANALYTICS_API_URL", "\"https://analytics.wifiguard.com/\"")
@@ -87,7 +100,7 @@ android {
             
             signingConfig = signingConfigs.getByName("debug")
             
-            // Debug-specific BuildConfig fields
+            // Поля BuildConfig для отладочной сборки
             buildConfigField("String", "API_BASE_URL", "\"http://localhost:8080/api/\"")
             buildConfigField("String", "SECURE_API_URL", "\"http://localhost:8080/secure/\"")
             buildConfigField("String", "ANALYTICS_API_URL", "\"http://localhost:8080/analytics/\"")
@@ -124,19 +137,19 @@ android {
 }
 
 dependencies {
-    // Core Android dependencies
+    // Основные зависимости Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     
-    // Compose BOM for version alignment
+    // Compose BOM для согласования версий
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
     
-    // Navigation
+    // Навигация
     implementation(libs.androidx.navigation.compose)
     
-    // ViewModel & LiveData
+    // ViewModel и LiveData
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     
@@ -144,7 +157,7 @@ dependencies {
     implementation(libs.bundles.hilt)
     ksp(libs.hilt.compiler)
     
-    // Room Database
+    // База данных Room
     implementation(libs.bundles.room)
     ksp(libs.androidx.room.compiler)
     
@@ -155,16 +168,16 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     
-    // Network & Serialization
+    // Сеть и сериализация
     implementation(libs.kotlinx.serialization.json)
     
-    // Permissions
+    // Разрешения
     implementation(libs.accompanist.permissions)
     
-    // Security
+    // Безопасность
     implementation(libs.androidx.security.crypto)
     
-    // Testing
+    // Тестирование
     testImplementation(libs.bundles.testing)
     
     androidTestImplementation(libs.androidx.test.ext.junit)

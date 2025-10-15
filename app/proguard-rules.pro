@@ -57,6 +57,7 @@
 # Keep Room generated classes
 -keep class * extends androidx.room.RoomDatabase { *; }
 -keep class * extends androidx.room.RoomDatabase$Callback { *; }
+-dontwarn androidx.room.paging.**
 
 # ===========================================
 # Jetpack Compose
@@ -167,6 +168,14 @@
 # Keep serialization classes
 -keep class kotlinx.serialization.** { *; }
 -keep @kotlinx.serialization.Serializable class * { *; }
+
+# ===========================================
+# Kotlin Coroutines
+# ===========================================
+
+-keepclassmembernames class kotlinx.** {
+    volatile <fields>;
+}
 
 # ===========================================
 # Android System Classes
