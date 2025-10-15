@@ -13,20 +13,10 @@ plugins {
 
 // Задача очистки для всех проектов
 tasks.register("clean", Delete::class) {
-    delete(rootProject.buildDir)
+    delete(rootProject.layout.buildDirectory.get())
 }
 
-// Конфигурация для всех проектов
-allprojects {
-    // Общие репозитории для всех модулей
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        // JitPack для библиотек GitHub
-        maven { url = uri("https://jitpack.io") }
-    }
-}
+
 
 // Конфигурация только для подпроектов
 subprojects {
@@ -52,26 +42,6 @@ subprojects {
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
                 }
-                
-                // Конфигурация Compose для модулей приложения
-                if (hasProperty("buildFeatures")) {
-                    buildFeatures {
-                        compose = true
-                    }
-                    
-                    composeOptions {
-                        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
-                    }
-                }
-                
-                // Общие параметры упаковки
-                packagingOptions {
-                    resources {
-                        excludes += "/META-INF/{AL2.0,LGPL2.1}"
-                        excludes += "/META-INF/INDEX.LIST"
-                        excludes += "/META-INF/DEPENDENCIES"
-                    }
-                }
             }
         }
         
@@ -91,15 +61,3 @@ subprojects {
     }
 }
 
-// Конфигурация Gradle
-gradle {
-    beforeProject {
-        // Настроить свойства проекта
-        extra.apply {
-            set("APP_NAME", "WifiGuard")
-            set("APP_ID", "com.wifiguard")
-            set("VERSION_NAME", "1.0.0")
-            set("VERSION_CODE", 1)
-        }
-    }
-}
