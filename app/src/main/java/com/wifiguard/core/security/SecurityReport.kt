@@ -1,9 +1,11 @@
 package com.wifiguard.core.security
 
 import com.wifiguard.core.domain.model.ThreatLevel
+import com.wifiguard.core.domain.model.ThreatType
 import com.wifiguard.core.domain.model.WifiScanResult
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.parcelize.RawValue
 
 /**
  * Отчет о безопасности Wi-Fi сетей
@@ -146,23 +148,9 @@ data class SecurityThreat(
             ThreatType.MULTIPLE_DUPLICATES -> "Множественные дубликаты"
             ThreatType.SUSPICIOUS_ACTIVITY -> "Подозрительная активность"
             ThreatType.SUSPICIOUS_BSSID -> "Подозрительный MAC-адрес"
+            else -> "Неизвестная угроза"
         }
     }
 }
 
-/**
- * Типы угроз безопасности
- */
-@Parcelize
-enum class ThreatType : Parcelable {
-    OPEN_NETWORK,           // Открытая сеть
-    WEAK_ENCRYPTION,        // Слабое шифрование
-    DUPLICATE_SSID,         // Дублирующийся SSID
-    SUSPICIOUS_SSID,        // Подозрительное имя сети
-    WPS_VULNERABILITY,      // Уязвимость WPS
-    WEAK_SIGNAL,            // Слабый сигнал
-    UNKNOWN_ENCRYPTION,     // Неизвестное шифрование
-    MULTIPLE_DUPLICATES,    // Множественные дубликаты
-    SUSPICIOUS_ACTIVITY,    // Подозрительная активность
-    SUSPICIOUS_BSSID        // Подозрительный MAC-адрес
-}
+

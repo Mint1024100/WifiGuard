@@ -1,7 +1,7 @@
 package com.wifiguard.feature.scanner.domain.usecase
 
 import com.wifiguard.feature.scanner.domain.model.WifiInfo
-import com.wifiguard.feature.scanner.domain.model.SecurityType
+import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.feature.scanner.domain.repository.WifiScannerRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

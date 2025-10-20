@@ -2,12 +2,14 @@ package com.wifiguard.core.domain.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 import java.util.Date
 
 /**
  * Результат сканирования Wi-Fi сети
  */
 @Parcelize
+@Serializable
 data class WifiScanResult(
     val ssid: String,
     val bssid: String,
@@ -21,7 +23,8 @@ data class WifiScanResult(
     val isHidden: Boolean = false,
     val vendor: String? = null,
     val channel: Int = 0,
-    val standard: WifiStandard = WifiStandard.UNKNOWN
+    val standard: WifiStandard = WifiStandard.UNKNOWN,
+    val scanType: ScanType = ScanType.MANUAL
 ) : Parcelable {
     
     /**

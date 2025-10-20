@@ -2,6 +2,9 @@ package com.wifiguard.core.common
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
+import com.wifiguard.core.domain.model.WifiScanResult
 
 /**
  * Результат операции с обработкой ошибок
@@ -11,6 +14,74 @@ sealed class Result<out T> {
     data class Error(val exception: Throwable, val message: String? = null) : Result<Nothing>()
     object Loading : Result<Nothing>()
 }
+
+/**
+ * Сериализуемый результат для сохранения в состоянии
+ */
+@Serializable
+data class SerializableResultWrapper(
+    val type: String,
+    val data: String? = null,
+    val exceptionClassName: String? = null,
+    val message: String? = null
+)
+
+/**
+ * Extension для преобразования Result<List<WifiScanResult>> в SerializableResult
+ */
+@OptIn(InternalSerializationApi::class)
+fun Result<List<WifiScanResult>>.toSerializableForWifiList(): SerializableResultWrapper {
+    return when (this) {
+        is Result.Success -> {
+            val jsonData = try {
+                Json.encodeToString(this.data)
+            } catch (e: Exception) {
+                "\"Serialization error: ${e.message}\""
+            }
+            SerializableResultWrapper("Success", jsonData, null, null)
+        }
+        is Result.Error -> SerializableResultWrapper("Error", null, this.exception.javaClass.name, this.message)
+        is Result.Loading -> SerializableResultWrapper("Loading", null, null, null)
+    }
+}
+
+/**
+ * Extension для преобразования SerializableResult обратно в Result для List<WifiScanResult>
+ */
+@OptIn(InternalSerializationApi::class)
+fun SerializableResultWrapper.toResultForWifiList(): Result<List<WifiScanResult>> {
+    return when (this.type) {
+        "Success" -> {
+            if (this.data != null) {
+                try {
+                    val deserializedData = Json.decodeFromString<List<WifiScanResult>>(this.data)
+                    Result.Success(deserializedData)
+                } catch (e: Exception) {
+                    // В случае ошибки десериализации данных возвращаем ошибку
+                    Result.Error(Exception("Deserialization error: ${e.message}"), "Ошибка десериализации данных")
+                }
+            } else {
+                Result.Error(Exception("Missing data for Success result"), "Отсутствуют данные для результата Success")
+            }
+        }
+        "Error" -> {
+            val exception = try {
+                if (this.exceptionClassName != null) {
+                    Class.forName(this.exceptionClassName).getConstructor(String::class.java).newInstance(this.message ?: "") as Throwable
+                } else {
+                    Exception(this.message ?: "Неизвестная ошибка")
+                }
+            } catch (e: Exception) {
+                Exception(this.message ?: "Неизвестная ошибка")
+            }
+            Result.Error(exception, this.message)
+        }
+        "Loading" -> Result.Loading
+        else -> Result.Error(Exception("Unknown result type: ${this.type}"), "Неизвестный тип результата")
+    }
+}
+
+
 
 /**
  * Extension для Flow с обработкой ошибок

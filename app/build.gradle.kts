@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.kotlin.parcelize)
+    id("kotlin-parcelize")
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
@@ -44,13 +44,6 @@ android {
     }
     
     signingConfigs {
-        create("debug") {
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-        
         create("release") {
             if (keystorePropertiesFile.exists()) {
                 storeFile = file(keystoreProperties["storeFile"] as String)
@@ -96,7 +89,7 @@ android {
     }
     
     composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.kotlin.get()
+        // For Kotlin 2.0+, the compiler extension is integrated into the Kotlin compiler
     }
     
     packaging {
@@ -109,8 +102,13 @@ android {
     
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
-        arg("room.incremental", "true")
+        arg("room.incremental", "false")  // Disable room incremental to avoid issues
         arg("room.expandProjection", "true")
+        // Disable incremental processing to avoid type resolution issues
+        arg("ksp.incremental", "false")
+        arg("ksp.incremental.log", "true")
+        // Allow KSP to process all source sets
+        arg("ksp.allow.all.target.source.sets", "true")
     }
 }
 
@@ -154,6 +152,9 @@ dependencies {
     
     // Безопасность
     implementation(libs.androidx.security.crypto)
+    
+    // Material Design 3
+    implementation(libs.material3)
     
     // Тестирование
     testImplementation(libs.bundles.testing)

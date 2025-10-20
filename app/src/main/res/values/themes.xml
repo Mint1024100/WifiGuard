@@ -39,11 +39,8 @@
         <!-- Card view -->
         <item name="cardViewStyle">@style/Theme.WifiGuard.CardView</item>
         
-        <!-- Button styles -->
-        <item name="materialButtonStyle">@style/Theme.WifiGuard.Button</item>
-        <item name="materialButtonOutlinedStyle">@style/Theme.WifiGuard.Button.Outlined</item>
-        <item name="materialButtonTextStyle">@style/Theme.WifiGuard.Button.Text</item>
-        
+        <!-- Button styles (some Material3 attributes are not theme attributes) -->
+        <!-- These will be applied directly in layouts instead of through theme -->
         <!-- Text styles -->
         <item name="textAppearanceHeadline1">@style/Theme.WifiGuard.TextAppearance.Headline1</item>
         <item name="textAppearanceHeadline2">@style/Theme.WifiGuard.TextAppearance.Headline2</item>
@@ -75,21 +72,21 @@
     </style>
     
     <!-- Button styles -->
-    <style name="Theme.WifiGuard.Button" parent="Widget.Material3.Button">
+    <style name="Theme.WifiGuard.Button" parent="Widget.MaterialComponents.Button">
         <item name="android:textColor">@color/on_primary</item>
         <item name="backgroundTint">@color/primary</item>
         <item name="cornerRadius">8dp</item>
         <item name="android:textAllCaps">false</item>
     </style>
     
-    <style name="Theme.WifiGuard.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+    <style name="Theme.WifiGuard.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textColor">@color/primary</item>
         <item name="strokeColor">@color/primary</item>
         <item name="cornerRadius">8dp</item>
         <item name="android:textAllCaps">false</item>
     </style>
     
-    <style name="Theme.WifiGuard.Button.Text" parent="Widget.Material3.Button.TextButton">
+    <style name="Theme.WifiGuard.Button.Text" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="android:textColor">@color/primary</item>
         <item name="android:textAllCaps">false</item>
     </style>
@@ -155,13 +152,13 @@
         <item name="android:layout_margin">4dp</item>
     </style>
     
-    <style name="Theme.WifiGuard.SecurityIndicator" parent="Widget.Material3.Chip">
+    <style name="Theme.WifiGuard.SecurityIndicator" parent="Widget.MaterialComponents.Chip.Choice">
         <item name="chipCornerRadius">16dp</item>
         <item name="android:textSize">12sp</item>
         <item name="android:textAllCaps">false</item>
     </style>
     
-    <style name="Theme.WifiGuard.SignalIndicator" parent="Widget.Material3.Chip">
+    <style name="Theme.WifiGuard.SignalIndicator" parent="Widget.MaterialComponents.Chip.Choice">
         <item name="chipCornerRadius">12dp</item>
         <item name="android:textSize">10sp</item>
         <item name="android:textAllCaps">false</item>

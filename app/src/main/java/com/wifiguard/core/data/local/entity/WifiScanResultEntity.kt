@@ -85,6 +85,6 @@ data class WifiScanResultEntity(
     /**
      * Признак ручного сканирования
      */
-    @ColumnInfo(name = "is_manual_scan")
-    val isManualScan: Boolean = false
+    @ColumnInfo(name = "scan_type")
+    val scanType: com.wifiguard.core.domain.model.ScanType = com.wifiguard.core.domain.model.ScanType.MANUAL
 )

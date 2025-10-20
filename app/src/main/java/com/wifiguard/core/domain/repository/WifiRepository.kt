@@ -71,7 +71,7 @@ interface WifiRepository {
      * @param ssid идентификатор сети
      * @return Flow с историей сканирования сети
      */
-    suspend fun getNetworkStatistics(ssid: String): Flow<List<WifiScanResult>>
+    fun getNetworkStatistics(ssid: String): Flow<List<WifiScanResult>>
     
     /**
      * Пометить сеть как подозрительную

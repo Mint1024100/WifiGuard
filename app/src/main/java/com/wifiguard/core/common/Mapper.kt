@@ -95,7 +95,8 @@ class WifiScanEntityToDomainMapper : BaseMapper<WifiScanEntity, WifiScanResult>(
             isHidden = from.isHidden,
             vendor = from.vendor,
             channel = from.channel,
-            standard = from.standard
+            standard = from.standard,
+            scanType = from.scanType
         )
     }
 }
@@ -119,6 +120,7 @@ class WifiScanDomainToEntityMapper : BaseMapper<WifiScanResult, WifiScanEntity>(
             vendor = from.vendor,
             channel = from.channel,
             standard = from.standard,
+            scanType = from.scanType,
             securityScore = 0, // По умолчанию
             scanSessionId = null // По умолчанию
         )

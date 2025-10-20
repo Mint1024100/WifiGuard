@@ -3,10 +3,13 @@ package com.wifiguard.feature.scanner.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wifiguard.core.domain.model.SecurityType
+import com.wifiguard.core.domain.model.ThreatSeverity
+import com.wifiguard.core.domain.model.ThreatType
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.security.RiskLevel
 import com.wifiguard.core.domain.repository.WifiRepository
-import com.wifiguard.di.IoDispatcher
+import com.wifiguard.core.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
@@ -123,7 +126,7 @@ class SecurityAnalysisViewModel @Inject constructor(
                     level = network.signalStrength,
                     frequency = network.frequency,
                     timestamp = network.lastSeen,
-                    encryptionType = network.securityType,
+                    encryptionType = mapSecurityTypeToEncryptionType(network.securityType),
                     signalStrength = network.signalStrength,
                     channel = network.channel,
                     bandwidth = null,
@@ -134,14 +137,21 @@ class SecurityAnalysisViewModel @Inject constructor(
                 val analysisResult = securityManager.analyzeNetworkSecurity(wifiInfo)
                 
                 // Преобразуем результаты SecurityManager в наши угрозы
-                analysisResult.threats.forEach { securityThreat ->
-                    val (type, severity, description, recommendation) = mapSecurityThreat(securityThreat)
+                analysisResult.threats.forEach { threatType ->
+                    val threatSeverity = when (analysisResult.riskLevel) {
+                        com.wifiguard.core.security.RiskLevel.LOW -> ThreatSeverity.LOW
+                        com.wifiguard.core.security.RiskLevel.MEDIUM -> ThreatSeverity.MEDIUM
+                        com.wifiguard.core.security.RiskLevel.HIGH -> ThreatSeverity.HIGH
+                    }
+                    
+                    val description = getThreatDescription(threatType)
+                    val recommendation = getThreatRecommendation(threatType)
                     
                     threats.add(
                         SecurityThreat(
                             networkSsid = network.ssid,
-                            type = type,
-                            severity = severity,
+                            type = threatType,
+                            severity = threatSeverity,
                             description = description,
                             recommendation = recommendation,
                             detectedAt = analysisResult.analysisTimestamp
@@ -156,59 +166,25 @@ class SecurityAnalysisViewModel @Inject constructor(
         return threats
     }
     
-    /**
-     * Преобразует угрозу из SecurityManager в нашу модель
+    /** 
+     * Map SecurityType to EncryptionType for compatibility
      */
-    private fun mapSecurityThreat(
-        threat: com.wifiguard.core.security.SecurityThreat
-    ): Quadruple<ThreatType, ThreatSeverity, String, String> {
-        return when (threat) {
-            com.wifiguard.core.security.SecurityThreat.OPEN_NETWORK -> Quadruple(
-                ThreatType.OPEN_NETWORK,
-                ThreatSeverity.MEDIUM,
-                "Открытая сеть без шифрования",
-                "Избегайте передачи конфиденциальных данных"
-            )
-            com.wifiguard.core.security.SecurityThreat.WEAK_ENCRYPTION -> Quadruple(
-                ThreatType.WEAK_ENCRYPTION,
-                ThreatSeverity.HIGH,
-                "Устаревшее или слабое шифрование",
-                "Не подключайтесь к этой сети"
-            )
-            com.wifiguard.core.security.SecurityThreat.EVIL_TWIN_DETECTED -> Quadruple(
-                ThreatType.ROGUE_ACCESS_POINT,
-                ThreatSeverity.HIGH,
-                "Обнаружена поддельная точка доступа (Evil Twin)",
-                "Немедленно отключитесь от этой сети"
-            )
-            com.wifiguard.core.security.SecurityThreat.SUSPICIOUS_NAME -> Quadruple(
-                ThreatType.SUSPICIOUS_NAME,
-                ThreatSeverity.LOW,
-                "Подозрительное имя сети",
-                "Проверьте подлинность сети"
-            )
-            com.wifiguard.core.security.SecurityThreat.SUSPICIOUS_MAC_ADDRESS -> Quadruple(
-                ThreatType.ROGUE_ACCESS_POINT,
-                ThreatSeverity.MEDIUM,
-                "Подозрительный MAC-адрес",
-                "Будьте осторожны при подключении"
-            )
-            com.wifiguard.core.security.SecurityThreat.SIGNAL_ANOMALY -> Quadruple(
-                ThreatType.ROGUE_ACCESS_POINT,
-                ThreatSeverity.MEDIUM,
-                "Обнаружена аномалия сигнала",
-                "Возможна атака на сеть"
-            )
-            else -> Quadruple(
-                ThreatType.SUSPICIOUS_NAME,
-                ThreatSeverity.LOW,
-                "Обнаружена потенциальная угроза",
-                "Будьте внимательны"
-            )
+    private fun mapSecurityTypeToEncryptionType(securityType: SecurityType): com.wifiguard.feature.scanner.domain.model.EncryptionType {
+        return when (securityType) {
+            SecurityType.OPEN -> com.wifiguard.feature.scanner.domain.model.EncryptionType.NONE
+            SecurityType.WEP -> com.wifiguard.feature.scanner.domain.model.EncryptionType.WEP
+            SecurityType.WPA -> com.wifiguard.feature.scanner.domain.model.EncryptionType.WPA
+            SecurityType.WPA2 -> com.wifiguard.feature.scanner.domain.model.EncryptionType.WPA2
+            SecurityType.WPA3 -> com.wifiguard.feature.scanner.domain.model.EncryptionType.WPA3
+            SecurityType.WPA2_WPA3 -> com.wifiguard.feature.scanner.domain.model.EncryptionType.WPA2
+            SecurityType.EAP -> com.wifiguard.feature.scanner.domain.model.EncryptionType.UNKNOWN
+            SecurityType.UNKNOWN -> com.wifiguard.feature.scanner.domain.model.EncryptionType.UNKNOWN
         }
     }
+
+
     
-    /**
+    /** 
      * Вспомогательный класс для возврата четырех значений
      */
     private data class Quadruple<A, B, C, D>(
@@ -217,9 +193,47 @@ class SecurityAnalysisViewModel @Inject constructor(
         val third: C,
         val fourth: D
     )
+
+    /**
+     * Получить описание угрозы
+     */
+    private fun getThreatDescription(threatType: ThreatType): String {
+        return when (threatType) {
+            ThreatType.OPEN_NETWORK -> "Открытая сеть без шифрования"
+            ThreatType.WEAK_ENCRYPTION -> "Устаревшее или слабое шифрование"
+            ThreatType.EVIL_TWIN -> "Обнаружена поддельная точка доступа (Evil Twin)"
+            ThreatType.SUSPICIOUS_SSID -> "Подозрительное имя сети"
+            ThreatType.SUSPICIOUS_BSSID -> "Подозрительный MAC-адрес"
+            ThreatType.SUSPICIOUS_ACTIVITY -> "Обнаружена подозрительная активность"
+            ThreatType.DUPLICATE_SSID -> "Обнаружено дублирование SSID"
+            ThreatType.MULTIPLE_DUPLICATES -> "Обнаружено несколько дубликатов SSID"
+            ThreatType.WEAK_SIGNAL -> "Слабый сигнал"
+            ThreatType.UNKNOWN_ENCRYPTION -> "Неизвестный тип шифрования"
+            else -> "Обнаружена потенциальная угроза"
+        }
+    }
     
     /**
-     * Обновить статистику безопасности
+     * Получить рекомендации для угрозы
+     */
+    private fun getThreatRecommendation(threatType: ThreatType): String {
+        return when (threatType) {
+            ThreatType.OPEN_NETWORK -> "Избегайте передачи конфиденциальных данных"
+            ThreatType.WEAK_ENCRYPTION -> "Не подключайтесь к этой сети"
+            ThreatType.EVIL_TWIN -> "Немедленно отключитесь от этой сети"
+            ThreatType.SUSPICIOUS_SSID -> "Проверьте подлинность сети"
+            ThreatType.SUSPICIOUS_BSSID -> "Будьте осторожны при подключении"
+            ThreatType.SUSPICIOUS_ACTIVITY -> "Возможна атака на сеть"
+            ThreatType.DUPLICATE_SSID -> "Возможна атака evil twin"
+            ThreatType.MULTIPLE_DUPLICATES -> "Высокая вероятность атаки evil twin"
+            ThreatType.WEAK_SIGNAL -> "Слабый сигнал может указывать на проблемы"
+            ThreatType.UNKNOWN_ENCRYPTION -> "Проверьте тип безопасности сети"
+            else -> "Будьте внимательны"
+        }
+    }
+
+    /** 
+     * Обновить статистику безопасности 
      */
     private fun updateSecurityStatistics(
         networks: List<WifiNetwork>,
@@ -236,7 +250,7 @@ class SecurityAnalysisViewModel @Inject constructor(
         
         val threatsBySeverity = threats.groupBy { it.severity }
             .mapValues { it.value.size }
-        
+
         _securityStatistics.value = SecurityStatistics(
             totalNetworks = totalNetworks,
             secureNetworks = wpaNetworks + wpa3Networks,

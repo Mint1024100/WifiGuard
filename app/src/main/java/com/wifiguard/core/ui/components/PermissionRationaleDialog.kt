@@ -1,5 +1,7 @@
 package com.wifiguard.core.ui.components
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -16,7 +18,7 @@ fun PermissionRationaleDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.LocationOn,
+                imageVector = Icons.Default.LocationOn,
                 contentDescription = null
             )
         },

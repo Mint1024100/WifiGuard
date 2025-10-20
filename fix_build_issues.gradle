@@ -1,0 +1,48 @@
+// Gradle script to fix common build issues in WifiGuard project
+// Run with: gradle -b fix_build_issues.gradle fixBuildIssues
+
+def log(message) {
+    println "🔧 ${message}"
+}
+
+task fixBuildIssues {
+    doLast {
+        log("Starting build issue fixes...")
+        
+        // Fix 1: Check Java version
+        def javaVersion = System.getProperty("java.version")
+        log("Current Java version: ${javaVersion}")
+        
+        if (JavaVersion.current().isJava8()) {
+            log("⚠️  WARNING: Java 8 detected but project requires Java 17+")
+            log("Please install Java 17 or higher and update your PATH/ANDROID_HOME")
+        }
+        
+        // Fix 2: Version catalog issues (we'll output what needs to be fixed)
+        log("Checking version catalog for compatibility issues...")
+        
+        def libsVersionsFile = file("gradle/libs.versions.toml")
+        if (libsVersionsFile.exists()) {
+            def content = libsVersionsFile.text
+            log("Found libs.versions.toml, checking for common issues...")
+            
+            // Check for invalid AGP version
+            if (content.contains('agp = "8.13.0"')) {
+                log("❌ Found invalid AGP version 8.13.0 - this is not a real version")
+                log("🔧 Suggested fix: Change to agp = \"8.2.2\" in gradle/libs.versions.toml")
+            }
+            
+            log("Version catalog check complete")
+        } else {
+            log("❌ libs.versions.toml not found!")
+        }
+        
+        log("Build issue analysis complete!")
+        log("Next steps:")
+        log("1. Install Java 17 or higher")
+        log("2. Update AGP version in gradle/libs.versions.toml if needed")
+        log("3. Try ./gradlew clean build again")
+    }
+}
+
+defaultTasks 'fixBuildIssues'

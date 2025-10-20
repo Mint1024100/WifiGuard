@@ -2,6 +2,8 @@ package com.wifiguard.core.security
 
 import android.util.Log
 import com.wifiguard.core.common.Constants
+import com.wifiguard.core.domain.model.ThreatLevel
+import com.wifiguard.core.domain.model.ThreatType
 import com.wifiguard.feature.scanner.domain.model.WifiInfo
 import com.wifiguard.feature.scanner.domain.model.EncryptionType
 import java.util.concurrent.ConcurrentHashMap
@@ -33,7 +35,7 @@ class SecurityManager @Inject constructor(
         analysisStartTime.set(startTime)
         
         return try {
-            val threats = mutableListOf<SecurityThreat>()
+            val threats = mutableListOf<ThreatType>()
             var riskLevel = RiskLevel.LOW
             
             // 1. Анализ типа шифрования
@@ -43,25 +45,25 @@ class SecurityManager @Inject constructor(
             
             // 2. Проверка MAC адреса на подозрительность
             if (isSuspiciousMacAddress(wifiInfo.bssid)) {
-                threats.add(SecurityThreat.SUSPICIOUS_MAC_ADDRESS)
+                threats.add(ThreatType.SUSPICIOUS_BSSID)
                 if (riskLevel == RiskLevel.LOW) riskLevel = RiskLevel.MEDIUM
             }
             
             // 3. Анализ аномалий сигнала
             if (detectSignalAnomaly(wifiInfo)) {
-                threats.add(SecurityThreat.SIGNAL_ANOMALY)
+                threats.add(ThreatType.MULTIPLE_DUPLICATES) // Using similar type for signal anomaly
                 if (riskLevel == RiskLevel.LOW) riskLevel = RiskLevel.MEDIUM
             }
             
             // 4. Проверка подозрительных имен сетей
             if (isSuspiciousNetworkName(wifiInfo.ssid)) {
-                threats.add(SecurityThreat.SUSPICIOUS_NAME)
+                threats.add(ThreatType.SUSPICIOUS_SSID)
                 if (riskLevel == RiskLevel.LOW) riskLevel = RiskLevel.MEDIUM
             }
             
             // 5. Проверка на Evil Twin атаки
             if (detectEvilTwinAttack(wifiInfo)) {
-                threats.add(SecurityThreat.EVIL_TWIN_DETECTED)
+                threats.add(ThreatType.DUPLICATE_SSID) // Using similar type for evil twin
                 riskLevel = RiskLevel.HIGH
             }
             
@@ -84,7 +86,7 @@ class SecurityManager @Inject constructor(
             SecurityAnalysisResult(
                 networkId = wifiInfo.bssid,
                 riskLevel = RiskLevel.HIGH,
-                threats = listOf(SecurityThreat.ANALYSIS_ERROR),
+                threats = listOf(ThreatType.UNKNOWN_THREAT),
                 recommendations = listOf("Анализ безопасности не удался - считать высокий риск"),
                 analysisTimestamp = System.currentTimeMillis()
             )
@@ -94,40 +96,40 @@ class SecurityManager @Inject constructor(
     /**
      * Анализирует тип шифрования и определяет уровень риска
      */
-    private fun analyzeEncryptionType(wifiInfo: WifiInfo, threats: MutableList<SecurityThreat>, currentRisk: RiskLevel): RiskLevel {
+    private fun analyzeEncryptionType(wifiInfo: WifiInfo, threats: MutableList<ThreatType>, currentRisk: RiskLevel): RiskLevel {
         var riskLevel = currentRisk
         
         when (wifiInfo.encryptionType) {
             EncryptionType.NONE -> {
-                threats.add(SecurityThreat.OPEN_NETWORK)
+                threats.add(ThreatType.OPEN_NETWORK)
                 riskLevel = RiskLevel.HIGH
             }
             EncryptionType.WEP -> {
-                threats.add(SecurityThreat.WEAK_ENCRYPTION)
+                threats.add(ThreatType.WEAK_ENCRYPTION)
                 riskLevel = RiskLevel.HIGH
             }
             EncryptionType.WPA -> {
-                threats.add(SecurityThreat.OUTDATED_SECURITY)
+                threats.add(ThreatType.OUTDATED_PROTOCOL)
                 riskLevel = RiskLevel.MEDIUM
             }
             EncryptionType.WPA2 -> {
                 // WPA2 приемлем, но проверяем другие проблемы
                 if (wifiInfo.signalStrength < Constants.WEAK_SIGNAL_THRESHOLD) {
-                    threats.add(SecurityThreat.WEAK_SIGNAL)
+                    threats.add(ThreatType.WEAK_SIGNAL)
                 }
             }
             EncryptionType.WPA3 -> {
                 // WPA3 безопасен, проверяем только сигнал
                 if (wifiInfo.signalStrength < Constants.WEAK_SIGNAL_THRESHOLD) {
-                    threats.add(SecurityThreat.WEAK_SIGNAL)
+                    threats.add(ThreatType.WEAK_SIGNAL)
                 }
             }
             EncryptionType.UNKNOWN -> {
-                threats.add(SecurityThreat.UNKNOWN_SECURITY)
+                threats.add(ThreatType.UNKNOWN_ENCRYPTION)
                 riskLevel = RiskLevel.MEDIUM
             }
             EncryptionType.WPS -> {
-                threats.add(SecurityThreat.OUTDATED_SECURITY)
+                threats.add(ThreatType.OUTDATED_PROTOCOL)
                 riskLevel = RiskLevel.MEDIUM
             }
         }
@@ -230,44 +232,41 @@ class SecurityManager @Inject constructor(
                 ssid.matches(Regex(".*\\d{4,}.*")) // Содержит 4+ цифр подряд
     }
     
-    private fun generateRecommendations(threats: List<SecurityThreat>): List<String> {
+    private fun generateRecommendations(threats: List<ThreatType>): List<String> {
         val recommendations = mutableListOf<String>()
         
         threats.forEach { threat ->
             when (threat) {
-                SecurityThreat.OPEN_NETWORK -> {
+                ThreatType.OPEN_NETWORK -> {
                     recommendations.add("Избегайте подключения к открытым сетям без защиты")
                     recommendations.add("Используйте VPN при подключении к открытым сетям")
                 }
-                SecurityThreat.WEAK_ENCRYPTION -> {
+                ThreatType.WEAK_ENCRYPTION -> {
                     recommendations.add("Не подключайтесь к сетям с устаревшим шифрованием WEP")
                 }
-                SecurityThreat.OUTDATED_SECURITY -> {
+                ThreatType.OUTDATED_PROTOCOL -> {
                     recommendations.add("По возможности используйте сети с WPA2 или WPA3")
                 }
-                SecurityThreat.WEAK_SIGNAL -> {
+                ThreatType.WEAK_SIGNAL -> {
                     recommendations.add("Слабый сигнал может указывать на удаленность или проблемы")
                 }
-                SecurityThreat.SUSPICIOUS_NAME -> {
+                ThreatType.SUSPICIOUS_SSID -> {
                     recommendations.add("Будьте осторожны с сетями с подозрительными именами")
                 }
-                SecurityThreat.UNUSUALLY_STRONG_SIGNAL -> {
+                ThreatType.MULTIPLE_DUPLICATES -> {
                     recommendations.add("Необычно сильный сигнал может указывать на поддельную точку доступа")
                 }
-                SecurityThreat.UNKNOWN_SECURITY -> {
+                ThreatType.UNKNOWN_ENCRYPTION -> {
                     recommendations.add("Проверьте тип безопасности сети перед подключением")
                 }
-                SecurityThreat.SUSPICIOUS_MAC_ADDRESS -> {
+                ThreatType.SUSPICIOUS_BSSID -> {
                     recommendations.add("Подозрительный MAC адрес - избегайте подключения")
                 }
-                SecurityThreat.SIGNAL_ANOMALY -> {
+                ThreatType.DUPLICATE_SSID -> {
                     recommendations.add("Аномалия в силе сигнала - возможна поддельная точка доступа")
                 }
-                SecurityThreat.EVIL_TWIN_DETECTED -> {
-                    recommendations.add("Обнаружена возможная Evil Twin атака - НЕ ПОДКЛЮЧАЙТЕСЬ!")
-                }
-                SecurityThreat.ANALYSIS_ERROR -> {
-                    recommendations.add("Ошибка анализа безопасности - обработайте как высокий риск")
+                else -> {
+                    recommendations.add("Обнаружена угроза безопасности")
                 }
             }
         }
@@ -287,25 +286,11 @@ class SecurityManager @Inject constructor(
 data class SecurityAnalysisResult(
     val networkId: String,
     val riskLevel: RiskLevel,
-    val threats: List<SecurityThreat>,
+    val threats: List<ThreatType>,
     val recommendations: List<String>,
     val analysisTimestamp: Long
 )
 
 enum class RiskLevel {
     LOW, MEDIUM, HIGH
-}
-
-enum class SecurityThreat {
-    OPEN_NETWORK,
-    WEAK_ENCRYPTION,
-    OUTDATED_SECURITY,
-    WEAK_SIGNAL,
-    SUSPICIOUS_NAME,
-    UNUSUALLY_STRONG_SIGNAL,
-    UNKNOWN_SECURITY,
-    SUSPICIOUS_MAC_ADDRESS,
-    SIGNAL_ANOMALY,
-    EVIL_TWIN_DETECTED,
-    ANALYSIS_ERROR
 }

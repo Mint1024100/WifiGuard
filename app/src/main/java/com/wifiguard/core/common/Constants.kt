@@ -33,6 +33,12 @@ object Constants {
     const val MIN_SIGNAL_STRENGTH = -100 // dBm
     const val MAX_SIGNAL_STRENGTH = -30 // dBm
     
+    // Encryption
+    const val KEYSTORE_PROVIDER = "AndroidKeyStore"
+    const val AES_KEY_ALIAS = "WifiGuardAESKey"
+    const val HMAC_KEY_ALIAS = "WifiGuardHMACKey"
+    const val WEAK_SIGNAL_THRESHOLD = -80 // dBm
+    
     // Network
     const val SCAN_TIMEOUT_MS = 5000L
     const val MAX_NETWORKS_PER_SCAN = 100

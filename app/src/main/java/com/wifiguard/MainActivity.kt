@@ -83,14 +83,14 @@ class MainActivity : ComponentActivity() {
             // Сразу проверяем разрешения
             checkAndRequestPermissions()
             
-            // Инициализируем фоновый мониторинг
-            setupBackgroundMonitoring()
-            
             setContent {
                 WifiGuardTheme {
                     WifiGuardMainContent()
                 }
             }
+            
+            // Инициализируем фоновый мониторинг только после проверки разрешений
+            // setupBackgroundMonitoring() будет вызван после получения разрешений
         } catch (e: Exception) {
             Log.e(TAG, "❌ Критическая ошибка в onCreate: ${e.message}", e)
             // Graceful fallback
@@ -307,20 +307,24 @@ class MainActivity : ComponentActivity() {
                 return if (allGranted) PermissionState.GRANTED else PermissionState.DENIED
             }
             
-            // ИСПРАВЛЕНО: Улучшенная логика определения permanently denied
-            val hasRationale = criticalPermissions.any { permission ->
-                shouldShowRequestPermissionRationale(permission)
+            // ИСПРАВЛЕНО: Правильная логика определения permanently denied
+            // Если все критические разрешения НЕ предоставлены
+            val allCriticalDenied = criticalPermissions.all { permission ->
+                ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED
             }
             
-            val neverRequested = criticalPermissions.all { permission ->
-                ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED &&
-                !shouldShowRequestPermissionRationale(permission)
+            if (allCriticalDenied) {
+                // Проверяем, нужно ли показывать объяснение (т.е. пользователь отклонил, но не выбрал "не спрашивать")
+                val shouldShowRationale = criticalPermissions.any { permission ->
+                    shouldShowRequestPermissionRationale(permission)
+                }
+                
+                // Если объяснение не нужно показывать, но разрешения не предоставлены - значит "навсегда отклонено"
+                return if (!shouldShowRationale) PermissionState.PERMANENTLY_DENIED else PermissionState.DENIED
             }
             
-            return when {
-                !hasRationale && !neverRequested -> PermissionState.PERMANENTLY_DENIED
-                else -> PermissionState.DENIED
-            }
+            // Если некоторые критические разрешения предоставлены, но не все
+            return PermissionState.DENIED
         } catch (e: Exception) {
             Log.e(TAG, "❌ Ошибка определения состояния разрешений: ${e.message}", e)
             return PermissionState.DENIED
@@ -369,7 +373,13 @@ class MainActivity : ComponentActivity() {
             
             // ИСПРАВЛЕНО: Thread-safe обновление состояния
             lifecycleScope.launch {
-                _permissionState.value = getCurrentPermissionState()
+                val newState = getCurrentPermissionState()
+                _permissionState.value = newState
+                
+                // Запускаем фоновый мониторинг только если все критические разрешения получены
+                if (newState == PermissionState.GRANTED) {
+                    setupBackgroundMonitoring()
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Ошибка обработки результатов разрешений: ${e.message}", e)
@@ -405,6 +415,13 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         Log.d(TAG, "🔄 MainActivity возобновлено")
         checkAndRequestPermissions()
+        
+        // Проверяем, нужно ли запустить фоновый мониторинг (если разрешения получены)
+        lifecycleScope.launch {
+            if (permissionState.value == PermissionState.GRANTED) {
+                setupBackgroundMonitoring()
+            }
+        }
     }
     
     /**
