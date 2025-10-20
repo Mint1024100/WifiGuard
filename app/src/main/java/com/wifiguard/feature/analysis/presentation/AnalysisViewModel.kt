@@ -3,10 +3,12 @@ package com.wifiguard.feature.analysis.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wifiguard.core.domain.repository.WifiRepository
+import com.wifiguard.core.security.SecurityAnalyzer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -15,7 +17,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AnalysisViewModel @Inject constructor(
-    private val wifiRepository: WifiRepository
+    private val wifiRepository: WifiRepository,
+    private val securityAnalyzer: SecurityAnalyzer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalysisUiState())
@@ -31,10 +34,15 @@ class AnalysisViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
                 
                 // Загружаем данные для анализа
-                val recentScans = wifiRepository.getLatestScans(limit = 100)
-                // TODO: Добавить логику анализа безопасности
+                val recentScans = wifiRepository.getLatestScans(limit = 100).first()
                 
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                // Запускаем анализ безопасности
+                val securityReport = securityAnalyzer.analyzeNetworks(recentScans)
+                
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    securityReport = securityReport
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -58,5 +66,6 @@ class AnalysisViewModel @Inject constructor(
  */
 data class AnalysisUiState(
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val securityReport: com.wifiguard.core.security.SecurityReport? = null
 )
