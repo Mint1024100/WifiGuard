@@ -7,7 +7,7 @@ import com.wifiguard.core.domain.model.ThreatSeverity
 import com.wifiguard.core.domain.model.ThreatType
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
-import com.wifiguard.core.security.RiskLevel
+import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -138,10 +138,13 @@ class SecurityAnalysisViewModel @Inject constructor(
                 
                 // Преобразуем результаты SecurityManager в наши угрозы
                 analysisResult.threats.forEach { threatType ->
-                    val threatSeverity = when (analysisResult.riskLevel) {
-                        com.wifiguard.core.security.RiskLevel.LOW -> ThreatSeverity.LOW
-                        com.wifiguard.core.security.RiskLevel.MEDIUM -> ThreatSeverity.MEDIUM
-                        com.wifiguard.core.security.RiskLevel.HIGH -> ThreatSeverity.HIGH
+                    val threatSeverity = when (analysisResult.threatLevel) {
+                        com.wifiguard.core.domain.model.ThreatLevel.SAFE -> ThreatSeverity.LOW
+                        com.wifiguard.core.domain.model.ThreatLevel.LOW -> ThreatSeverity.LOW
+                        com.wifiguard.core.domain.model.ThreatLevel.MEDIUM -> ThreatSeverity.MEDIUM
+                        com.wifiguard.core.domain.model.ThreatLevel.HIGH -> ThreatSeverity.HIGH
+                        com.wifiguard.core.domain.model.ThreatLevel.CRITICAL -> ThreatSeverity.HIGH
+                        com.wifiguard.core.domain.model.ThreatLevel.UNKNOWN -> ThreatSeverity.LOW
                     }
                     
                     val description = getThreatDescription(threatType)

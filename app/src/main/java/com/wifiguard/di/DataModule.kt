@@ -5,6 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.wifiguard.core.common.Constants
+import com.wifiguard.core.security.SecurityAnalyzer
+import com.wifiguard.core.security.ThreatDetector
+import com.wifiguard.core.security.EncryptionAnalyzer
 import com.wifiguard.feature.scanner.data.datasource.WifiDataSource
 import com.wifiguard.feature.scanner.data.datasource.WifiDataSourceImpl
 import com.wifiguard.feature.scanner.data.repository.WifiScannerRepositoryImpl

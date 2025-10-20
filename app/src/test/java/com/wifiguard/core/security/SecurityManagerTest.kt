@@ -1,5 +1,6 @@
 package com.wifiguard.core.security
 
+import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.feature.scanner.domain.model.EncryptionType
 import com.wifiguard.feature.scanner.domain.model.WifiInfo
 import org.junit.Assert.*
@@ -46,9 +47,9 @@ class SecurityManagerTest {
         val result = securityManager.analyzeNetworkSecurity(wifiInfo)
 
         // Then
-        assertEquals("Open network should be high risk", RiskLevel.HIGH, result.riskLevel)
+        assertEquals("Open network should be high risk", ThreatLevel.HIGH, result.threatLevel)
         assertTrue("Should contain open network threat", 
-            result.threats.contains(SecurityThreat.OPEN_NETWORK))
+            result.threats.contains(ThreatType.OPEN_NETWORK))
         assertTrue("Should have recommendations", result.recommendations.isNotEmpty())
     }
 
@@ -65,9 +66,9 @@ class SecurityManagerTest {
         val result = securityManager.analyzeNetworkSecurity(wifiInfo)
 
         // Then
-        assertEquals("WEP network should be high risk", RiskLevel.HIGH, result.riskLevel)
+        assertEquals("WEP network should be high risk", ThreatLevel.HIGH, result.threatLevel)
         assertTrue("Should contain weak encryption threat", 
-            result.threats.contains(SecurityThreat.WEAK_ENCRYPTION))
+            result.threats.contains(ThreatType.WEAK_ENCRYPTION))
     }
 
     @Test
@@ -83,9 +84,9 @@ class SecurityManagerTest {
         val result = securityManager.analyzeNetworkSecurity(wifiInfo)
 
         // Then
-        assertEquals("WPA network should be medium risk", RiskLevel.MEDIUM, result.riskLevel)
-        assertTrue("Should contain outdated security threat", 
-            result.threats.contains(SecurityThreat.OUTDATED_SECURITY))
+        assertEquals("WPA network should be medium risk", ThreatLevel.MEDIUM, result.threatLevel)
+        assertTrue("Should contain outdated protocol threat", 
+            result.threats.contains(ThreatType.OUTDATED_PROTOCOL))
     }
 
     @Test
@@ -101,11 +102,11 @@ class SecurityManagerTest {
         val result = securityManager.analyzeNetworkSecurity(wifiInfo)
 
         // Then
-        assertEquals("WPA2 network should be low risk", RiskLevel.LOW, result.riskLevel)
+        assertEquals("WPA2 network should be low risk", ThreatLevel.LOW, result.threatLevel)
         assertFalse("Should not contain major threats", 
-            result.threats.contains(SecurityThreat.OPEN_NETWORK) ||
-            result.threats.contains(SecurityThreat.WEAK_ENCRYPTION) ||
-            result.threats.contains(SecurityThreat.OUTDATED_SECURITY))
+            result.threats.contains(ThreatType.OPEN_NETWORK) ||
+            result.threats.contains(ThreatType.WEAK_ENCRYPTION) ||
+            result.threats.contains(ThreatType.OUTDATED_PROTOCOL))
     }
 
     @Test
@@ -121,11 +122,11 @@ class SecurityManagerTest {
         val result = securityManager.analyzeNetworkSecurity(wifiInfo)
 
         // Then
-        assertEquals("WPA3 network should be low risk", RiskLevel.LOW, result.riskLevel)
+        assertEquals("WPA3 network should be low risk", ThreatLevel.LOW, result.threatLevel)
         assertFalse("Should not contain major threats", 
-            result.threats.contains(SecurityThreat.OPEN_NETWORK) ||
-            result.threats.contains(SecurityThreat.WEAK_ENCRYPTION) ||
-            result.threats.contains(SecurityThreat.OUTDATED_SECURITY))
+            result.threats.contains(ThreatType.OPEN_NETWORK) ||
+            result.threats.contains(ThreatType.WEAK_ENCRYPTION) ||
+            result.threats.contains(ThreatType.OUTDATED_PROTOCOL))
     }
 
     @Test
@@ -142,7 +143,7 @@ class SecurityManagerTest {
 
         // Then
         assertTrue("Should contain weak signal threat", 
-            result.threats.contains(SecurityThreat.WEAK_SIGNAL))
+            result.threats.contains(ThreatType.WEAK_SIGNAL))
     }
 
     @Test
@@ -159,7 +160,7 @@ class SecurityManagerTest {
 
         // Then
         assertTrue("Should contain suspicious name threat", 
-            result.threats.contains(SecurityThreat.SUSPICIOUS_NAME))
+            result.threats.contains(ThreatType.SUSPICIOUS_SSID))
     }
 
     @Test
@@ -177,7 +178,7 @@ class SecurityManagerTest {
 
         // Then
         assertTrue("Should contain suspicious MAC threat", 
-            result.threats.contains(SecurityThreat.SUSPICIOUS_MAC_ADDRESS))
+            result.threats.contains(ThreatType.SUSPICIOUS_BSSID))
     }
 
     @Test
@@ -193,9 +194,9 @@ class SecurityManagerTest {
         val result = securityManager.analyzeNetworkSecurity(wifiInfo)
 
         // Then
-        assertEquals("Unknown security should be medium risk", RiskLevel.MEDIUM, result.riskLevel)
+        assertEquals("Unknown security should be medium risk", ThreatLevel.MEDIUM, result.threatLevel)
         assertTrue("Should contain unknown security threat", 
-            result.threats.contains(SecurityThreat.UNKNOWN_SECURITY))
+            result.threats.contains(ThreatType.UNKNOWN_ENCRYPTION))
     }
 
     @Test
@@ -230,16 +231,16 @@ class SecurityManagerTest {
         val result = securityManager.analyzeNetworkSecurity(wifiInfo)
 
         // Then
-        assertEquals("Should be high risk with multiple threats", RiskLevel.HIGH, result.riskLevel)
+        assertEquals("Should be high risk with multiple threats", ThreatLevel.HIGH, result.threatLevel)
         assertTrue("Should have multiple threats", result.threats.size > 1)
         assertTrue("Should contain weak encryption", 
-            result.threats.contains(SecurityThreat.WEAK_ENCRYPTION))
+            result.threats.contains(ThreatType.WEAK_ENCRYPTION))
         assertTrue("Should contain suspicious name", 
-            result.threats.contains(SecurityThreat.SUSPICIOUS_NAME))
+            result.threats.contains(ThreatType.SUSPICIOUS_SSID))
         assertTrue("Should contain suspicious MAC", 
-            result.threats.contains(SecurityThreat.SUSPICIOUS_MAC_ADDRESS))
+            result.threats.contains(ThreatType.SUSPICIOUS_BSSID))
         assertTrue("Should contain weak signal", 
-            result.threats.contains(SecurityThreat.WEAK_SIGNAL))
+            result.threats.contains(ThreatType.WEAK_SIGNAL))
     }
 
     @Test

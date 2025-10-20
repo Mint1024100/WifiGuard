@@ -36,35 +36,35 @@ class SecurityManager @Inject constructor(
         
         return try {
             val threats = mutableListOf<ThreatType>()
-            var riskLevel = RiskLevel.LOW
+            var threatLevel = ThreatLevel.LOW
             
             // 1. Анализ типа шифрования
-            analyzeEncryptionType(wifiInfo, threats, riskLevel).let { newRiskLevel ->
-                riskLevel = newRiskLevel
+            analyzeEncryptionType(wifiInfo, threats, threatLevel).let { newThreatLevel ->
+                threatLevel = newThreatLevel
             }
             
             // 2. Проверка MAC адреса на подозрительность
             if (isSuspiciousMacAddress(wifiInfo.bssid)) {
                 threats.add(ThreatType.SUSPICIOUS_BSSID)
-                if (riskLevel == RiskLevel.LOW) riskLevel = RiskLevel.MEDIUM
+                if (threatLevel == ThreatLevel.LOW) threatLevel = ThreatLevel.MEDIUM
             }
             
             // 3. Анализ аномалий сигнала
             if (detectSignalAnomaly(wifiInfo)) {
                 threats.add(ThreatType.MULTIPLE_DUPLICATES) // Using similar type for signal anomaly
-                if (riskLevel == RiskLevel.LOW) riskLevel = RiskLevel.MEDIUM
+                if (threatLevel == ThreatLevel.LOW) threatLevel = ThreatLevel.MEDIUM
             }
             
             // 4. Проверка подозрительных имен сетей
             if (isSuspiciousNetworkName(wifiInfo.ssid)) {
                 threats.add(ThreatType.SUSPICIOUS_SSID)
-                if (riskLevel == RiskLevel.LOW) riskLevel = RiskLevel.MEDIUM
+                if (threatLevel == ThreatLevel.LOW) threatLevel = ThreatLevel.MEDIUM
             }
             
             // 5. Проверка на Evil Twin атаки
             if (detectEvilTwinAttack(wifiInfo)) {
                 threats.add(ThreatType.DUPLICATE_SSID) // Using similar type for evil twin
-                riskLevel = RiskLevel.HIGH
+                threatLevel = ThreatLevel.HIGH
             }
             
             // 6. Обновляем историю сети
@@ -72,7 +72,7 @@ class SecurityManager @Inject constructor(
             
             val result = SecurityAnalysisResult(
                 networkId = wifiInfo.bssid,
-                riskLevel = riskLevel,
+                threatLevel = threatLevel,
                 threats = threats,
                 recommendations = generateRecommendations(threats),
                 analysisTimestamp = System.currentTimeMillis()
@@ -85,7 +85,7 @@ class SecurityManager @Inject constructor(
             Log.e(TAG, "Ошибка при анализе безопасности: ${e.message}", e)
             SecurityAnalysisResult(
                 networkId = wifiInfo.bssid,
-                riskLevel = RiskLevel.HIGH,
+                threatLevel = ThreatLevel.HIGH,
                 threats = listOf(ThreatType.UNKNOWN_THREAT),
                 recommendations = listOf("Анализ безопасности не удался - считать высокий риск"),
                 analysisTimestamp = System.currentTimeMillis()
@@ -96,21 +96,21 @@ class SecurityManager @Inject constructor(
     /**
      * Анализирует тип шифрования и определяет уровень риска
      */
-    private fun analyzeEncryptionType(wifiInfo: WifiInfo, threats: MutableList<ThreatType>, currentRisk: RiskLevel): RiskLevel {
-        var riskLevel = currentRisk
+    private fun analyzeEncryptionType(wifiInfo: WifiInfo, threats: MutableList<ThreatType>, currentRisk: ThreatLevel): ThreatLevel {
+        var threatLevel = currentRisk
         
         when (wifiInfo.encryptionType) {
             EncryptionType.NONE -> {
                 threats.add(ThreatType.OPEN_NETWORK)
-                riskLevel = RiskLevel.HIGH
+                threatLevel = ThreatLevel.HIGH
             }
             EncryptionType.WEP -> {
                 threats.add(ThreatType.WEAK_ENCRYPTION)
-                riskLevel = RiskLevel.HIGH
+                threatLevel = ThreatLevel.HIGH
             }
             EncryptionType.WPA -> {
                 threats.add(ThreatType.OUTDATED_PROTOCOL)
-                riskLevel = RiskLevel.MEDIUM
+                threatLevel = ThreatLevel.MEDIUM
             }
             EncryptionType.WPA2 -> {
                 // WPA2 приемлем, но проверяем другие проблемы
@@ -126,15 +126,15 @@ class SecurityManager @Inject constructor(
             }
             EncryptionType.UNKNOWN -> {
                 threats.add(ThreatType.UNKNOWN_ENCRYPTION)
-                riskLevel = RiskLevel.MEDIUM
+                threatLevel = ThreatLevel.MEDIUM
             }
             EncryptionType.WPS -> {
                 threats.add(ThreatType.OUTDATED_PROTOCOL)
-                riskLevel = RiskLevel.MEDIUM
+                threatLevel = ThreatLevel.MEDIUM
             }
         }
         
-        return riskLevel
+        return threatLevel
     }
     
     /**
@@ -285,12 +285,8 @@ class SecurityManager @Inject constructor(
 
 data class SecurityAnalysisResult(
     val networkId: String,
-    val riskLevel: RiskLevel,
+    val threatLevel: ThreatLevel,
     val threats: List<ThreatType>,
     val recommendations: List<String>,
     val analysisTimestamp: Long
 )
-
-enum class RiskLevel {
-    LOW, MEDIUM, HIGH
-}
