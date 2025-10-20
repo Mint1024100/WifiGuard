@@ -22,14 +22,6 @@ class SettingsRepositoryImpl @Inject constructor(
         settingsDataSource.setAutoScanEnabled(enabled)
     }
 
-    override fun getBackgroundMonitoring(): Flow<Boolean> {
-        return settingsDataSource.getBackgroundMonitoring()
-    }
-
-    override suspend fun setBackgroundMonitoring(enabled: Boolean) {
-        settingsDataSource.setBackgroundMonitoring(enabled)
-    }
-
     override fun getNotificationsEnabled(): Flow<Boolean> {
         return settingsDataSource.getNotificationsEnabled()
     }
@@ -38,27 +30,47 @@ class SettingsRepositoryImpl @Inject constructor(
         settingsDataSource.setNotificationsEnabled(enabled)
     }
 
-    override fun getHighPriorityNotifications(): Flow<Boolean> {
-        return settingsDataSource.getHighPriorityNotifications()
+    override fun getNotificationSoundEnabled(): Flow<Boolean> {
+        return settingsDataSource.getNotificationSoundEnabled()
     }
 
-    override suspend fun setHighPriorityNotifications(enabled: Boolean) {
-        settingsDataSource.setHighPriorityNotifications(enabled)
+    override suspend fun setNotificationSoundEnabled(enabled: Boolean) {
+        settingsDataSource.setNotificationSoundEnabled(enabled)
     }
 
-    override fun getScanInterval(): Flow<Int> {
+    override fun getNotificationVibrationEnabled(): Flow<Boolean> {
+        return settingsDataSource.getNotificationVibrationEnabled()
+    }
+
+    override suspend fun setNotificationVibrationEnabled(enabled: Boolean) {
+        settingsDataSource.setNotificationVibrationEnabled(enabled)
+    }
+
+    override fun getScanIntervalMinutes(): Flow<Int> {
         return settingsDataSource.getScanInterval()
     }
 
-    override suspend fun setScanInterval(intervalMinutes: Int) {
-        settingsDataSource.setScanInterval(intervalMinutes)
+    override suspend fun setScanIntervalMinutes(minutes: Int) {
+        settingsDataSource.setScanInterval(minutes)
     }
 
-    override fun getThreatSensitivity(): Flow<Int> {
-        return settingsDataSource.getThreatSensitivity()
+    override fun getDataRetentionDays(): Flow<Int> {
+        return settingsDataSource.getDataRetentionDays()
     }
 
-    override suspend fun setThreatSensitivity(sensitivity: Int) {
-        settingsDataSource.setThreatSensitivity(sensitivity)
+    override suspend fun setDataRetentionDays(days: Int) {
+        settingsDataSource.setDataRetentionDays(days)
+    }
+
+    override fun getAllSettings(): Flow<com.wifiguard.core.data.preferences.AppSettings> {
+        return settingsDataSource.getAllSettings()
+    }
+
+    override suspend fun updateSettings(settings: com.wifiguard.core.data.preferences.AppSettings) {
+        settingsDataSource.updateSettings(settings)
+    }
+
+    override suspend fun clearAllSettings() {
+        settingsDataSource.clearAllSettings()
     }
 }

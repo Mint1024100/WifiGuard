@@ -29,6 +29,7 @@ data class WifiScanEntity(
     val vendor: String? = null,
     val channel: Int = 0,
     val standard: WifiStandard = WifiStandard.UNKNOWN,
+    val scanType: com.wifiguard.core.domain.model.ScanType = com.wifiguard.core.domain.model.ScanType.MANUAL,
     val securityScore: Int = 0,
     val scanSessionId: String? = null // Для группировки сканирований
 )

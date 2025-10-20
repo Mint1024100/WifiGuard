@@ -3,6 +3,8 @@ package com.wifiguard.core.security
 import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiScanResult
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -227,6 +229,7 @@ class EncryptionAnalyzer @Inject constructor() {
 /**
  * Результат анализа шифрования
  */
+@Parcelize
 data class EncryptionAnalysis(
     val securityType: SecurityType,
     val threats: List<SecurityThreat>,
@@ -234,7 +237,7 @@ data class EncryptionAnalysis(
     val recommendations: List<String>,
     val encryptionStrength: EncryptionStrength,
     val isSecure: Boolean
-)
+) : Parcelable
 
 /**
  * Сила шифрования

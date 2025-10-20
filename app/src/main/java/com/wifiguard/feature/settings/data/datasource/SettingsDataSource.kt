@@ -15,6 +15,12 @@ interface SettingsDataSource {
     fun getNotificationsEnabled(): Flow<Boolean>
     suspend fun setNotificationsEnabled(enabled: Boolean)
     
+    fun getNotificationSoundEnabled(): Flow<Boolean>
+    suspend fun setNotificationSoundEnabled(enabled: Boolean)
+    
+    fun getNotificationVibrationEnabled(): Flow<Boolean>
+    suspend fun setNotificationVibrationEnabled(enabled: Boolean)
+    
     fun getHighPriorityNotifications(): Flow<Boolean>
     suspend fun setHighPriorityNotifications(enabled: Boolean)
     
@@ -23,4 +29,11 @@ interface SettingsDataSource {
     
     fun getThreatSensitivity(): Flow<Int>
     suspend fun setThreatSensitivity(sensitivity: Int)
+    
+    fun getDataRetentionDays(): Flow<Int>
+    suspend fun setDataRetentionDays(days: Int)
+    
+    fun getAllSettings(): Flow<com.wifiguard.core.data.preferences.AppSettings>
+    suspend fun updateSettings(settings: com.wifiguard.core.data.preferences.AppSettings)
+    suspend fun clearAllSettings()
 }

@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.domain.repository.WifiRepository
-import com.wifiguard.di.IoDispatcher
+import com.wifiguard.core.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
@@ -144,15 +144,15 @@ class NetworkDetailsViewModel @Inject constructor(
     private fun calculateSignalAnalytics(scans: List<WifiScanResult>) {
         if (scans.isEmpty()) return
         
-        val signalStrengths = scans.map { it.signalStrength }
+        val signalLevels = scans.map { it.level }
         
         val analytics = SignalAnalytics(
-            averageSignal = signalStrengths.average().toInt(),
-            minSignal = signalStrengths.minOrNull() ?: 0,
-            maxSignal = signalStrengths.maxOrNull() ?: 0,
+            averageSignal = signalLevels.average().toInt(),
+            minSignal = signalLevels.minOrNull() ?: 0,
+            maxSignal = signalLevels.maxOrNull() ?: 0,
             scansCount = scans.size,
             lastScanTime = scans.maxByOrNull { it.timestamp }?.timestamp ?: 0,
-            signalVariation = calculateSignalVariation(signalStrengths)
+            signalVariation = calculateSignalVariation(signalLevels)
         )
         
         _signalAnalytics.value = analytics

@@ -45,7 +45,13 @@ class WifiScannerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun startWifiScan(): Boolean {
+    override suspend fun startScan(): Boolean {
         return wifiScannerService.startScan()
+    }
+
+    override suspend fun stopObserving() {
+        // Currently, the WifiScannerService doesn't have a stop method
+        // The observation is handled automatically through BroadcastReceiver
+        // which is unregistered when the Flow is closed
     }
 }

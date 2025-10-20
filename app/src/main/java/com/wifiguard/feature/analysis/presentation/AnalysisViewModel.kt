@@ -2,7 +2,7 @@ package com.wifiguard.feature.analysis.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wifiguard.core.data.repository.WifiRepository
+import com.wifiguard.core.domain.repository.WifiRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

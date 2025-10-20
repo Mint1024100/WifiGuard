@@ -1,13 +1,13 @@
 [versions]
 # Android & Gradle
-agp = "8.5.0"
+agp = "8.2.2"
 kotlin = "2.0.0"
-compileSdk = "35"
-targetSdk = "35"
+compileSdk = "34"
+targetSdk = "34"
 minSdk = "26"
 
 # Compose
-compose-bom = "2024.06.00"
+compose-bom = "2023.10.01"
 compose-activity = "1.8.2"
 # Compose compiler version is tied to Kotlin version since they're tightly coupled
 
@@ -15,6 +15,9 @@ compose-activity = "1.8.2"
 core-ktx = "1.12.0"
 lifecycle = "2.7.0"
 navigation = "2.7.6"
+
+# Material Design
+material3 = "1.12.0"
 
 # Dependency Injection
 hilt = "2.50"
@@ -45,7 +48,7 @@ mockito = "5.8.0"
 kotlinx-coroutines-test = "1.7.3"
 
 # Plugins
-ksp = "1.9.22-1.0.17"
+ksp = "2.0.0-1.0.24"
 kotlin-serialization = "2.0.0"
 kotlin-parcelize = "2.0.0"
 compose-compiler = "2.0.0"
@@ -69,6 +72,9 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 
 # Compose Compiler - This should match Kotlin version
 androidx-compose-compiler = { group = "androidx.compose.compiler", name = "compiler", version.ref = "kotlin" }
+
+# Material Design 3 (for traditional views)
+material3 = { group = "com.google.android.material", name = "material", version.ref = "material3" }
 
 # Activity Compose
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "compose-activity" }

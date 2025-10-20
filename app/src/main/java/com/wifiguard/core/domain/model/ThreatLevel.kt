@@ -2,11 +2,13 @@ package com.wifiguard.core.domain.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 
 /**
  * Уровни угроз безопасности Wi-Fi сетей
  */
 @Parcelize
+@Serializable
 enum class ThreatLevel : Parcelable {
     SAFE,           // Безопасно
     LOW,            // Низкий риск

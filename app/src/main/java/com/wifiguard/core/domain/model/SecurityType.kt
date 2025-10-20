@@ -2,11 +2,13 @@ package com.wifiguard.core.domain.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 
 /**
  * Типы безопасности Wi-Fi сетей
  */
 @Parcelize
+@Serializable
 enum class SecurityType : Parcelable {
     OPEN,           // Открытая сеть
     WEP,            // WEP (устаревший, небезопасный)
@@ -87,4 +89,21 @@ enum class SecurityType : Parcelable {
             }
         }
     }
+}
+
+/**
+ * Проверить, является ли тип безопасности безопасным
+ */
+fun SecurityType.isSecure(): Boolean {
+    return when (this) {
+        SecurityType.WPA2, SecurityType.WPA3, SecurityType.WPA2_WPA3, SecurityType.EAP -> true
+        else -> false
+    }
+}
+
+/**
+ * Проверить, является ли сеть открытой
+ */
+fun SecurityType.isOpen(): Boolean {
+    return this == SecurityType.OPEN
 }

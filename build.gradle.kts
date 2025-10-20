@@ -24,11 +24,11 @@ subprojects {
     afterEvaluate {
         if (hasProperty("android")) {
             configure<com.android.build.gradle.BaseExtension> {
-                compileSdkVersion(35)
+                compileSdkVersion(34)
                 
                 defaultConfig {
                     minSdk = 26
-                    targetSdk = 35
+                    targetSdk = 34
                     
                     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                     
@@ -47,14 +47,16 @@ subprojects {
         
         // Параметры компиляции Kotlin для всех модулей
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-            kotlinOptions {
-                jvmTarget = "17"
-                freeCompilerArgs += listOf(
-                    "-opt-in=kotlin.RequiresOptIn",
-                    "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                    "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-                    "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-                    "-opt-in=androidx.compose.animation.ExperimentalAnimationApi"
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                freeCompilerArgs.addAll(
+                    listOf(
+                        "-opt-in=kotlin.RequiresOptIn",
+                        "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+                        "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+                        "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+                        "-opt-in=androidx.compose.animation.ExperimentalAnimationApi"
+                    )
                 )
             }
         }

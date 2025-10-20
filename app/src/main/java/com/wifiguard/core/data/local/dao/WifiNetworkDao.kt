@@ -3,6 +3,7 @@ package com.wifiguard.core.data.local.dao
 import androidx.room.*
 import com.wifiguard.core.data.local.entity.WifiNetworkEntity
 import com.wifiguard.core.domain.model.ThreatLevel
+import com.wifiguard.core.domain.model.ThreatLevelCount
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -60,7 +61,7 @@ interface WifiNetworkDao {
      * Получить количество сетей по уровням угроз
      */
     @Query("SELECT threat_level, COUNT(*) as count FROM wifi_networks GROUP BY threat_level")
-    suspend fun getNetworkCountByThreatLevel(): Map<ThreatLevel, Int>
+    suspend fun getNetworkCountByThreatLevel(): List<ThreatLevelCount>
     
     /**
      * Добавить новую сеть

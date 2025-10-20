@@ -119,21 +119,23 @@ fun ScannerScreen(
                 .padding(paddingValues)
         ) {
             // Статус индикатор
+            val currentScanResultForStatus = scanResult
             StatusIndicator(
                 isWifiEnabled = uiState.isWifiEnabled,
-                isScanning = scanResult is Result.Loading,
-                networksCount = if (scanResult is Result.Success) scanResult.data.size else uiState.networks.size,
+                isScanning = currentScanResultForStatus is Result.Loading,
+                networksCount = if (currentScanResultForStatus is Result.Success) currentScanResultForStatus.data.size else uiState.networks.size,
                 lastScanTime = uiState.lastScanTime,
                 modifier = Modifier.padding(16.dp)
             )
             
             // Основной контент
-            when (scanResult) {
+            val currentScanResult = scanResult
+            when (currentScanResult) {
                 is Result.Loading -> {
                     ScanningContent()
                 }
                 is Result.Success -> {
-                    if (scanResult.data.isEmpty()) {
+                    if (currentScanResult.data.isEmpty()) {
                         EmptyContent(
                             isWifiEnabled = uiState.isWifiEnabled,
                             onStartScan = { 
@@ -146,7 +148,7 @@ fun ScannerScreen(
                         )
                     } else {
                         NetworksList(
-                            networks = scanResult.data,
+                            networks = currentScanResult.data,
                             onNetworkClick = { network ->
                                 // TODO: Navigate to network details
                             }
@@ -155,7 +157,7 @@ fun ScannerScreen(
                 }
                 is Result.Error -> {
                     ErrorContent(
-                        error = scanResult.message ?: scanResult.exception.message ?: "Неизвестная ошибка",
+                        error = currentScanResult.message ?: currentScanResult.exception.message ?: "Неизвестная ошибка",
                         onRetry = { 
                             if (viewModel.hasWifiPermissions()) {
                                 viewModel.retry()

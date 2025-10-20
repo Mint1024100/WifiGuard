@@ -3,8 +3,9 @@ package com.wifiguard.feature.scanner.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.domain.model.ScanType
 import com.wifiguard.core.domain.repository.WifiRepository
-import com.wifiguard.di.IoDispatcher
+import com.wifiguard.core.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
@@ -153,7 +154,12 @@ class HistoryViewModel @Inject constructor(
         // Фильтр по типу сканирования
         if (state.scanTypeFilter != ScanTypeFilter.ALL) {
             filtered = filtered.filter { 
-                it.scanType.name == state.scanTypeFilter.name
+                it.scanType == when (state.scanTypeFilter) {
+                    ScanTypeFilter.MANUAL -> ScanType.MANUAL
+                    ScanTypeFilter.AUTOMATIC -> ScanType.AUTOMATIC
+                    ScanTypeFilter.BACKGROUND -> ScanType.BACKGROUND
+                    ScanTypeFilter.ALL -> it.scanType // This case won't be reached due to the condition above
+                }
             }
         }
         
@@ -168,8 +174,8 @@ class HistoryViewModel @Inject constructor(
         return when (state.sortOption) {
             SortOption.TIME_DESC -> filtered.sortedByDescending { it.timestamp }
             SortOption.TIME_ASC -> filtered.sortedBy { it.timestamp }
-            SortOption.SIGNAL_DESC -> filtered.sortedByDescending { it.signalStrength }
-            SortOption.SIGNAL_ASC -> filtered.sortedBy { it.signalStrength }
+            SortOption.SIGNAL_DESC -> filtered.sortedByDescending { it.level }
+            SortOption.SIGNAL_ASC -> filtered.sortedBy { it.level }
             SortOption.SSID_ASC -> filtered.sortedBy { it.ssid }
             SortOption.FREQUENCY_DESC -> filtered.sortedByDescending { it.frequency }
         }
@@ -192,7 +198,7 @@ class HistoryViewModel @Inject constructor(
         val scansLastWeek = scans.count { it.timestamp >= lastWeek }
         
         val uniqueNetworks = scans.distinctBy { it.ssid }.size
-        val averageSignal = scans.map { it.signalStrength }.average().takeIf { !it.isNaN() } ?: 0.0
+        val averageSignal = scans.map { it.level }.average().takeIf { !it.isNaN() } ?: 0.0
         
         val scansByType = scans.groupBy { it.scanType }
             .mapValues { it.value.size }
@@ -254,6 +260,18 @@ enum class SortOption(val displayName: String) {
 }
 
 /**
+ * Преобразовать ScanTypeFilter в ScanType
+ */
+fun ScanTypeFilter.toScanType(): ScanType {
+    return when (this) {
+        ScanTypeFilter.ALL -> ScanType.MANUAL // для случая ALL возвращаем любое значение, т.к. фильтр не применяется
+        ScanTypeFilter.MANUAL -> ScanType.MANUAL
+        ScanTypeFilter.AUTOMATIC -> ScanType.AUTOMATIC
+        ScanTypeFilter.BACKGROUND -> ScanType.BACKGROUND
+    }
+}
+
+/**
  * Статистика сканирования
  */
 data class ScanStatistics(
@@ -262,5 +280,5 @@ data class ScanStatistics(
     val scansLastWeek: Int,
     val uniqueNetworks: Int,
     val averageSignalStrength: Int,
-    val scansByType: Map<WifiScanResult.ScanType, Int>
+    val scansByType: Map<ScanType, Int>
 )

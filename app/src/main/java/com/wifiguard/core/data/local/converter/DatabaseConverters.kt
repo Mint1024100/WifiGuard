@@ -42,6 +42,16 @@ class DatabaseConverters {
     }
     
     @TypeConverter
+    fun fromScanType(scanType: com.wifiguard.core.domain.model.ScanType): String {
+        return scanType.name
+    }
+    
+    @TypeConverter
+    fun toScanType(value: String): com.wifiguard.core.domain.model.ScanType {
+        return com.wifiguard.core.domain.model.ScanType.valueOf(value)
+    }
+    
+    @TypeConverter
     fun fromThreatType(threatType: ThreatType): String {
         return threatType.name
     }
