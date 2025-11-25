@@ -22,7 +22,7 @@ tasks.register("clean", Delete::class) {
 subprojects {
     // Применить общие конфигурации
     afterEvaluate {
-        if (hasProperty("android")) {
+        if (project.hasProperty("android")) {
             configure<com.android.build.gradle.BaseExtension> {
                 compileSdkVersion(34)
                 
@@ -41,6 +41,14 @@ subprojects {
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
+                }
+                
+                // Установка JVM Toolchain для единообразной настройки JVM для всех задач
+                if (project.hasProperty("android")) {
+                    compileOptions {
+                        sourceCompatibility = JavaVersion.VERSION_17
+                        targetCompatibility = JavaVersion.VERSION_17
+                    }
                 }
             }
         }
