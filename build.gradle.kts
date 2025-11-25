@@ -42,14 +42,6 @@ subprojects {
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
                 }
-                
-                // Установка JVM Toolchain для единообразной настройки JVM для всех задач
-                if (project.hasProperty("android")) {
-                    compileOptions {
-                        sourceCompatibility = JavaVersion.VERSION_17
-                        targetCompatibility = JavaVersion.VERSION_17
-                    }
-                }
             }
         }
         
@@ -70,4 +62,3 @@ subprojects {
         }
     }
 }
-
