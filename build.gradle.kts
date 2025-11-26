@@ -16,12 +16,11 @@ tasks.register("clean", Delete::class) {
     delete(rootProject.layout.buildDirectory.get())
 }
 
-
-
 // Конфигурация только для подпроектов
 subprojects {
     // Применить общие конфигурации
     afterEvaluate {
+        // Настройка Android модулей
         if (project.hasProperty("android")) {
             configure<com.android.build.gradle.BaseExtension> {
                 compileSdkVersion(34)
@@ -45,7 +44,13 @@ subprojects {
             }
         }
         
-        // Параметры компиляции Kotlin для всех модулей
+        // Настройка Kotlin для всех модулей
+        // Использование jvmToolchain - самый надежный способ исправить ошибки совместимости Java
+        extensions.findByType<org.jetbrains.kotlin.gradle.dsl.KotlinTopLevelExtension>()?.apply {
+            jvmToolchain(17)
+        }
+        
+        // Дополнительные параметры компиляции
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
             compilerOptions {
                 jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
