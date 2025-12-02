@@ -1,5 +1,9 @@
 package com.wifiguard.feature.about.presentation
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,7 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -31,7 +35,17 @@ import com.wifiguard.R
 fun AboutScreen(
     onBack: () -> Unit
 ) {
-    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+
+    fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            // Handle case where no browser is installed
+            // We could show a toast or dialog here if needed
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -60,12 +74,13 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // App icon and name
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+            Icon(
+                painter = painterResource(id = R.drawable.ic_wifi),
                 contentDescription = "WifiGuard",
                 modifier = Modifier
                     .size(100.dp)
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = 16.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
             
             Text(
@@ -110,14 +125,14 @@ fun AboutScreen(
                     title = "Лицензия",
                     content = "Приложение распространяется под лицензией Apache 2.0."
                 ) {
-                    uriHandler.openUri("https://www.apache.org/licenses/LICENSE-2.0")
+                    openUrl("https://www.apache.org/licenses/LICENSE-2.0")
                 }
-                
+
                 AboutSection(
                     title = "GitHub",
                     content = "Просмотрите исходный код проекта."
                 ) {
-                    uriHandler.openUri("https://github.com/Mint1024100/wifiguard")
+                    openUrl("https://github.com/Mint1024100/wifiguard")
                 }
                 
                 // Contact section
@@ -152,7 +167,7 @@ fun AboutScreen(
                     onClick = { offset ->
                         contactAnnotatedString.getStringAnnotations("email", offset, offset)
                             .firstOrNull()?.let { span ->
-                                uriHandler.openUri(span.item)
+                                openUrl(span.item)
                             }
                     }
                 )
