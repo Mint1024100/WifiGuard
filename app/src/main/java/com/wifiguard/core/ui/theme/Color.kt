@@ -2,63 +2,102 @@ package com.wifiguard.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Material 3 baseline colors (updated with modern palette)
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// ==============================================================================
+// Modern "Cyber Security" Palette
+// Designed for high contrast, professional trust, and modern tech aesthetics.
+// ==============================================================================
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Primary Brand Colors (Blue/Indigo based)
+// Light: Deep, trustworthy blue. Dark: Vibrant, electric blue.
+val TechBluePrimaryLight = Color(0xFF0052CC)
+val TechBluePrimaryDark = Color(0xFF4C9AFF)
+val TechBlueContainerLight = Color(0xFFDEE9FC)
+val TechBlueContainerDark = Color(0xFF003380)
 
-// Modern WifiGuard primary colors - Indigo based for tech security feel
-val WifiGuardPrimary = Color(0xFF3757D4)        // Modern indigo blue
-val WifiGuardPrimaryContainer = Color(0xFFDDE1FF) // Light indigo background
-val WifiGuardOnPrimary = Color(0xFFFFFFFF)       // White text on primary
-val WifiGuardOnPrimaryContainer = Color(0xFF001969) // Dark indigo text
+// Secondary Brand Colors (Cyan/Teal based)
+// Used for accents, actions, and "secure" indicators.
+val CyberCyanSecondaryLight = Color(0xFF008DA6)
+val CyberCyanSecondaryDark = Color(0xFF00D8FF)
+val CyberCyanContainerLight = Color(0xFFE0F7FA)
+val CyberCyanContainerDark = Color(0xFF004D5C)
 
-// Modern WifiGuard secondary colors - Teal for secondary actions
-val WifiGuardSecondary = Color(0xFF006A6D)       // Modern teal
-val WifiGuardSecondaryContainer = Color(0xFF97F3F5) // Light teal background
-val WifiGuardOnSecondary = Color(0xFFFFFFFF)     // White text on secondary
-val WifiGuardOnSecondaryContainer = Color(0xFF002021) // Dark teal text
+// Tertiary Brand Colors (Purple/Violet based)
+// Used for special highlights or "premium" features.
+val DeepPurpleTertiaryLight = Color(0xFF651FFF)
+val DeepPurpleTertiaryDark = Color(0xFFB388FF)
+val DeepPurpleContainerLight = Color(0xFFEDE7F6)
+val DeepPurpleContainerDark = Color(0xFF320B86)
 
-// Modern WifiGuard tertiary colors - Purple for accent elements
-val WifiGuardTertiary = Color(0xFF9A4585)        // Modern purple
-val WifiGuardTertiaryContainer = Color(0xFFFFD8E8) // Light purple background
-val WifiGuardOnTertiary = Color(0xFFFFFFFF)      // White text on tertiary
-val WifiGuardOnTertiaryContainer = Color(0xFF390027) // Dark purple text
+// Neutral / Background Colors
+// Light: Clean, professional gray-white. Dark: Deep, "Github Dimmed" style navy-gray.
+val NeutralBackgroundLight = Color(0xFFF4F5F7)
+val NeutralBackgroundDark = Color(0xFF0D1117)
+val NeutralSurfaceLight = Color(0xFFFFFFFF)
+val NeutralSurfaceDark = Color(0xFF161B22)
 
-// Background and surface colors with modern light/dark theme
-val WifiGuardBackground = Color(0xFFFAF9FF)      // Very light indigo
-val WifiGuardOnBackground = Color(0xFF1A1B1F)    // Dark gray
-val WifiGuardSurface = Color(0xFFFAF9FF)         // Very light indigo
-val WifiGuardOnSurface = Color(0xFF1A1B1F)       // Dark gray
+// Text Colors
+val TextPrimaryLight = Color(0xFF172B4D)
+val TextPrimaryDark = Color(0xFFF0F6FC)
+val TextSecondaryLight = Color(0xFF5E6C84)
+val TextSecondaryDark = Color(0xFF8B949E)
 
-// Error and warning colors - Updated for better accessibility
-val WifiGuardError = Color(0xFFBA1A1A)           // Modern red
-val WifiGuardOnError = Color(0xFFFFFFFF)         // White text on error
-val WifiGuardErrorContainer = Color(0xFFFFDAD6)  // Light red background
-val WifiGuardOnErrorContainer = Color(0xFF410002) // Dark red text
+// Error Colors
+val ErrorLight = Color(0xFFBF2600)
+val ErrorDark = Color(0xFFFF7B72)
+val ErrorContainerLight = Color(0xFFFFEBE6)
+val ErrorContainerDark = Color(0xFF521816)
 
-// Additional modern colors for various UI elements
-val WifiGuardOutline = Color(0xFF747780)         // Medium gray outline
-val WifiGuardInverseOnSurface = Color(0xFFF2F0F4) // Light gray for inverse
-val WifiGuardInverseSurface = Color(0xFF2F3033)  // Dark gray for inverse
-val WifiGuardInversePrimary = Color(0xFFB9C3FF)  // Light indigo for inverse
+// ==============================================================================
+// Status Indicators (Signals, Security)
+// ==============================================================================
 
-// Modern security level colors - Updated for better visual hierarchy
-val SecuritySafe = Color(0xFF2E7D32)            // Deeper green (safe)
-val SecurityLow = Color(0xFF558B2F)             // Medium green (low)
-val SecurityMedium = Color(0xFFF57C00)           // Deep orange (medium)
-val SecurityHigh = Color(0xFFFF5722)             // Red-orange (high)
-val SecurityCritical = Color(0xFFB71C1C)         // Deeper red (critical)
-val SecurityUnknown = Color(0xFF757575)          // Medium gray (unknown)
+// Security Levels
+val SecuritySafe = Color(0xFF008DA6)      // Cyan/Teal
+val SecurityLow = Color(0xFF36B37E)       // Green
+val SecurityMedium = Color(0xFFFFAB00)    // Amber
+val SecurityHigh = Color(0xFFFF5630)      // Orange-Red
+val SecurityCritical = Color(0xFFBF2600)  // Deep Red
+val SecurityUnknown = Color(0xFF6B778C)   // Slate Gray
 
-// Modern signal strength colors - More harmonious palette
-val SignalExcellent = Color(0xFF2E7D32)          // Deeper green
-val SignalGood = Color(0xFF558B2F)               // Medium green
-val SignalFair = Color(0xFFF57C00)               // Deep orange
-val SignalWeak = Color(0xFFFFA000)               // Orange
-val SignalVeryWeak = Color(0xFFF4511E)           // Deep orange-red
-val SignalCritical = Color(0xFFBF360C)           // Deeper red
+// Signal Strength (distinct from security to avoid confusion, but harmonious)
+val SignalExcellent = Color(0xFF00A3BF)
+val SignalGood = Color(0xFF36B37E)
+val SignalFair = Color(0xFFFFAB00)
+val SignalWeak = Color(0xFFFF8B00)
+val SignalVeryWeak = Color(0xFFFF5630)
+val SignalCritical = Color(0xFFBF2600)
+
+// Outline & Dividers
+val OutlineLight = Color(0xFFDFE1E6)
+val OutlineDark = Color(0xFF30363D)
+
+// Mapping to Generic Names for Theme.kt
+val WifiGuardPrimary = TechBluePrimaryLight
+val WifiGuardPrimaryContainer = TechBlueContainerLight
+val WifiGuardOnPrimary = Color.White
+val WifiGuardOnPrimaryContainer = Color(0xFF002561)
+
+val WifiGuardSecondary = CyberCyanSecondaryLight
+val WifiGuardSecondaryContainer = CyberCyanContainerLight
+val WifiGuardOnSecondary = Color.White
+val WifiGuardOnSecondaryContainer = Color(0xFF003642)
+
+val WifiGuardTertiary = DeepPurpleTertiaryLight
+val WifiGuardTertiaryContainer = DeepPurpleContainerLight
+val WifiGuardOnTertiary = Color.White
+val WifiGuardOnTertiaryContainer = Color(0xFF20005F)
+
+val WifiGuardBackground = NeutralBackgroundLight
+val WifiGuardOnBackground = TextPrimaryLight
+val WifiGuardSurface = NeutralSurfaceLight
+val WifiGuardOnSurface = TextPrimaryLight
+
+val WifiGuardError = ErrorLight
+val WifiGuardOnError = Color.White
+val WifiGuardErrorContainer = ErrorContainerLight
+val WifiGuardOnErrorContainer = Color(0xFF420D04)
+
+val WifiGuardOutline = OutlineLight
+val WifiGuardInverseOnSurface = TextPrimaryDark
+val WifiGuardInverseSurface = NeutralSurfaceDark
+val WifiGuardInversePrimary = TechBluePrimaryDark

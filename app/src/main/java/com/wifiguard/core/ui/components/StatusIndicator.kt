@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.*
+import com.wifiguard.core.ui.theme.*
 
 /**
  * Индикатор статуса Wi-Fi сканирования
@@ -30,8 +31,11 @@ fun StatusIndicator(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -44,20 +48,20 @@ fun StatusIndicator(
                     imageVector = if (isWifiEnabled) Icons.Default.Wifi else Icons.Default.WifiOff,
                     contentDescription = null,
                     tint = if (isWifiEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 
                 Text(
                     text = if (isWifiEnabled) "Wi-Fi включен" else "Wi-Fi отключен",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (isWifiEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
             // Статус сканирования
             Row(
@@ -65,7 +69,7 @@ fun StatusIndicator(
             ) {
                 if (isScanning) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -73,12 +77,12 @@ fun StatusIndicator(
                     Icon(
                         imageVector = if (networksCount > 0) Icons.Default.CheckCircle else Icons.Default.Error,
                         contentDescription = null,
-                        tint = if (networksCount > 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
+                        tint = if (networksCount > 0) SecuritySafe else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
                 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 
                 Text(
                     text = if (isScanning) "Сканирование..." else "Найдено сетей: $networksCount",
@@ -89,10 +93,10 @@ fun StatusIndicator(
             
             // Время последнего сканирования
             if (lastScanTime != null && !isScanning) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Последнее сканирование: ${formatTime(lastScanTime)}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

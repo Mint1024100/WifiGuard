@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -22,9 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 val Shapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),      // For small elements like checkboxes
     small = RoundedCornerShape(8.dp),           // For buttons and small cards
-    medium = RoundedCornerShape(12.dp),         // For standard cards and dialogs
-    large = RoundedCornerShape(16.dp),          // For larger containers and sheets
-    extraLarge = RoundedCornerShape(28.dp)      // For bottom sheets and special elements
+    medium = RoundedCornerShape(16.dp),         // For standard cards and dialogs (Increased from 12dp)
+    large = RoundedCornerShape(24.dp),          // For larger containers and sheets (Increased from 16dp)
+    extraLarge = RoundedCornerShape(32.dp)      // For bottom sheets and special elements (Increased from 28dp)
 )
 
 // Modern elevation system with consistent shadow effects
@@ -41,58 +42,62 @@ object WifiGuardElevation {
 
 // Modern light color scheme
 private val LightColorScheme = lightColorScheme(
-    primary = WifiGuardPrimary,
-    onPrimary = WifiGuardOnPrimary,
-    primaryContainer = WifiGuardPrimaryContainer,
-    onPrimaryContainer = WifiGuardOnPrimaryContainer,
-    secondary = WifiGuardSecondary,
-    onSecondary = WifiGuardOnSecondary,
-    secondaryContainer = WifiGuardSecondaryContainer,
-    onSecondaryContainer = WifiGuardOnSecondaryContainer,
-    tertiary = WifiGuardTertiary,
-    onTertiary = WifiGuardOnTertiary,
-    tertiaryContainer = WifiGuardTertiaryContainer,
-    onTertiaryContainer = WifiGuardOnTertiaryContainer,
-    background = WifiGuardBackground,
-    onBackground = WifiGuardOnBackground,
-    surface = WifiGuardSurface,
-    onSurface = WifiGuardOnSurface,
-    error = WifiGuardError,
-    onError = WifiGuardOnError,
-    errorContainer = WifiGuardErrorContainer,
-    onErrorContainer = WifiGuardOnErrorContainer,
-    outline = WifiGuardOutline,
-    inverseOnSurface = WifiGuardInverseOnSurface,
-    inverseSurface = WifiGuardInverseSurface,
-    inversePrimary = WifiGuardInversePrimary,
+    primary = TechBluePrimaryLight,
+    onPrimary = Color.White,
+    primaryContainer = TechBlueContainerLight,
+    onPrimaryContainer = Color(0xFF002561),
+    secondary = CyberCyanSecondaryLight,
+    onSecondary = Color.White,
+    secondaryContainer = CyberCyanContainerLight,
+    onSecondaryContainer = Color(0xFF003642),
+    tertiary = DeepPurpleTertiaryLight,
+    onTertiary = Color.White,
+    tertiaryContainer = DeepPurpleContainerLight,
+    onTertiaryContainer = Color(0xFF20005F),
+    background = NeutralBackgroundLight,
+    onBackground = TextPrimaryLight,
+    surface = NeutralSurfaceLight,
+    onSurface = TextPrimaryLight,
+    surfaceVariant = Color(0xFFE1E3E8), // Slightly darker surface for cards/inputs
+    onSurfaceVariant = TextSecondaryLight,
+    error = ErrorLight,
+    onError = Color.White,
+    errorContainer = ErrorContainerLight,
+    onErrorContainer = Color(0xFF420D04),
+    outline = OutlineLight,
+    inverseOnSurface = TextPrimaryDark,
+    inverseSurface = NeutralSurfaceDark,
+    inversePrimary = TechBluePrimaryDark,
 )
 
 // Modern dark color scheme
 private val DarkColorScheme = darkColorScheme(
-    primary = WifiGuardPrimary,
-    onPrimary = WifiGuardOnPrimary,
-    primaryContainer = WifiGuardPrimaryContainer,
-    onPrimaryContainer = WifiGuardOnPrimaryContainer,
-    secondary = WifiGuardSecondary,
-    onSecondary = WifiGuardOnSecondary,
-    secondaryContainer = WifiGuardSecondaryContainer,
-    onSecondaryContainer = WifiGuardOnSecondaryContainer,
-    tertiary = WifiGuardTertiary,
-    onTertiary = WifiGuardOnTertiary,
-    tertiaryContainer = WifiGuardTertiaryContainer,
-    onTertiaryContainer = WifiGuardOnTertiaryContainer,
-    background = WifiGuardBackground,
-    onBackground = WifiGuardOnBackground,
-    surface = WifiGuardSurface,
-    onSurface = WifiGuardOnSurface,
-    error = WifiGuardError,
-    onError = WifiGuardOnError,
-    errorContainer = WifiGuardErrorContainer,
-    onErrorContainer = WifiGuardOnErrorContainer,
-    outline = WifiGuardOutline,
-    inverseOnSurface = WifiGuardInverseOnSurface,
-    inverseSurface = WifiGuardInverseSurface,
-    inversePrimary = WifiGuardInversePrimary,
+    primary = TechBluePrimaryDark,
+    onPrimary = Color(0xFF002561), // Dark text on light primary in dark mode? No, usually dark mode primary is light.
+    primaryContainer = TechBlueContainerDark,
+    onPrimaryContainer = Color(0xFFDEE9FC),
+    secondary = CyberCyanSecondaryDark,
+    onSecondary = Color(0xFF003642),
+    secondaryContainer = CyberCyanContainerDark,
+    onSecondaryContainer = Color(0xFFE0F7FA),
+    tertiary = DeepPurpleTertiaryDark,
+    onTertiary = Color(0xFF20005F),
+    tertiaryContainer = DeepPurpleContainerDark,
+    onTertiaryContainer = Color(0xFFEDE7F6),
+    background = NeutralBackgroundDark,
+    onBackground = TextPrimaryDark,
+    surface = NeutralSurfaceDark,
+    onSurface = TextPrimaryDark,
+    surfaceVariant = Color(0xFF21262D), // Slightly lighter surface for cards/inputs
+    onSurfaceVariant = TextSecondaryDark,
+    error = ErrorDark,
+    onError = Color(0xFF420D04),
+    errorContainer = ErrorContainerDark,
+    onErrorContainer = Color(0xFFFFEBE6),
+    outline = OutlineDark,
+    inverseOnSurface = TextPrimaryLight,
+    inverseSurface = NeutralSurfaceLight,
+    inversePrimary = TechBluePrimaryLight,
 )
 
 @Composable
@@ -116,7 +121,7 @@ fun WifiGuardTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb() // Match background for seamless look
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
