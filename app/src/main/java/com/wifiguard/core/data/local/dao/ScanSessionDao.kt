@@ -13,6 +13,9 @@ interface ScanSessionDao {
     
     @Query("SELECT * FROM scan_sessions ORDER BY startTimestamp DESC")
     fun getAllSessions(): Flow<List<ScanSessionEntity>>
+
+    @Query("SELECT * FROM scan_sessions")
+    suspend fun getAllScanSessionsSuspend(): List<ScanSessionEntity>
     
     @Query("SELECT * FROM scan_sessions WHERE sessionId = :sessionId")
     suspend fun getSessionById(sessionId: String): ScanSessionEntity?

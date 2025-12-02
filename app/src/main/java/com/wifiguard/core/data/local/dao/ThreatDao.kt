@@ -14,6 +14,9 @@ interface ThreatDao {
     
     @Query("SELECT * FROM threats ORDER BY timestamp DESC")
     fun getAllThreats(): Flow<List<ThreatEntity>>
+
+    @Query("SELECT * FROM threats")
+    suspend fun getAllThreatsSuspend(): List<ThreatEntity>
     
     @Query("SELECT * FROM threats WHERE scanId = :scanId ORDER BY timestamp DESC")
     fun getThreatsByScanId(scanId: Long): Flow<List<ThreatEntity>>
@@ -98,6 +101,18 @@ interface ThreatDao {
     
     @Query("UPDATE threats SET isResolved = 0, resolutionTimestamp = NULL, resolutionNote = NULL WHERE id = :threatId")
     suspend fun unresolveThreat(threatId: Long)
+    
+    @Query("SELECT * FROM threats WHERE isNotified = 0 AND severity = 'CRITICAL' ORDER BY timestamp DESC")
+    suspend fun getCriticalUnnotifiedThreats(): List<ThreatEntity>
+    
+    @Query("UPDATE threats SET isNotified = 1 WHERE id = :threatId")
+    suspend fun markThreatAsNotified(threatId: Long)
+    
+    @Query("UPDATE threats SET isNotified = 1 WHERE scanId = :scanId")
+    suspend fun markThreatsAsNotifiedForScan(scanId: Long)
+    
+    @Query("SELECT * FROM threats WHERE isNotified = 0 ORDER BY timestamp DESC")
+    suspend fun getUnnotifiedThreats(): List<ThreatEntity>
     
     // Статистические запросы
     @Query("""

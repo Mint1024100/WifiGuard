@@ -74,8 +74,8 @@ class WifiScannerService @Inject constructor(
     }
     
     /**
-     * Получает результаты последнего сканирования
-     * @return список результатов сканирования
+     * Получает результаты последнего сканирования как feature доменные модели
+     * @return список результатов сканирования как WifiInfo
      */
     fun getScanResults(): List<WifiInfo> {
         return try {
@@ -90,6 +90,37 @@ class WifiScannerService @Inject constructor(
             scanResults.mapNotNull { scanResult ->
                 try {
                     scanResultToWifiInfo(scanResult)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка преобразования результата сканирования: ${e.message}")
+                    null
+                }
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Нет разрешений для получения результатов сканирования", e)
+            emptyList()
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при получении результатов сканирования", e)
+            emptyList()
+        }
+    }
+    
+    /**
+     * Получает результаты последнего сканирования как core доменные модели
+     * @return список результатов сканирования как WifiScanResult
+     */
+    fun getScanResultsAsCoreModels(): List<WifiScanResult> {
+        return try {
+            if (!wifiManager.isWifiEnabled) {
+                Log.w(TAG, "WiFi отключен")
+                return emptyList()
+            }
+            
+            val scanResults = wifiManager.scanResults
+            Log.d(TAG, "Получено ${scanResults.size} результатов сканирования")
+            
+            scanResults.mapNotNull { scanResult ->
+                try {
+                    scanResultToWifiScanResult(scanResult)
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка преобразования результата сканирования: ${e.message}")
                     null
@@ -424,5 +455,3 @@ class WifiScannerService @Inject constructor(
         }
     }
 }
-
-

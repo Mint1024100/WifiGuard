@@ -21,22 +21,22 @@ subprojects {
     // Применить общие конфигурации
     afterEvaluate {
         // Настройка Android модулей
-        if (project.hasProperty("android")) {
+        if (project.extensions.findByName("android") != null) {
             configure<com.android.build.gradle.BaseExtension> {
-                compileSdkVersion(34)
-                
+                compileSdkVersion(35)
+
                 defaultConfig {
                     minSdk = 26
-                    targetSdk = 34
-                    
+                    targetSdk = 35
+
                     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-                    
+
                     // Поддержка векторных рисунков
                     vectorDrawables {
                         useSupportLibrary = true
                     }
                 }
-                
+
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
@@ -46,7 +46,7 @@ subprojects {
         
         // Настройка Kotlin для всех модулей
         // Использование jvmToolchain - самый надежный способ исправить ошибки совместимости Java
-        extensions.findByType<org.jetbrains.kotlin.gradle.dsl.KotlinTopLevelExtension>()?.apply {
+        extensions.findByType<org.jetbrains.kotlin.gradle.dsl.KotlinBaseExtension>()?.apply {
             jvmToolchain(17)
         }
         

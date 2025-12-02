@@ -27,7 +27,7 @@ import com.wifiguard.core.data.local.entity.WifiScanEntity
         ThreatEntity::class,
         ScanSessionEntity::class
     ],
-    version = 4,  // Обновленная версия с учетом миграций
+    version = 5,  // Обновленная версия с учетом миграций
     exportSchema = true  // ЭКСПОРТИРОВАТЬ СХЕМУ ДЛЯ ОТСЛЕЖИВАНИЯ ИЗМЕНЕНИЙ
 )
 @TypeConverters(DatabaseConverters::class)
@@ -75,11 +75,16 @@ abstract class WifiGuardDatabase : RoomDatabase() {
         }
         
         /**
-         * Миграция с версии 3 на 4 (пример)
-         * Создание новой таблицы
+         * Миграция с версии 3 на 4
+         * Добавление поля isNotified в таблицу threats и создание новой таблицы
          */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(database: SupportSQLiteDatabase) {
+                // Добавление поля isNotified в таблицу threats
+                database.execSQL(
+                    "ALTER TABLE threats ADD COLUMN isNotified INTEGER NOT NULL DEFAULT 0"
+                )
+                
                 // Пример: создание таблицы для настроек
                 database.execSQL(
                     """
@@ -134,7 +139,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     // Добавляйте новые миграции по мере необходимости
                 )
                 // ВАЖНО: Не использовать fallbackToDestructiveMigration в production!
-                // .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

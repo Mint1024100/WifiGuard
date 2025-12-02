@@ -1,0 +1,43 @@
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                val keystoreFile = file(keystoreProperties["storeFile"] as String)
+                if (keystoreFile.exists()) {
+                    storeFile = keystoreFile
+                    storePassword = keystoreProperties["storePassword"] as String
+                    keyAlias = keystoreProperties["keyAlias"] as String
+                    keyPassword = keystoreProperties["keyPassword"] as String
+                } else {
+                    println("WARNING: Keystore file not found: ${'$'}keystoreFile.absolutePath}")
+                }
+            } else {
+                println("WARNING: Keystore properties file not found: ${'$'}keystorePropertiesFile.absolutePath}")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-DEBUG"
+            isDebuggable = true
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("debug")
+        }
+        
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            // Использовать release signing, если keystore доступен
+            if (keystorePropertiesFile.exists() && file(keystoreProperties["storeFile"] as String).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                println("WARNING: Release signing configuration not available, using debug signing for release build")
+                signingConfig = signingConfigs.findByName("debug")
+            }
+        }
+    }

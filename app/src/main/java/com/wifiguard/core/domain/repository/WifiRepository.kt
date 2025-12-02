@@ -85,4 +85,9 @@ interface WifiRepository {
      * @return Flow со списком подозрительных сетей
      */
     fun getSuspiciousNetworks(): Flow<List<WifiNetwork>>
+
+    /**
+     * Очистить все данные, связанные с Wi-Fi сетями, сканированиями и угрозами.
+     */
+    suspend fun clearAllData()
 }

@@ -9,17 +9,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wifiguard.core.common.PermissionHandler
 import com.wifiguard.core.common.Result
+import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.ui.components.NetworkCard
 import com.wifiguard.core.ui.components.PermissionRationaleDialog
 import com.wifiguard.core.ui.components.StatusIndicator
@@ -37,6 +41,7 @@ fun ScannerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val permissionState by viewModel.permissionState.collectAsState()
     val scanResult by viewModel.scanResult.collectAsState()
+    val currentNetwork by viewModel.currentNetwork.collectAsState()
     val context = LocalContext.current
 
     var showPermissionDialog by remember { mutableStateOf(false) }
@@ -128,6 +133,100 @@ fun ScannerScreen(
                 modifier = Modifier.padding(16.dp)
             )
             
+            // Отображение текущей подключенной сети
+            currentNetwork?.let { network ->
+                // Показывать только если есть подключенная сеть
+                if (network.isConnected) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Подключенная сеть",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Отображение информации о текущей сети
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Wifi,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = network.ssid.ifEmpty { "Скрытая сеть" },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Сигнал и безопасность
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Сигнал: ${network.getSignalStrengthDescription()}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                Text(
+                                    text = getSecurityTypeText(network.securityType),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // Частота и канал
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Частота: ${network.frequency} МГц",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                if (network.channel > 0) {
+                                    Text(
+                                        text = "Канал: ${network.channel}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Основной контент
             val currentScanResult = scanResult
             when (currentScanResult) {
@@ -147,11 +246,19 @@ fun ScannerScreen(
                             }
                         )
                     } else {
+                        // Фильтруем результаты сканирования, исключая текущую подключенную сеть если она есть
+                        val filteredNetworks = if (currentNetwork != null) {
+                            currentScanResult.data.filter { it.bssid != currentNetwork?.bssid }
+                        } else {
+                            currentScanResult.data
+                        }
+                        
                         NetworksList(
-                            networks = currentScanResult.data,
+                            networks = filteredNetworks,
                             onNetworkClick = { network ->
                                 // TODO: Navigate to network details
-                            }
+                            },
+                            currentConnectedBssid = currentNetwork?.bssid
                         )
                     }
                 }
@@ -264,7 +371,8 @@ private fun EmptyContent(
 @Composable
 private fun NetworksList(
     networks: List<com.wifiguard.core.domain.model.WifiScanResult>,
-    onNetworkClick: (com.wifiguard.core.domain.model.WifiScanResult) -> Unit
+    onNetworkClick: (com.wifiguard.core.domain.model.WifiScanResult) -> Unit,
+    currentConnectedBssid: String? = null
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -277,8 +385,22 @@ private fun NetworksList(
         ) { network ->
             NetworkCard(
                 network = network,
-                onClick = { onNetworkClick(network) }
+                onClick = { onNetworkClick(network) },
+                isCurrentNetwork = network.bssid == currentConnectedBssid
             )
         }
+    }
+}
+
+private fun getSecurityTypeText(securityType: com.wifiguard.core.domain.model.SecurityType): String {
+    return when (securityType) {
+        com.wifiguard.core.domain.model.SecurityType.OPEN -> "Открытая"
+        com.wifiguard.core.domain.model.SecurityType.WEP -> "WEP"
+        com.wifiguard.core.domain.model.SecurityType.WPA -> "WPA"
+        com.wifiguard.core.domain.model.SecurityType.WPA2 -> "WPA2"
+        com.wifiguard.core.domain.model.SecurityType.WPA3 -> "WPA3"
+        com.wifiguard.core.domain.model.SecurityType.WPA2_WPA3 -> "WPA2/WPA3"
+        com.wifiguard.core.domain.model.SecurityType.EAP -> "EAP"
+        com.wifiguard.core.domain.model.SecurityType.UNKNOWN -> "Неизвестно"
     }
 }

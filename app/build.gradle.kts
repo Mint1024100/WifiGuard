@@ -35,9 +35,12 @@ android {
         }
         
         // Поля BuildConfig для URL, чувствительных к безопасности
-        buildConfigField("String", "API_BASE_URL", "\"http://localhost:8080/api/\"")
-        buildConfigField("String", "SECURE_API_URL", "\"http://localhost:8080/secure/\"")
-        buildConfigField("String", "ANALYTICS_API_URL", "\"http://localhost:8080/analytics/\"")
+        buildConfigField("String", "API_BASE_URL",
+            "\"${project.findProperty("API_BASE_URL") ?: "https://api.example.com/api/"}\"")
+        buildConfigField("String", "SECURE_API_URL",
+            "\"${project.findProperty("SECURE_API_URL") ?: "https://api.example.com/secure/"}\"")
+        buildConfigField("String", "ANALYTICS_API_URL",
+            "\"${project.findProperty("ANALYTICS_API_URL") ?: "https://api.example.com/analytics/"}\"")
         buildConfigField("String", "API_VERSION", "\"v1\"")
         buildConfigField("boolean", "ENABLE_CRASHLYTICS", "false")
         buildConfigField("boolean", "ENABLE_ANALYTICS", "false")
@@ -46,10 +49,17 @@ android {
     signingConfigs {
         create("release") {
             if (keystorePropertiesFile.exists()) {
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
+                val keystoreFile = file(keystoreProperties["storeFile"] as String)
+                if (keystoreFile.exists()) {
+                    storeFile = keystoreFile
+                    storePassword = keystoreProperties["storePassword"] as String
+                    keyAlias = keystoreProperties["keyAlias"] as String
+                    keyPassword = keystoreProperties["keyPassword"] as String
+                } else {
+                    println("WARNING: Keystore file not found: ${keystoreFile.absolutePath}")
+                }
+            } else {
+                println("WARNING: Keystore properties file not found: ${keystorePropertiesFile.absolutePath}")
             }
         }
     }
@@ -60,6 +70,7 @@ android {
             versionNameSuffix = "-DEBUG"
             isDebuggable = true
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("debug")
         }
         
         release {
@@ -69,8 +80,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // КРИТИЧНО: Использовать production signing
-            signingConfig = signingConfigs.getByName("release")
+            // Использовать release signing, если keystore доступен
+            if (keystorePropertiesFile.exists() && file(keystoreProperties["storeFile"] as String).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                println("WARNING: Release signing configuration not available, using debug signing for release build")
+                signingConfig = signingConfigs.findByName("debug")
+            }
         }
     }
     
@@ -78,7 +94,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    
+
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -97,17 +113,19 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/INDEX.LIST"
             excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/gradle/incremental.annotation.processors"
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
     
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
-        arg("room.incremental", "false")  // Disable room incremental to avoid issues
+        arg("room.incremental", "false")
         arg("room.expandProjection", "true")
-        // Disable incremental processing to avoid type resolution issues
         arg("ksp.incremental", "false")
         arg("ksp.incremental.log", "true")
-        // Allow KSP to process all source sets
         arg("ksp.allow.all.target.source.sets", "true")
     }
 }
@@ -153,8 +171,13 @@ dependencies {
     // Безопасность
     implementation(libs.androidx.security.crypto)
     
-    // Material Design 3
-    implementation(libs.material3)
+    // Material Design 3 (for XML themes)
+    implementation(libs.material)
+    
+    // Gson
+    implementation(libs.gson)
+    
+
     
     // Тестирование
     testImplementation(libs.bundles.testing)

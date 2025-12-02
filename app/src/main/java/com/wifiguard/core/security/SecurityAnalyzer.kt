@@ -3,6 +3,8 @@ package com.wifiguard.core.security
 import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.domain.model.SecurityThreat
+import com.wifiguard.core.domain.model.ThreatType
 import javax.inject.Inject
 import javax.inject.Singleton
 

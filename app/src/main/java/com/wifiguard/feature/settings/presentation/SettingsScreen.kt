@@ -1,5 +1,7 @@
 package com.wifiguard.feature.settings.presentation
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,20 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json"),
+        onResult = { uri ->
+            uri?.let { viewModel.exportData(it) }
+        }
+    )
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            uri?.let { viewModel.importData(it) }
+        }
+    )
     
     Scaffold(
         topBar = {
@@ -94,19 +110,19 @@ fun SettingsScreen(
                     SettingsItem(
                         title = "Экспорт данных",
                         subtitle = "Сохранить историю сканирований",
-                        onClick = { /* TODO: Export data */ }
+                        onClick = { exportLauncher.launch("wifiguard_backup.json") }
                     )
                     
                     SettingsItem(
                         title = "Импорт данных",
                         subtitle = "Загрузить историю сканирований",
-                        onClick = { /* TODO: Import data */ }
+                        onClick = { importLauncher.launch("application/json") }
                     )
                     
                     SettingsItem(
                         title = "Очистить данные",
                         subtitle = "Удалить всю историю сканирований",
-                        onClick = { /* TODO: Clear data */ }
+                        onClick = { viewModel.clearAllData() }
                     )
                 }
             }

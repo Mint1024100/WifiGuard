@@ -3,6 +3,7 @@ package com.wifiguard.core.security
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.ThreatType
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.domain.model.SecurityThreat
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
@@ -118,39 +119,3 @@ data class NetworkSecurityAnalysis(
         }
     }
 }
-
-/**
- * Угроза безопасности
- */
-@Parcelize
-data class SecurityThreat(
-    val type: ThreatType,
-    val severity: ThreatLevel,
-    val description: String,
-    val networkSsid: String,
-    val networkBssid: String,
-    val additionalInfo: String? = null,
-    val timestamp: Long = System.currentTimeMillis()
-) : Parcelable {
-    
-    /**
-     * Получить краткое описание угрозы
-     */
-    fun getShortDescription(): String {
-        return when (type) {
-            ThreatType.OPEN_NETWORK -> "Открытая сеть"
-            ThreatType.WEAK_ENCRYPTION -> "Слабое шифрование"
-            ThreatType.DUPLICATE_SSID -> "Дублирующийся SSID"
-            ThreatType.SUSPICIOUS_SSID -> "Подозрительное имя"
-            ThreatType.WPS_VULNERABILITY -> "Уязвимость WPS"
-            ThreatType.WEAK_SIGNAL -> "Слабый сигнал"
-            ThreatType.UNKNOWN_ENCRYPTION -> "Неизвестное шифрование"
-            ThreatType.MULTIPLE_DUPLICATES -> "Множественные дубликаты"
-            ThreatType.SUSPICIOUS_ACTIVITY -> "Подозрительная активность"
-            ThreatType.SUSPICIOUS_BSSID -> "Подозрительный MAC-адрес"
-            else -> "Неизвестная угроза"
-        }
-    }
-}
-
-

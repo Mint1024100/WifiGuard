@@ -3,6 +3,8 @@ package com.wifiguard.core.security
 import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.domain.model.SecurityThreat
+import com.wifiguard.core.domain.model.ThreatType
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import javax.inject.Inject
@@ -27,6 +29,7 @@ class EncryptionAnalyzer @Inject constructor() {
             SecurityType.OPEN -> {
                 threats.add(
                     SecurityThreat(
+                        id = 0, // ID будет установлен при сохранении в БД
                         type = ThreatType.OPEN_NETWORK,
                         severity = ThreatLevel.CRITICAL,
                         description = "Сеть без шифрования",
@@ -41,6 +44,7 @@ class EncryptionAnalyzer @Inject constructor() {
             SecurityType.WEP -> {
                 threats.add(
                     SecurityThreat(
+                        id = 0, // ID будет установлен при сохранении в БД
                         type = ThreatType.WEAK_ENCRYPTION,
                         severity = ThreatLevel.HIGH,
                         description = "Устаревшее шифрование WEP",
@@ -57,6 +61,7 @@ class EncryptionAnalyzer @Inject constructor() {
             SecurityType.WPA -> {
                 threats.add(
                     SecurityThreat(
+                        id = 0, // ID будет установлен при сохранении в БД
                         type = ThreatType.WEAK_ENCRYPTION,
                         severity = ThreatLevel.MEDIUM,
                         description = "Устаревшее шифрование WPA",
@@ -74,6 +79,7 @@ class EncryptionAnalyzer @Inject constructor() {
                 if (network.capabilities.contains("TKIP")) {
                     threats.add(
                         SecurityThreat(
+                            id = 0, // ID будет установлен при сохранении в БД
                             type = ThreatType.WEAK_ENCRYPTION,
                             severity = ThreatLevel.LOW,
                             description = "WPA2 с устаревшим TKIP",
@@ -88,6 +94,7 @@ class EncryptionAnalyzer @Inject constructor() {
                 if (network.capabilities.contains("WPS")) {
                     threats.add(
                         SecurityThreat(
+                            id = 0, // ID будет установлен при сохранении в БД
                             type = ThreatType.WPS_VULNERABILITY,
                             severity = ThreatLevel.MEDIUM,
                             description = "Включен WPS (уязвим к атакам)",
@@ -120,6 +127,7 @@ class EncryptionAnalyzer @Inject constructor() {
             SecurityType.UNKNOWN -> {
                 threats.add(
                     SecurityThreat(
+                        id = 0, // ID будет установлен при сохранении в БД
                         type = ThreatType.UNKNOWN_ENCRYPTION,
                         severity = ThreatLevel.MEDIUM,
                         description = "Неизвестный тип шифрования",
@@ -158,6 +166,7 @@ class EncryptionAnalyzer @Inject constructor() {
         if (capabilities.contains("WPS")) {
             threats.add(
                 SecurityThreat(
+                    id = 0, // ID будет установлен при сохранении в БД
                     type = ThreatType.WPS_VULNERABILITY,
                     severity = ThreatLevel.MEDIUM,
                     description = "WPS включен (уязвим к атакам)",
@@ -173,6 +182,7 @@ class EncryptionAnalyzer @Inject constructor() {
         if (capabilities.contains("TKIP")) {
             threats.add(
                 SecurityThreat(
+                    id = 0, // ID будет установлен при сохранении в БД
                     type = ThreatType.WEAK_ENCRYPTION,
                     severity = ThreatLevel.LOW,
                     description = "Используется устаревший TKIP",

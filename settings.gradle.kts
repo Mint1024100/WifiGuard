@@ -16,5 +16,7 @@ dependencyResolutionManagement {
     }
 }
 
+// Каталог libs автоматически загружается из gradle/libs.versions.toml
+
 rootProject.name = "WifiGuard"
 include(":app")

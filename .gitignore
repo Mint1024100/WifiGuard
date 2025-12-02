@@ -104,3 +104,4 @@ coveralls.yml
 
 # Android build cache
 .android/
+.aider*

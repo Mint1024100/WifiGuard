@@ -25,5 +25,6 @@ data class ThreatEntity(
     val timestamp: Long = System.currentTimeMillis(),
     val isResolved: Boolean = false,
     val resolutionTimestamp: Long? = null,
-    val resolutionNote: String? = null
+    val resolutionNote: String? = null,
+    val isNotified: Boolean = false // Поле для отслеживания уведомлений
 )

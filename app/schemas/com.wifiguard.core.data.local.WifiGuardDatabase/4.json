@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "7657989a31a16dc3e0d7473c9ecaae27",
+    "identityHash": "3190673ce85057b9a3c0563c05881467",
     "entities": [
       {
         "tableName": "wifi_scans",
@@ -272,7 +272,7 @@
       },
       {
         "tableName": "threats",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `scanId` INTEGER NOT NULL, `threatType` TEXT NOT NULL, `severity` TEXT NOT NULL, `description` TEXT NOT NULL, `networkSsid` TEXT NOT NULL, `networkBssid` TEXT NOT NULL, `additionalInfo` TEXT, `timestamp` INTEGER NOT NULL, `isResolved` INTEGER NOT NULL, `resolutionTimestamp` INTEGER, `resolutionNote` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `scanId` INTEGER NOT NULL, `threatType` TEXT NOT NULL, `severity` TEXT NOT NULL, `description` TEXT NOT NULL, `networkSsid` TEXT NOT NULL, `networkBssid` TEXT NOT NULL, `additionalInfo` TEXT, `timestamp` INTEGER NOT NULL, `isResolved` INTEGER NOT NULL, `resolutionTimestamp` INTEGER, `resolutionNote` TEXT, `isNotified` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -345,6 +345,12 @@
             "columnName": "resolutionNote",
             "affinity": "TEXT",
             "notNull": false
+          },
+          {
+            "fieldPath": "isNotified",
+            "columnName": "isNotified",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -464,7 +470,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7657989a31a16dc3e0d7473c9ecaae27')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3190673ce85057b9a3c0563c05881467')"
     ]
   }
 }

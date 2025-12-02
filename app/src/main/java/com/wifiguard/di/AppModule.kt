@@ -7,6 +7,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import com.wifiguard.core.data.local.DataTransferManager
+import com.wifiguard.core.data.local.WifiGuardDatabase
 import javax.inject.Singleton
 
 /**
@@ -27,5 +29,14 @@ object AppModule {
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
         return WorkManager.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDataTransferManager(
+        @ApplicationContext context: Context,
+        wifiGuardDatabase: WifiGuardDatabase
+    ): DataTransferManager {
+        return DataTransferManager(context, wifiGuardDatabase)
     }
 }

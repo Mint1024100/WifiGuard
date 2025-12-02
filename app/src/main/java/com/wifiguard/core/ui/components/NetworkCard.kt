@@ -26,13 +26,23 @@ import com.wifiguard.core.domain.model.WifiScanResult
 fun NetworkCard(
     network: WifiScanResult,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCurrentNetwork: Boolean = false
 ) {
+    val containerColor = if (isCurrentNetwork) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -50,16 +60,16 @@ fun NetworkCard(
                     Icon(
                         imageVector = if (network.isConnected) Icons.Default.Wifi else Icons.Default.WifiOff,
                         contentDescription = null,
-                        tint = if (network.isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (network.isConnected || isCurrentNetwork) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                     
                     Spacer(modifier = Modifier.width(8.dp))
                     
                     Text(
-                        text = network.ssid.ifEmpty { "Hidden Network" },
+                        text = if (isCurrentNetwork) "Подключённая сеть: ${network.ssid.ifEmpty { "Hidden Network" }}" else network.ssid.ifEmpty { "Hidden Network" },
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = if (isCurrentNetwork) FontWeight.ExtraBold else FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)

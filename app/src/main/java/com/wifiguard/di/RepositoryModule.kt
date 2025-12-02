@@ -1,11 +1,10 @@
 package com.wifiguard.di
 
-import com.wifiguard.core.common.WifiNetworkDomainToEntityMapper
-import com.wifiguard.core.common.WifiNetworkEntityToDomainMapper
-import com.wifiguard.core.common.WifiScanDomainToEntityMapper
-import com.wifiguard.core.common.WifiScanEntityToDomainMapper
+import com.wifiguard.core.common.*
 import com.wifiguard.core.data.repository.WifiRepositoryImpl
+import com.wifiguard.core.data.repository.ThreatRepositoryImpl
 import com.wifiguard.core.domain.repository.WifiRepository
+import com.wifiguard.core.domain.repository.ThreatRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -35,6 +34,20 @@ abstract class RepositoryModule {
         wifiRepositoryImpl: WifiRepositoryImpl
     ): WifiRepository
     
+    /**
+     * Биндит интерфейс ThreatRepository к его реализации ThreatRepositoryImpl.
+     * Это позволяет Hilt автоматически предоставлять конкретную реализацию,
+     * когда запрашивается интерфейс.
+     * 
+     * @param threatRepositoryImpl Реализация репозитория угроз
+     * @return Интерфейс ThreatRepository
+     */
+    @Binds
+    @Singleton
+    abstract fun bindThreatRepository(
+        threatRepositoryImpl: ThreatRepositoryImpl
+    ): ThreatRepository
+    
     companion object {
         @Provides
         @Singleton
@@ -58,6 +71,18 @@ abstract class RepositoryModule {
         @Singleton
         fun provideWifiScanDomainToEntityMapper(): WifiScanDomainToEntityMapper {
             return WifiScanDomainToEntityMapper()
+        }
+        
+        @Provides
+        @Singleton
+        fun provideThreatEntityToDomainMapper(): ThreatEntityToDomainMapper {
+            return ThreatEntityToDomainMapper()
+        }
+        
+        @Provides
+        @Singleton
+        fun provideThreatDomainToEntityMapper(): ThreatDomainToEntityMapper {
+            return ThreatDomainToEntityMapper()
         }
     }
     

@@ -36,7 +36,7 @@ class AnalysisViewModel @Inject constructor(
                 // Загружаем данные для анализа
                 val recentScans = wifiRepository.getLatestScans(limit = 100).first()
                 
-                // Запускаем анализ безопасности
+                // Запускаем анализ безопасности (даже если список пуст)
                 val securityReport = securityAnalyzer.analyzeNetworks(recentScans)
                 
                 _uiState.value = _uiState.value.copy(

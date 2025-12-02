@@ -20,6 +20,9 @@ interface WifiNetworkDao {
      */
     @Query("SELECT * FROM wifi_networks ORDER BY last_seen DESC")
     fun getAllNetworks(): Flow<List<WifiNetworkEntity>>
+
+    @Query("SELECT * FROM wifi_networks")
+    suspend fun getAllWifiNetworksSuspend(): List<WifiNetworkEntity>
     
     /**
      * Получить сеть по BSSID

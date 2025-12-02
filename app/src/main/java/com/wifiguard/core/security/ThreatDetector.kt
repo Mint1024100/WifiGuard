@@ -3,6 +3,8 @@ package com.wifiguard.core.security
 import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.domain.model.SecurityThreat
+import com.wifiguard.core.domain.model.ThreatType
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,6 +27,7 @@ class ThreatDetector @Inject constructor() {
         
         if (duplicateNetworks.isNotEmpty()) {
             return SecurityThreat(
+                id = 0, // ID будет установлен при сохранении в БД
                 type = ThreatType.DUPLICATE_SSID,
                 severity = ThreatLevel.HIGH,
                 description = "Обнаружен дублирующийся SSID '${network.ssid}' с разными BSSID. Возможна атака Evil Twin.",
@@ -79,6 +82,7 @@ class ThreatDetector @Inject constructor() {
         
         if (suspiciousPattern != null) {
             return SecurityThreat(
+                id = 0, // ID будет установлен при сохранении в БД
                 type = ThreatType.SUSPICIOUS_SSID,
                 severity = ThreatLevel.MEDIUM,
                 description = "Подозрительное имя сети: '${network.ssid}' (содержит '$suspiciousPattern')",
@@ -91,6 +95,7 @@ class ThreatDetector @Inject constructor() {
         // Проверяем на слишком длинные или короткие имена
         if (ssid.length > 32) {
             return SecurityThreat(
+                id = 0, // ID будет установлен при сохранении в БД
                 type = ThreatType.SUSPICIOUS_SSID,
                 severity = ThreatLevel.LOW,
                 description = "Подозрительно длинное имя сети: '${network.ssid}' (${ssid.length} символов)",
@@ -101,6 +106,7 @@ class ThreatDetector @Inject constructor() {
         
         if (ssid.length < 3 && !network.isHidden) {
             return SecurityThreat(
+                id = 0, // ID будет установлен при сохранении в БД
                 type = ThreatType.SUSPICIOUS_SSID,
                 severity = ThreatLevel.LOW,
                 description = "Подозрительно короткое имя сети: '${network.ssid}'",
@@ -118,6 +124,7 @@ class ThreatDetector @Inject constructor() {
     fun detectOpenNetwork(network: WifiScanResult): SecurityThreat? {
         if (network.securityType == SecurityType.OPEN) {
             return SecurityThreat(
+                id = 0, // ID будет установлен при сохранении в БД
                 type = ThreatType.OPEN_NETWORK,
                 severity = ThreatLevel.CRITICAL,
                 description = "Открытая сеть без шифрования: '${network.ssid}'",
@@ -137,6 +144,7 @@ class ThreatDetector @Inject constructor() {
         when (network.securityType) {
             SecurityType.WEP -> {
                 return SecurityThreat(
+                    id = 0, // ID будет установлен при сохранении в БД
                     type = ThreatType.WEAK_ENCRYPTION,
                     severity = ThreatLevel.HIGH,
                     description = "Слабое шифрование WEP: '${network.ssid}'",
@@ -147,6 +155,7 @@ class ThreatDetector @Inject constructor() {
             }
             SecurityType.WPA -> {
                 return SecurityThreat(
+                    id = 0, // ID будет установлен при сохранении в БД
                     type = ThreatType.WEAK_ENCRYPTION,
                     severity = ThreatLevel.MEDIUM,
                     description = "Устаревшее шифрование WPA: '${network.ssid}'",
@@ -173,6 +182,7 @@ class ThreatDetector @Inject constructor() {
             if (networkList.size > 2) {
                 threats.add(
                     SecurityThreat(
+                        id = 0, // ID будет установлен при сохранении в БД
                         type = ThreatType.MULTIPLE_DUPLICATES,
                         severity = ThreatLevel.HIGH,
                         description = "Обнаружено ${networkList.size} сетей с одинаковым SSID: '$ssid'",
@@ -189,6 +199,7 @@ class ThreatDetector @Inject constructor() {
         if (openNetworks > 3) {
             threats.add(
                 SecurityThreat(
+                    id = 0, // ID будет установлен при сохранении в БД
                     type = ThreatType.SUSPICIOUS_ACTIVITY,
                     severity = ThreatLevel.MEDIUM,
                     description = "Обнаружено $openNetworks открытых сетей в зоне",
@@ -223,6 +234,7 @@ class ThreatDetector @Inject constructor() {
             if (isSequentialMac(current, next)) {
                 threats.add(
                     SecurityThreat(
+                        id = 0, // ID будет установлен при сохранении в БД
                         type = ThreatType.SUSPICIOUS_BSSID,
                         severity = ThreatLevel.MEDIUM,
                         description = "Обнаружены последовательные MAC-адреса: $current и $next",

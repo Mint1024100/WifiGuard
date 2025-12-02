@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 fun AnalysisScreen(
     onNavigateBack: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToSecurityReport: () -> Unit = {},
     viewModel: AnalysisViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -77,7 +79,10 @@ fun AnalysisScreen(
                     }
                 }
             } else if (uiState.securityReport != null) {
-                SecurityReportContent(uiState.securityReport!!)
+                SecurityReportContent(
+                    report = uiState.securityReport!!,
+                    onNavigateToFullReport = onNavigateToSecurityReport
+                )
             } else {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -99,7 +104,10 @@ fun AnalysisScreen(
 }
 
 @Composable
-fun SecurityReportContent(report: SecurityReport) {
+fun SecurityReportContent(
+    report: SecurityReport,
+    onNavigateToFullReport: () -> Unit = {}
+) {
     LazyColumn {
         item {
             // Общий отчет безопасности
@@ -112,11 +120,28 @@ fun SecurityReportContent(report: SecurityReport) {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text(
-                        text = "Общий отчет безопасности",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Общий отчет безопасности",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        
+                        // Кнопка для перехода к полному отчету
+                        IconButton(
+                            onClick = onNavigateToFullReport
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = "Открыть полный отчет"
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),

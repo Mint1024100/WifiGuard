@@ -4,6 +4,8 @@ import com.wifiguard.core.common.WifiNetworkDomainToEntityMapper
 import com.wifiguard.core.common.WifiNetworkEntityToDomainMapper
 import com.wifiguard.core.common.WifiScanDomainToEntityMapper
 import com.wifiguard.core.common.WifiScanEntityToDomainMapper
+import com.wifiguard.core.data.local.dao.ScanSessionDao
+import com.wifiguard.core.data.local.dao.ThreatDao
 import com.wifiguard.core.data.local.dao.WifiNetworkDao
 import com.wifiguard.core.data.local.dao.WifiScanDao
 import com.wifiguard.core.domain.model.WifiNetwork
@@ -22,6 +24,8 @@ import javax.inject.Singleton
 class WifiRepositoryImpl @Inject constructor(
     private val wifiNetworkDao: WifiNetworkDao,
     private val wifiScanDao: WifiScanDao,
+    private val threatDao: ThreatDao,
+    private val scanSessionDao: ScanSessionDao,
     private val wifiNetworkEntityToDomainMapper: WifiNetworkEntityToDomainMapper,
     private val wifiNetworkDomainToEntityMapper: WifiNetworkDomainToEntityMapper,
     private val wifiScanEntityToDomainMapper: WifiScanEntityToDomainMapper,
@@ -125,5 +129,15 @@ class WifiRepositoryImpl @Inject constructor(
         return wifiNetworkDao.getSuspiciousNetworks().map { entities ->
             entities.map { wifiNetworkEntityToDomainMapper.map(it) }
         }
+    }
+
+    /**
+     * Очистить все данные, связанные с Wi-Fi сетями, сканированиями и угрозами.
+     */
+    override suspend fun clearAllData() {
+        threatDao.deleteAllThreats()
+        wifiScanDao.deleteAllScans()
+        wifiNetworkDao.deleteAllNetworks()
+        scanSessionDao.deleteAllSessions()
     }
 }

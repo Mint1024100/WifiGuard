@@ -16,6 +16,9 @@ object Constants {
     const val WORK_NAME_WIFI_MONITORING = "wifi_monitoring_work"
     const val WORK_NAME_THREAT_NOTIFICATION = "threat_notification_work"
     
+    // Workers
+    const val THREAT_NOTIFICATION_WORK_NAME = "threat_notification_periodic"
+    
     // Notifications
     const val NOTIFICATION_CHANNEL_ID = "threat_notifications"
     const val NOTIFICATION_ID = 1001

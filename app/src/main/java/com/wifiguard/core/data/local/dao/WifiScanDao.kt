@@ -14,6 +14,9 @@ interface WifiScanDao {
     
     @Query("SELECT * FROM wifi_scans ORDER BY timestamp DESC")
     fun getAllScans(): Flow<List<WifiScanEntity>>
+
+    @Query("SELECT * FROM wifi_scans")
+    suspend fun getAllWifiScansSuspend(): List<WifiScanEntity>
     
     @Query("SELECT * FROM wifi_scans WHERE scanSessionId = :sessionId ORDER BY timestamp DESC")
     fun getScansBySession(sessionId: String): Flow<List<WifiScanEntity>>

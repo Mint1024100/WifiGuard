@@ -2,8 +2,10 @@ package com.wifiguard.core.common
 
 import com.wifiguard.core.data.local.entity.WifiNetworkEntity
 import com.wifiguard.core.data.local.entity.WifiScanEntity
+import com.wifiguard.core.data.local.entity.ThreatEntity
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.domain.model.SecurityThreat
 
 interface Mapper<in From, out To> {
     fun map(from: From): To
@@ -123,6 +125,44 @@ class WifiScanDomainToEntityMapper : BaseMapper<WifiScanResult, WifiScanEntity>(
             scanType = from.scanType,
             securityScore = 0, // По умолчанию
             scanSessionId = null // По умолчанию
+        )
+    }
+}
+
+/**
+ * Маппер для преобразования ThreatEntity в SecurityThreat
+ */
+class ThreatEntityToDomainMapper : BaseMapper<ThreatEntity, SecurityThreat>() {
+    override fun map(from: ThreatEntity): SecurityThreat {
+        return SecurityThreat(
+            id = from.id,
+            type = from.threatType,
+            severity = from.severity,
+            description = from.description,
+            networkSsid = from.networkSsid,
+            networkBssid = from.networkBssid,
+            additionalInfo = from.additionalInfo,
+            timestamp = from.timestamp
+        )
+    }
+}
+
+/**
+ * Маппер для преобразования SecurityThreat в ThreatEntity
+ */
+class ThreatDomainToEntityMapper : BaseMapper<SecurityThreat, ThreatEntity>() {
+    override fun map(from: SecurityThreat): ThreatEntity {
+        return ThreatEntity(
+            scanId = 0, // Значение по умолчанию, будет установлено при сохранении
+            threatType = from.type,
+            severity = from.severity,
+            description = from.description,
+            networkSsid = from.networkSsid,
+            networkBssid = from.networkBssid,
+            additionalInfo = from.additionalInfo,
+            timestamp = from.timestamp,
+            isResolved = false, // Значение по умолчанию
+            isNotified = false // Значение по умолчанию
         )
     }
 }

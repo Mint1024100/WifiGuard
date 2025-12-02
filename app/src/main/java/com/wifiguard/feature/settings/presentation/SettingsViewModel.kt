@@ -1,7 +1,10 @@
 package com.wifiguard.feature.settings.presentation
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wifiguard.core.data.local.DataTransferManager
+import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +18,9 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val dataTransferManager: DataTransferManager,
+    private val wifiRepository: WifiRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -105,6 +110,36 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 settingsRepository.setNotificationVibrationEnabled(enabled)
+            } catch (e: Exception) {
+                // Обработка ошибки
+            }
+        }
+    }
+
+    fun exportData(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                dataTransferManager.exportData(uri)
+            } catch (e: Exception) {
+                // Обработка ошибки
+            }
+        }
+    }
+
+    fun importData(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                dataTransferManager.importData(uri)
+            } catch (e: Exception) {
+                // Обработка ошибки
+            }
+        }
+    }
+
+    fun clearAllData() {
+        viewModelScope.launch {
+            try {
+                wifiRepository.clearAllData()
             } catch (e: Exception) {
                 // Обработка ошибки
             }

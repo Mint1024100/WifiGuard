@@ -8,6 +8,7 @@ import kotlinx.parcelize.Parcelize
  */
 @Parcelize
 data class SecurityThreat(
+    val id: Long = 0,
     val type: ThreatType,
     val severity: ThreatLevel,
     val description: String,

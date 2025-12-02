@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.wifiguard.core.common.*
 import com.wifiguard.core.common.Result
 import com.wifiguard.core.data.wifi.WifiScanner
+import com.wifiguard.core.common.Logger
 import com.wifiguard.core.domain.model.WifiScanResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -56,6 +57,10 @@ class ScannerViewModel @Inject constructor(
             initialValue = Result.Loading
         )
     
+    // Состояние текущей подключенной сети
+    private val _currentNetwork = MutableStateFlow<WifiScanResult?>(null)
+    val currentNetwork: StateFlow<WifiScanResult?> = _currentNetwork.asStateFlow()
+    
     private val _uiState = MutableStateFlow(
         stringToScannerUiState(savedStateHandle.get<String>(KEY_UI_STATE))
     )
@@ -90,6 +95,14 @@ class ScannerViewModel @Inject constructor(
         checkPermissions()
         checkWifiStatus()
         restoreLastScanTime()
+        
+        // Загружаем информацию о текущей подключенной сети
+        loadCurrentNetwork()
+        
+        // Автоматически запускаем сканирование только если есть разрешения
+        if (permissionHandler.hasWifiScanPermissions()) {
+            startScan()
+        }
     }
     
     private fun updatePermissionState(newState: PermissionState) {
@@ -180,6 +193,7 @@ class ScannerViewModel @Inject constructor(
                     isScanning = false,
                     error = e.toUserMessage()
                 )
+                // ВАЖНО: Обновляем scanResult на Error, чтобы выйти из состояния Loading
                 savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(_uiState.value)
                 savedStateHandle[KEY_SCAN_RESULT] = Json.encodeToString(Result.Error(e, e.toUserMessage()).toSerializableForWifiList())
             }
@@ -263,6 +277,25 @@ class ScannerViewModel @Inject constructor(
         } catch (e: Exception) {
             PermissionState.NotChecked // возвращаем безопасное значение по умолчанию
         }
+    }
+    
+    // Загрузить информацию о текущей подключенной сети
+    private fun loadCurrentNetwork() {
+        viewModelScope.launch {
+            try {
+                val currentNetworkResult = wifiScanner.getCurrentNetwork()
+                _currentNetwork.value = currentNetworkResult
+            } catch (e: Exception) {
+                // Логируем ошибку, но не показываем пользователю, так как это не критично
+                // для основного функционала сканирования
+                Logger.e("Ошибка получения текущей сети", e)
+            }
+        }
+    }
+    
+    // Ручное обновление информации о текущей подключенной сети
+    fun refreshCurrentNetwork() {
+        loadCurrentNetwork()
     }
     
     // Expose the permission handler for use in UI

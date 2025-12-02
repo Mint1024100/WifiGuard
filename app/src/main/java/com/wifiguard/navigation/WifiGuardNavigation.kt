@@ -10,6 +10,7 @@ import com.wifiguard.feature.analysis.presentation.AnalysisScreen
 import com.wifiguard.feature.notifications.presentation.NotificationsScreen
 import com.wifiguard.feature.privacypolicy.presentation.PrivacyPolicyScreen
 import com.wifiguard.feature.scanner.presentation.ScannerScreen
+import com.wifiguard.feature.securityreport.presentation.SecurityReportScreen
 import com.wifiguard.feature.settings.presentation.SettingsScreen
 import com.wifiguard.feature.termsofservice.presentation.TermsOfServiceScreen
 
@@ -42,6 +43,9 @@ fun WifiGuardNavigation(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToSecurityReport = {
+                    navController.navigate(Screen.SecurityReport.route)
                 }
             )
         }
@@ -91,6 +95,17 @@ fun WifiGuardNavigation(
             TermsOfServiceScreen(
                 onBack = {
                     navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(Screen.SecurityReport.route) {
+            SecurityReportScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }

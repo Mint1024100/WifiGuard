@@ -246,22 +246,91 @@ class WifiScannerImpl @Inject constructor(
             // Используем разные подходы в зависимости от версии Android
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Android 10+ - получаем только минимально необходимую информацию без устаревшего API
-                // Получаем информацию через ConnectivityManager
+                // Получаем информацию через ConnectivityManager и используем устаревший, но разрешенный способ
+                // для получения информации о подключенной сети (только SSID)
                 try {
                     val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
                     val activeNetwork = connectivityManager.activeNetwork
                     val caps = connectivityManager.getNetworkCapabilities(activeNetwork)
                     
                     if (caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true) {
-                        // Поскольку мы не можем получить полную информацию о подключенной сети на Android 10+, 
-                        // используем обходной путь через getScanResults для получения последней известной сети
-                        val latestScans = getScanResults()
-                        if (latestScans.isNotEmpty()) {
-                            // Возвращаем последнюю сеть из сканирования как приближенную к текущей
-                            // Это не совсем точно, но лучшее, что можно сделать без устаревшего API
-                            latestScans.firstOrNull()?.copy(isConnected = true)
+                        // На Android 10+ мы все еще можем получить ограниченную информацию о подключенной сети
+                        // через активную сеть, если у нас есть разрешения
+                        @Suppress("DEPRECATION")
+                        val wifiInfo = wifiManager.connectionInfo
+                        val connectedBssid = wifiInfo.bssid
+                        val connectedSsid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            // Android 13+ - используем устаревший, но более безопасный способ получения SSID
+                            // Так как wifiSsid требует специальных разрешений, используем ssid с подавлением предупреждения
+                            try {
+                                @Suppress("DEPRECATION")
+                                wifiInfo.ssid.removeSurrounding("\"").takeIf { it != "<unknown ssid>" }
+                            } catch (e: Exception) {
+                                null // При проблемах доступа возвращаем null
+                            }
                         } else {
-                            null
+                            // Android 10-12 - можем использовать устаревший, но работающий API
+                            @Suppress("DEPRECATION")
+                            wifiInfo.ssid.removeSurrounding("\"").takeIf { it != "<unknown ssid>" }
+                        }
+                        
+                        // Проверяем, что мы действительно подключены к Wi-Fi
+                        if (!connectedSsid.isNullOrBlank() && connectedBssid != null) {
+                            // Теперь найдем соответствующую сеть в результатах сканирования
+                            val latestScans = getScanResults()
+                            val matchingScanResult = latestScans.find { 
+                                (it.ssid == connectedSsid || it.ssid.removeSurrounding("\"") == connectedSsid) &&
+                                it.bssid == connectedBssid 
+                            }
+                            
+                            if (matchingScanResult != null) {
+                                // Нашли совпадение, возвращаем как подключенную
+                                matchingScanResult.copy(isConnected = true)
+                            } else {
+                                // Не нашли в сканировании, но знаем, что подключены к этой сети
+                                // Создаем базовую информацию о подключенной сети
+                                WifiScanResult(
+                                    ssid = connectedSsid,
+                                    bssid = connectedBssid,
+                                    capabilities = "",
+                                    frequency = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                        wifiInfo.frequency
+                                    } else {
+                                        0
+                                    },
+                                    level = wifiInfo.rssi,
+                                    timestamp = System.currentTimeMillis(),
+                                    securityType = SecurityType.UNKNOWN,
+                                    threatLevel = ThreatLevel.UNKNOWN,
+                                    isConnected = true,
+                                    isHidden = false, // Точная информация о статусе скрытой сети недоступна
+                                    vendor = WifiCapabilitiesAnalyzer().getVendorFromBssid(connectedBssid),
+                                    channel = WifiCapabilitiesAnalyzer().getChannelFromFrequency(
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                            wifiInfo.frequency
+                                        } else {
+                                            0
+                                        }
+                                    ),
+                                    standard = getWifiStandard(
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                            wifiInfo.frequency
+                                        } else {
+                                            0
+                                        }
+                                    )
+                                )
+                            }
+                        } else {
+                            // Поскольку мы не можем получить точную информацию на Android 10+,
+                            // попробуем использовать результаты сканирования
+                            val latestScans = getScanResults()
+                            if (latestScans.isNotEmpty()) {
+                                // Возвращаем сеть с наилучшим сигналом как потенциально подключенную
+                                latestScans.maxByOrNull { it.level }?.copy(isConnected = true)
+                            } else {
+                                null
+                            }
                         }
                     } else {
                         null

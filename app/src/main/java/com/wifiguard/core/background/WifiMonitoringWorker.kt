@@ -3,9 +3,12 @@ package com.wifiguard.core.background
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import com.wifiguard.core.data.wifi.WifiScannerService
+import com.wifiguard.core.domain.repository.ThreatRepository
+import com.wifiguard.core.security.SecurityAnalyzer
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /**
@@ -14,19 +17,36 @@ import java.util.concurrent.TimeUnit
 @HiltWorker
 class WifiMonitoringWorker @AssistedInject constructor(
     @Assisted context: Context,
-    @Assisted workerParams: WorkerParameters
+    @Assisted workerParams: WorkerParameters,
+    private val wifiScannerService: WifiScannerService,
+    private val securityAnalyzer: SecurityAnalyzer,
+    private val threatRepository: ThreatRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
         return try {
-            // TODO: Implement Wi-Fi monitoring logic
-            // - Start Wi-Fi scan
-            // - Analyze networks for threats
-            // - Store results in database
-            // - Send notifications if threats found
+            // Проверяем, включена ли Wi-Fi
+            if (!wifiScannerService.isWifiEnabled()) {
+                return Result.success()
+            }
+
+            // Запускаем сканирование
+            wifiScannerService.startScan()
             
-            delay(5000) // Simulate work
+            // Получаем результаты сканирования как доменные модели для анализа безопасности
+            val scanResults = wifiScannerService.getScanResultsAsCoreModels()
             
+            if (scanResults.isNotEmpty()) {
+                // Анализируем безопасность сетей
+                val securityReport = securityAnalyzer.analyzeNetworks(scanResults)
+                
+                // Сохраняем угрозы
+                val threats = securityReport.threats
+                if (threats.isNotEmpty()) {
+                    threatRepository.insertThreats(threats)
+                }
+            }
+
             Result.success()
         } catch (e: Exception) {
             Result.failure()
