@@ -110,4 +110,11 @@ coveralls.yml
 *.rar
 gradle-install/
 temp_gradle83/
+temp_gradle/
+temp_project_for_wrapper/
 gradle/wrapper/gradle-wrapper.jar
+
+# Large specific files that exceed GitHub limits
+gradle-8.3.zip
+gradle-8.5-bin.zip
+gradle-full-8.5.zip
