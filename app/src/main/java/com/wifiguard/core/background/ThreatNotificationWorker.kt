@@ -1,6 +1,7 @@
 package com.wifiguard.core.background
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -25,40 +26,64 @@ class ThreatNotificationWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
+        Log.d("WifiGuardDebug", "ThreatNotificationWorker: Starting work")
+
         return try {
             // Проверяем, включены ли уведомления
             val notificationsEnabled = preferencesDataSource.getNotificationsEnabled().first()
+            Log.d("WifiGuardDebug", "ThreatNotificationWorker: Notifications enabled = $notificationsEnabled")
+
             if (!notificationsEnabled) {
+                Log.d("WifiGuardDebug", "ThreatNotificationWorker: Notifications disabled, returning success")
                 return Result.success()
             }
 
             // Получаем критические угрозы, которые еще не были уведомлены
             val criticalThreats = threatRepository.getCriticalUnnotifiedThreats()
-            
+            Log.d("WifiGuardDebug", "ThreatNotificationWorker: Found ${criticalThreats.size} critical unnotified threats")
+
             if (criticalThreats.isNotEmpty()) {
                 // Проверяем настройки звука и вибрации
                 val soundEnabled = preferencesDataSource.getNotificationSoundEnabled().first()
                 val vibrationEnabled = preferencesDataSource.getNotificationVibrationEnabled().first()
+                Log.d("WifiGuardDebug", "ThreatNotificationWorker: Sound enabled = $soundEnabled, Vibration enabled = $vibrationEnabled")
 
                 // Отправляем уведомление для каждой критической угрозы
                 for (threat in criticalThreats) {
+                    Log.d("WifiGuardDebug", "ThreatNotificationWorker: Posting notification for threat: ${threat.networkSsid}")
+
                     notificationHelper.showThreatNotification(
                         title = "Обнаружена критическая угроза!",
                         content = "Сеть: ${threat.networkSsid} - ${threat.description}",
                         vibrationEnabled = vibrationEnabled,
                         soundEnabled = soundEnabled
                     )
-                    
+
                     // Отмечаем угрозу как уведомленную
                     threatRepository.markThreatAsNotified(threat.id)
+                    Log.d("WifiGuardDebug", "ThreatNotificationWorker: Marked threat ${threat.id} as notified")
                 }
+
+                Log.d("WifiGuardDebug", "ThreatNotificationWorker: Posted notifications for ${criticalThreats.size} threats")
+            } else {
+                Log.d("WifiGuardDebug", "ThreatNotificationWorker: No critical threats to notify")
             }
 
+            Log.d("WifiGuardDebug", "ThreatNotificationWorker: Work completed successfully")
             Result.success()
         } catch (e: Exception) {
+            Log.e("WifiGuardDebug", "ThreatNotificationWorker: Error during work: ${e.message}", e)
             Result.failure()
         }
     }
     
-    companion object
+    companion object {
+        fun createPeriodicWork(): androidx.work.PeriodicWorkRequest {
+            return androidx.work.PeriodicWorkRequestBuilder<ThreatNotificationWorker>(
+                60, java.util.concurrent.TimeUnit.MINUTES  // Check for new threats every hour
+            )
+                .addTag("threat_notifications")
+                .build()
+        }
+    }
 }

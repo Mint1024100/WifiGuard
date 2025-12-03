@@ -70,16 +70,16 @@ class WifiScannerTest {
         val scanResults = createMockScanResults()
         every { wifiManager.startScan() } returns true
         every { wifiManager.scanResults } returns scanResults
-        
+
         // When
         val result = wifiScanner.startScan()
-        
+
         // Then
         assertTrue(result.isSuccess)
         val scanResultsList = result.getOrNull()
         assertNotNull(scanResultsList)
         assertEquals(2, scanResultsList.size)
-        
+
         verify { wifiManager.startScan() }
     }
     
@@ -87,10 +87,10 @@ class WifiScannerTest {
     fun `startScan should return failure when wifi is disabled`() = runTest {
         // Given
         every { wifiManager.isWifiEnabled } returns false
-        
+
         // When
         val result = wifiScanner.startScan()
-        
+
         // Then
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("Wi-Fi отключен") == true)
@@ -100,10 +100,10 @@ class WifiScannerTest {
     fun `startScan should return failure when scan fails`() = runTest {
         // Given
         every { wifiManager.startScan() } returns false
-        
+
         // When
         val result = wifiScanner.startScan()
-        
+
         // Then
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("Не удалось запустить сканирование") == true)
@@ -137,10 +137,10 @@ class WifiScannerTest {
         val wifiInfo = mockk<android.net.wifi.WifiInfo>(relaxed = true)
         every { wifiManager.connectionInfo } returns wifiInfo
         every { wifiInfo.ssid } returns null
-        
+
         // When
         val result = wifiScanner.getCurrentNetwork()
-        
+
         // Then
         assertEquals(null, result)
     }
@@ -150,16 +150,16 @@ class WifiScannerTest {
         // Given
         val wifiInfo = mockk<android.net.wifi.WifiInfo>(relaxed = true)
         val scanResults = createMockScanResults()
-        
+
         every { wifiManager.connectionInfo } returns wifiInfo
         every { wifiInfo.ssid } returns "\"TestNetwork\""
         every { wifiInfo.bssid } returns "00:11:22:33:44:55"
         every { wifiInfo.rssi } returns -50
         every { wifiManager.scanResults } returns scanResults
-        
+
         // When
         val result = wifiScanner.getCurrentNetwork()
-        
+
         // Then
         assertNotNull(result)
         assertEquals("TestNetwork", result.ssid)

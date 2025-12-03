@@ -25,7 +25,9 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -67,18 +69,18 @@ class WifiScannerImpl @Inject constructor(
     override suspend fun startScan(): Result<List<WifiScanResult>> = withContext(Dispatchers.IO) {
         try {
             logd("Starting WiFi scan")
-            
+
             // Проверка разрешений
             if (!hasLocationPermission()) {
                 loge("Location permission not granted for WiFi scan")
                 return@withContext Result.failure(SecurityException("Требуется разрешение ACCESS_FINE_LOCATION"))
             }
-            
+
             if (!isWifiEnabled()) {
                 loge("WiFi is disabled, cannot start scan")
                 return@withContext Result.failure(IllegalStateException("Wi-Fi выключен. Включите Wi-Fi для сканирования."))
             }
-            
+
             // В Android 9+ результаты сканирования кэшируются системой
             // Прямое сканирование ограничено из-за политики конфиденциальности
             val scanResults = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -99,7 +101,7 @@ class WifiScannerImpl @Inject constructor(
                     getScanResults()
                 }
             }
-            
+
             logd("Got scan results, found ${scanResults.size} networks")
             Result.success(scanResults)
         } catch (e: SecurityException) {
@@ -113,20 +115,20 @@ class WifiScannerImpl @Inject constructor(
     
     override fun getScanResultsFlow(): Flow<List<WifiScanResult>> = callbackFlow {
         logd("Creating scan results flow")
-        
+
         // Проверка разрешений
         if (!hasLocationPermission()) {
             loge("Location permission not granted for scan flow")
             close(SecurityException("Требуется разрешение ACCESS_FINE_LOCATION"))
             return@callbackFlow
         }
-        
+
         if (!isWifiEnabled()) {
             loge("WiFi is disabled for scan flow")
             close(IllegalStateException("Wi-Fi выключен. Включите Wi-Fi для сканирования."))
             return@callbackFlow
         }
-        
+
         val scanResultsReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
@@ -135,16 +137,22 @@ class WifiScannerImpl @Inject constructor(
                             WifiManager.EXTRA_RESULTS_UPDATED,
                             false
                         )
-                        
+
                         logd("Received scan results, success=$success")
-                        
+
                         if (success) {
-                            val results = getScanResults()
-                            trySend(results)
+                            // Launch a coroutine in the current scope to handle the suspend function
+                            launch(Dispatchers.IO) {
+                                val results = getScanResults()
+                                trySend(results)
+                            }
                         } else {
                             // Сканирование не удалось, используем кешированные результаты
-                            val cachedResults = getScanResults()
-                            trySend(cachedResults)
+                            // Launch a coroutine in the current scope to handle the suspend function
+                            launch(Dispatchers.IO) {
+                                val cachedResults = getScanResults()
+                                trySend(cachedResults)
+                            }
                         }
                     }
                 }
@@ -187,13 +195,13 @@ class WifiScannerImpl @Inject constructor(
      * ВАЖНО: На Android 9+ результаты могут быть кешированными (до 2 минут)
      */
     @Suppress("DEPRECATION")
-    private fun getScanResults(): List<WifiScanResult> {
+    private suspend fun getScanResults(): List<WifiScanResult> = withContext(Dispatchers.IO) {
         if (!hasLocationPermission()) {
             logw("No location permission to get scan results")
-            return emptyList()
+            return@withContext emptyList()
         }
-        
-        return try {
+
+        return@withContext try {
             logd("Getting scan results from WiFi manager")
             wifiManager.scanResults.map { result ->
                 convertToWifiScanResult(result)
@@ -238,10 +246,10 @@ class WifiScannerImpl @Inject constructor(
             logw("No location permission to get current network")
             return@withContext null
         }
-        
+
         try {
             logd("Getting current network info")
-            
+
             // В Android 29+ connectionInfo устарел из-за соображений конфиденциальности
             // Используем разные подходы в зависимости от версии Android
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -252,7 +260,7 @@ class WifiScannerImpl @Inject constructor(
                     val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
                     val activeNetwork = connectivityManager.activeNetwork
                     val caps = connectivityManager.getNetworkCapabilities(activeNetwork)
-                    
+
                     if (caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true) {
                         // На Android 10+ мы все еще можем получить ограниченную информацию о подключенной сети
                         // через активную сеть, если у нас есть разрешения
@@ -273,22 +281,25 @@ class WifiScannerImpl @Inject constructor(
                             @Suppress("DEPRECATION")
                             wifiInfo.ssid.removeSurrounding("\"").takeIf { it != "<unknown ssid>" }
                         }
-                        
+
                         // Проверяем, что мы действительно подключены к Wi-Fi
                         if (!connectedSsid.isNullOrBlank() && connectedBssid != null) {
                             // Теперь найдем соответствующую сеть в результатах сканирования
                             val latestScans = getScanResults()
-                            val matchingScanResult = latestScans.find { 
+                            val matchingScanResult = latestScans.find {
                                 (it.ssid == connectedSsid || it.ssid.removeSurrounding("\"") == connectedSsid) &&
-                                it.bssid == connectedBssid 
+                                it.bssid == connectedBssid
                             }
-                            
+
                             if (matchingScanResult != null) {
                                 // Нашли совпадение, возвращаем как подключенную
                                 matchingScanResult.copy(isConnected = true)
                             } else {
                                 // Не нашли в сканировании, но знаем, что подключены к этой сети
                                 // Создаем базовую информацию о подключенной сети
+                                // Create a single instance instead of creating multiple instances
+                                val wifiCapabilitiesAnalyzer = WifiCapabilitiesAnalyzer()
+
                                 WifiScanResult(
                                     ssid = connectedSsid,
                                     bssid = connectedBssid,
@@ -304,8 +315,8 @@ class WifiScannerImpl @Inject constructor(
                                     threatLevel = ThreatLevel.UNKNOWN,
                                     isConnected = true,
                                     isHidden = false, // Точная информация о статусе скрытой сети недоступна
-                                    vendor = WifiCapabilitiesAnalyzer().getVendorFromBssid(connectedBssid),
-                                    channel = WifiCapabilitiesAnalyzer().getChannelFromFrequency(
+                                    vendor = wifiCapabilitiesAnalyzer.getVendorFromBssid(connectedBssid),
+                                    channel = wifiCapabilitiesAnalyzer.getChannelFromFrequency(
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                                             wifiInfo.frequency
                                         } else {
@@ -355,13 +366,13 @@ class WifiScannerImpl @Inject constructor(
                     } else {
                         0
                     }
-                    
+
                     // Найдем соответствующую сеть в результатах сканирования для получения дополнительной информации
                     val scanResults = getScanResults()
-                    val matchingResult = scanResults.find { 
-                        it.ssid == ssid && it.bssid == bssid 
+                    val matchingResult = scanResults.find {
+                        it.ssid == ssid && it.bssid == bssid
                     }
-                    
+
                     matchingResult?.copy(isConnected = true) ?: WifiScanResult(
                         ssid = ssid,
                         bssid = bssid ?: "unknown",
@@ -425,10 +436,10 @@ class WifiScannerImpl @Inject constructor(
     /**
      * Конвертировать ScanResult в WifiScanResult
      */
-    private fun convertToWifiScanResult(
+    private suspend fun convertToWifiScanResult(
         scanResult: android.net.wifi.ScanResult,
         isConnected: Boolean = false
-    ): WifiScanResult {
+    ): WifiScanResult = withContext(Dispatchers.Default) {
         // В Android 13+ SSID и BSSID устарели, используем безопасные методы в зависимости от версии
         val ssid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+ - используем безопасные методы
@@ -436,7 +447,7 @@ class WifiScannerImpl @Inject constructor(
             // без разрешения NETWORK_SETTINGs или системного уровня
             try {
                 // Используем новый безопасный способ получения SSID (когда доступен)
-                scanResult.wifiSsid?.toString() ?: "Hidden Network" 
+                scanResult.wifiSsid?.toString() ?: "Hidden Network"
             } catch (e: Exception) {
                 "Hidden Network" // Значение по умолчанию при проблемах доступа
             }
@@ -445,13 +456,13 @@ class WifiScannerImpl @Inject constructor(
             @Suppress("DEPRECATION")
             scanResult.SSID ?: "Hidden Network"
         }
-        
+
         val capabilities = scanResult.capabilities ?: ""
-        
+
         val securityType = determineSecurityType(capabilities)
         val threatLevel = ThreatLevel.fromSecurityType(securityType)
         val wifiStandard = getWifiStandard(scanResult.frequency)
-        
+
         // Используем BSSID с учетом версии Android
         val bssid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+ - ограничения на получение полной информации
@@ -462,8 +473,11 @@ class WifiScannerImpl @Inject constructor(
             @Suppress("DEPRECATION")
             scanResult.BSSID ?: "unknown"
         }
-        
-        return WifiScanResult(
+
+        // Create a single instance instead of creating multiple instances
+        val wifiCapabilitiesAnalyzer = WifiCapabilitiesAnalyzer()
+
+        return@withContext WifiScanResult(
             ssid = ssid,
             bssid = bssid,
             capabilities = capabilities,
@@ -474,8 +488,8 @@ class WifiScannerImpl @Inject constructor(
             threatLevel = threatLevel,
             isConnected = isConnected,
             isHidden = ssid.isEmpty() || ssid == "Hidden Network",
-            vendor = WifiCapabilitiesAnalyzer().getVendorFromBssid(bssid),
-            channel = WifiCapabilitiesAnalyzer().getChannelFromFrequency(scanResult.frequency),
+            vendor = wifiCapabilitiesAnalyzer.getVendorFromBssid(bssid),
+            channel = wifiCapabilitiesAnalyzer.getChannelFromFrequency(scanResult.frequency),
             standard = wifiStandard
         )
     }

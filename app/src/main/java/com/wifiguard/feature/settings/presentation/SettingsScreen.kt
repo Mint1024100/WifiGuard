@@ -2,6 +2,7 @@ package com.wifiguard.feature.settings.presentation
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.wifiguard.core.ui.theme.*
 
 /**
  * Экран настроек
@@ -46,16 +48,18 @@ fun SettingsScreen(
         }
     )
     
+    val scanIntervalDialogVisible by viewModel.scanIntervalDialogVisible.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text("Настройки")
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Назад"
                         )
                     }
@@ -67,14 +71,14 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp) // Increased spacing between sections
         ) {
             // Общие настройки
             item {
                 SettingsSection(
                     title = "Общие",
-                    icon = Icons.Default.Settings
+                    icon = Icons.Filled.Settings
                 ) {
                     SettingsItem(
                         title = "Автоматическое сканирование",
@@ -82,15 +86,29 @@ fun SettingsScreen(
                         trailing = {
                             Switch(
                                 checked = uiState.autoScanEnabled,
-                                onCheckedChange = { viewModel.setAutoScanEnabled(it) }
+                                onCheckedChange = { viewModel.setAutoScanEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.secondary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
                             )
                         }
                     )
-                    
+
                     SettingsItem(
                         title = "Интервал сканирования",
-                        subtitle = "Частота автоматического сканирования",
-                        onClick = { /* TODO: Show interval picker */ }
+                        subtitle = "Частота автоматического сканирования: ${
+                            when (uiState.scanIntervalMinutes) {
+                                15 -> "15 минут"
+                                30 -> "30 минут"
+                                60 -> "60 минут"
+                                120 -> "2 часа"
+                                else -> "${uiState.scanIntervalMinutes} минут"
+                            }
+                        }",
+                        onClick = { viewModel.showScanIntervalDialog() }
                     )
                 }
             }
@@ -99,7 +117,7 @@ fun SettingsScreen(
             item {
                 SettingsSection(
                     title = "Безопасность",
-                    icon = Icons.Default.Security
+                    icon = Icons.Filled.Security
                 ) {
                     SettingsItem(
                         title = "Хранение данных",
@@ -131,7 +149,7 @@ fun SettingsScreen(
             item {
                 SettingsSection(
                     title = "Уведомления",
-                    icon = Icons.Default.Notifications
+                    icon = Icons.Filled.Notifications
                 ) {
                     SettingsItem(
                         title = "Уведомления об угрозах",
@@ -139,7 +157,13 @@ fun SettingsScreen(
                         trailing = {
                             Switch(
                                 checked = uiState.notificationsEnabled,
-                                onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                                onCheckedChange = { viewModel.setNotificationsEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.secondary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
                             )
                         }
                     )
@@ -150,7 +174,13 @@ fun SettingsScreen(
                         trailing = {
                             Switch(
                                 checked = uiState.notificationSoundEnabled,
-                                onCheckedChange = { viewModel.setNotificationSoundEnabled(it) }
+                                onCheckedChange = { viewModel.setNotificationSoundEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.secondary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
                             )
                         }
                     )
@@ -161,7 +191,13 @@ fun SettingsScreen(
                         trailing = {
                             Switch(
                                 checked = uiState.notificationVibrationEnabled,
-                                onCheckedChange = { viewModel.setNotificationVibrationEnabled(it) }
+                                onCheckedChange = { viewModel.setNotificationVibrationEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.secondary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
                             )
                         }
                     )
@@ -172,7 +208,7 @@ fun SettingsScreen(
             item {
                 SettingsSection(
                     title = "О приложении",
-                    icon = Icons.Default.Info
+                    icon = Icons.Filled.Info
                 ) {
                     SettingsItem(
                         title = "Версия",
@@ -195,6 +231,18 @@ fun SettingsScreen(
             }
         }
     }
+
+    // Show scan interval dialog if requested
+    if (scanIntervalDialogVisible) {
+        ScanIntervalDialog(
+            currentInterval = uiState.scanIntervalMinutes,
+            onDismiss = { viewModel.hideScanIntervalDialog() },
+            onConfirm = { interval ->
+                viewModel.setScanInterval(interval)
+                viewModel.hideScanIntervalDialog()
+            }
+        )
+    }
 }
 
 @Composable
@@ -205,7 +253,8 @@ private fun SettingsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = WifiGuardElevation.Level2)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -216,22 +265,22 @@ private fun SettingsSection(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp)
                 )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             content()
         }
     }
@@ -244,66 +293,118 @@ private fun SettingsItem(
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null
 ) {
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                    )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                trailing?.invoke()
-            }
-        }
+    val cardColors = if (onClick != null) {
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
     } else {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+    }
+
+    Card(
+        onClick = { onClick?.invoke() },
+        enabled = onClick != null,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = WifiGuardElevation.Level1,
+            pressedElevation = WifiGuardElevation.Level2,
+            hoveredElevation = WifiGuardElevation.Level2
+        ),
+        colors = cardColors
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp), // Increased vertical padding
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                    )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                trailing?.invoke()
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+
+            // Add spacing between text and trailing element
+            Spacer(modifier = Modifier.width(12.dp))
+
+            trailing?.invoke()
         }
     }
+}
+
+/**
+ * Dialog for selecting scan interval
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScanIntervalDialog(
+    currentInterval: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val scanIntervals = mapOf(
+        15 to "15 минут",
+        30 to "30 минут",
+        60 to "60 минут",
+        120 to "2 часа"
+    )
+
+    var selectedInterval by remember { mutableIntStateOf(currentInterval) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Интервал сканирования") },
+        text = {
+            LazyColumn {
+                scanIntervals.forEach { (minutes, label) ->
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedInterval = minutes }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedInterval == minutes,
+                                onClick = { selectedInterval = minutes }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = label)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(selectedInterval) }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text("Отмена")
+            }
+        }
+    )
 }

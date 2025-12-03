@@ -19,15 +19,15 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = findProperty("APP_PACKAGE_NAME") as String // ПРОВЕРИТЬ ПРАВИЛЬНЫЙ PACKAGE NAME
+    namespace = findProperty("APP_PACKAGE_NAME") as String? ?: "com.wifiguard" // Safe fallback if property not found
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = findProperty("APP_PACKAGE_NAME") as String // ПРОВЕРИТЬ УНИКАЛЬНОСТЬ
+        applicationId = findProperty("APP_PACKAGE_NAME") as String? ?: "com.wifiguard" // Safe fallback if property not found
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()  // ДОЛЖНО БЫТЬ 34 минимум для новых приложений
         versionCode = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 1
-        versionName = findProperty("APP_VERSION_NAME") as String
+        versionName = findProperty("APP_VERSION_NAME") as String? ?: "1.0.1" // Safe fallback if property not found
         
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -49,14 +49,19 @@ android {
     signingConfigs {
         create("release") {
             if (keystorePropertiesFile.exists()) {
-                val keystoreFile = file(keystoreProperties["storeFile"] as String)
-                if (keystoreFile.exists()) {
-                    storeFile = keystoreFile
-                    storePassword = keystoreProperties["storePassword"] as String
-                    keyAlias = keystoreProperties["keyAlias"] as String
-                    keyPassword = keystoreProperties["keyPassword"] as String
+                val keystoreFileValue = keystoreProperties["storeFile"] as? String
+                if (keystoreFileValue != null) {
+                    val keystoreFile = file(keystoreFileValue)
+                    if (keystoreFile.exists()) {
+                        storeFile = keystoreFile
+                        storePassword = keystoreProperties["storePassword"] as? String ?: ""
+                        keyAlias = keystoreProperties["keyAlias"] as? String ?: ""
+                        keyPassword = keystoreProperties["keyPassword"] as? String ?: ""
+                    } else {
+                        println("WARNING: Keystore file not found: ${keystoreFile.absolutePath}")
+                    }
                 } else {
-                    println("WARNING: Keystore file not found: ${keystoreFile.absolutePath}")
+                    println("WARNING: Store file path not found in keystore properties")
                 }
             } else {
                 println("WARNING: Keystore properties file not found: ${keystorePropertiesFile.absolutePath}")
@@ -81,7 +86,8 @@ android {
                 "proguard-rules.pro"
             )
             // Использовать release signing, если keystore доступен
-            if (keystorePropertiesFile.exists() && file(keystoreProperties["storeFile"] as String).exists()) {
+            val keystoreFileValue = keystoreProperties["storeFile"] as? String
+            if (keystorePropertiesFile.exists() && keystoreFileValue != null && file(keystoreFileValue).exists()) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
                 println("WARNING: Release signing configuration not available, using debug signing for release build")
@@ -131,61 +137,45 @@ android {
 }
 
 dependencies {
-    // Основные зависимости Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    
-    // Compose BOM для согласования версий
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.bundles.compose)
-    
-    // Навигация
-    implementation(libs.androidx.navigation.compose)
-    
-    // ViewModel и LiveData
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    
-    // Hilt DI
-    implementation(libs.bundles.hilt)
-    ksp(libs.hilt.compiler)
-    
-    // База данных Room
-    implementation(libs.bundles.room)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    implementation(libs.material)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.gson)
+    implementation(libs.androidx.compose.material.icons.extended)
+
+    // Room
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
     ksp(libs.androidx.room.compiler)
-    
-    // DataStore
-    implementation(libs.androidx.datastore.preferences)
-    
+
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
-    
-    // Сеть и сериализация
-    implementation(libs.kotlinx.serialization.json)
-    
-    // Разрешения
-    implementation(libs.accompanist.permissions)
-    
-    // Безопасность
-    implementation(libs.androidx.security.crypto)
-    
-    // Material Design 3 (for XML themes)
-    implementation(libs.material)
-    
-    // Gson
-    implementation(libs.gson)
-    
 
-    
-    // Тестирование
-    testImplementation(libs.bundles.testing)
-    
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.bundles.compose.test)
-    
-    debugImplementation(libs.bundles.compose.debug)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // WorkManager Testing
+    androidTestImplementation(libs.androidx.work.testing)
 }

@@ -98,7 +98,7 @@ class ScannerViewModel @Inject constructor(
         
         // Загружаем информацию о текущей подключенной сети
         loadCurrentNetwork()
-        
+
         // Автоматически запускаем сканирование только если есть разрешения
         if (permissionHandler.hasWifiScanPermissions()) {
             startScan()

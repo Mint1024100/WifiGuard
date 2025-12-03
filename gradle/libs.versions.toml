@@ -11,12 +11,13 @@ kotlin = "2.1.0"
 compose-bom = "2024.04.01"
 
 # Serialization
-kotlinx-serialization = "1.6.0"
+kotlinx-serialization = "1.7.3"
 
 # Hilt
 hilt = "2.55"
 hilt-compiler = "1.2.0"
 hilt-navigation-compose = "1.2.0"
+hilt-testing = "2.55"
 
 # KSP
 ksp = "2.1.0-1.0.29"
@@ -63,20 +64,20 @@ accompanist-permissions = "0.34.0"
 security = "1.1.0-alpha06"
 
 # Gson
-gson = "2.10.1"
+gson = "2.11.0"
 
 # Testing
 junit = "1.2.1"
 espresso = "3.6.1"
 
 # Material Components Version
-material = "1.12.0"
+material = "1.13.0"
 # Material3 Version for Compose
 material3 = "1.3.0"
 
 # Material Icons
-material-icons = "1.6.8"
-material-icons-extended = "1.6.8"
+material-icons = "1.7.5"
+material-icons-extended = "1.7.5"
 
 [libraries]
 # AndroidX Core
@@ -136,6 +137,7 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", v
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
 androidx-hilt-navigation-fragment = { group = "androidx.hilt", name = "hilt-navigation-fragment", version.ref = "hilt" }
 androidx-hilt-lifecycle-viewmodel = { group = "androidx.hilt", name = "hilt-lifecycle-viewmodel", version.ref = "hilt" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt-testing" }
 
 # Room
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
@@ -145,9 +147,13 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
+# JUnit
+junit = { group = "junit", name = "junit", version = "4.13.2" }
+
 # Testing
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 
 # Compose Additional
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -176,6 +182,16 @@ room = ["room-runtime", "room-ktx"]
 testing = [
     "androidx-test-ext-junit",
     "androidx-test-espresso-core"
+]
+
+# Hilt Testing
+hilt-testing = [
+    "hilt-android-testing"
+]
+
+# Work Testing
+work-testing = [
+    "androidx-work-testing"
 ]
 
 # Compose debug

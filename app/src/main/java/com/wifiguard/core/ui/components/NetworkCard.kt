@@ -22,8 +22,8 @@ import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.ui.theme.*
 
 /**
- * Modern card component for displaying Wi-Fi network information.
- * Features a visual threat indicator and clean hierarchy.
+ * Modern cyber-security themed card component for displaying Wi-Fi network information.
+ * Features a visual threat indicator and clean hierarchy with enhanced visual hierarchy.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +44,7 @@ fun NetworkCard(
     }
 
     val containerColor = if (isCurrentNetwork) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
     } else {
         MaterialTheme.colorScheme.surface
     }
@@ -52,41 +52,49 @@ fun NetworkCard(
     val borderColor = if (isCurrentNetwork) {
         MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.outlineVariant
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
 
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp), // Add slight vertical spacing between cards
-        shape = MaterialTheme.shapes.medium,
+            .padding(vertical = 6.dp), // Increased vertical spacing between cards
+        shape = MaterialTheme.shapes.medium.copy(
+            bottomEnd = MaterialTheme.shapes.extraSmall.bottomEnd,
+            bottomStart = MaterialTheme.shapes.extraSmall.bottomStart
+        ), // Slightly more modern rounded corners
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isCurrentNetwork) 4.dp else 1.dp
+            defaultElevation = WifiGuardElevation.Level2, // Consistent elevation system
+            pressedElevation = WifiGuardElevation.Level3,
+            hoveredElevation = WifiGuardElevation.Level3
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            borderColor.copy(alpha = 0.7f)
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min) // Match height to content
+                .height(IntrinsicSize.Min)
         ) {
-            // Left Status Strip
+            // Left Status Strip - More prominent visual threat indicator
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(6.dp)
+                    .width(8.dp)
                     .background(statusColor)
             )
 
-            // Main Content
+            // Main Content - More internal padding for better visual hierarchy
             Column(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
                     .weight(1f)
             ) {
-                // Header: SSID + Signal
+                // Header: SSID + Signal - Enhanced visual hierarchy
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -94,84 +102,99 @@ fun NetworkCard(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f, fill = false) // Allow space for badge
                     ) {
                         Icon(
                             imageVector = if (network.isConnected) Icons.Default.Wifi else Icons.Default.SignalWifi4Bar,
                             contentDescription = null,
-                            tint = if (isCurrentNetwork) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp)
+                            tint = if (isCurrentNetwork) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
                                 text = network.ssid.ifEmpty { "Скрытая сеть" },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold, // Bolder for better hierarchy
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onSurface // Higher contrast
                             )
                             if (isCurrentNetwork) {
                                 Text(
                                     text = "Подключено",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
                             }
                         }
                     }
 
-                    // Security Badge
+                    // Security Badge - More prominent and better positioned
                     ThreatBadge(threatLevel = network.threatLevel)
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp)) // Increased spacing
 
-                // Details Row: Frequency, Channel, Security Type
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Details Section - Improved layout for technical information
+                // Using a grid-like layout for better information density
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Frequency
-                    DetailItem(
-                        label = "Част",
-                        value = "${network.frequency} МГц"
-                    )
+                    // Frequency and Channel Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Frequency and Channel in a single row
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (network.frequency > 0) {
+                                Text(
+                                    text = ".freq: ${network.frequency} МГц",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            if (network.channel > 0) {
+                                Text(
+                                    text = "· channel: ${network.channel}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
 
-                    // Channel
-                    if (network.channel > 0) {
-                        DetailItem(
-                            label = "Кан",
-                            value = "${network.channel}"
-                        )
+                        // Security Protocol
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (network.securityType == SecurityType.OPEN) Icons.Default.LockOpen else Icons.Default.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = getSecurityTypeText(network.securityType),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
 
-                    // Security Protocol
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = if (network.securityType == SecurityType.OPEN) Icons.Default.LockOpen else Icons.Default.Lock,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                    // Vendor Info (if available) - Smaller, less prominent
+                    if (!network.vendor.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = getSecurityTypeText(network.securityType),
+                            text = "Vendor: $network.vendor",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
                     }
-                }
-                
-                // Vendor Info (if available)
-                if (!network.vendor.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = network.vendor,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
                 }
             }
         }
@@ -199,23 +222,23 @@ private fun DetailItem(label: String, value: String) {
 private fun ThreatBadge(threatLevel: ThreatLevel) {
     val (color, text) = when (threatLevel) {
         ThreatLevel.SAFE -> SecuritySafe to "Безопасно"
-        ThreatLevel.LOW -> SecurityLow to "Низкий риск"
-        ThreatLevel.MEDIUM -> SecurityMedium to "Средний риск"
-        ThreatLevel.HIGH -> SecurityHigh to "Высокий риск"
+        ThreatLevel.LOW -> SecurityLow to "Низкий"
+        ThreatLevel.MEDIUM -> SecurityMedium to "Средний"
+        ThreatLevel.HIGH -> SecurityHigh to "Высокий"
         ThreatLevel.CRITICAL -> SecurityCritical to "Критический"
         ThreatLevel.UNKNOWN -> SecurityUnknown to "Неизвестно"
     }
 
     Surface(
-        color = color.copy(alpha = 0.15f),
+        color = color.copy(alpha = 0.12f),
         contentColor = color,
-        shape = MaterialTheme.shapes.small,
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.3f))
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp), // More pill-like shape
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.4f))
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), // More generous padding
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold
         )
     }

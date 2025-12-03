@@ -41,9 +41,6 @@ fun WifiGuardNavigation(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
-                },
                 onNavigateToSecurityReport = {
                     navController.navigate(Screen.SecurityReport.route)
                 }
@@ -103,9 +100,6 @@ fun WifiGuardNavigation(
             SecurityReportScreen(
                 onNavigateBack = {
                     navController.popBackStack()
-                },
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
                 }
             )
         }

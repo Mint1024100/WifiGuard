@@ -10,6 +10,7 @@ import java.util.Date
  */
 @Parcelize
 @Serializable
+@androidx.compose.runtime.Stable
 data class WifiScanResult(
     val ssid: String,
     val bssid: String,

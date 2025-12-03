@@ -21,23 +21,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 
 // Modern shape system for rounded corners and consistent design language
 val Shapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),      // For small elements like checkboxes
-    small = RoundedCornerShape(8.dp),           // For buttons and small cards
-    medium = RoundedCornerShape(16.dp),         // For standard cards and dialogs (Increased from 12dp)
-    large = RoundedCornerShape(24.dp),          // For larger containers and sheets (Increased from 16dp)
-    extraLarge = RoundedCornerShape(32.dp)      // For bottom sheets and special elements (Increased from 28dp)
+    extraSmall = RoundedCornerShape(8.dp),      // For small elements like checkboxes
+    small = RoundedCornerShape(12.dp),          // For buttons and small cards
+    medium = RoundedCornerShape(20.dp),         // For standard cards and dialogs (Increased from 16dp)
+    large = RoundedCornerShape(28.dp),          // For larger containers and sheets (Increased from 24dp)
+    extraLarge = RoundedCornerShape(36.dp)      // For bottom sheets and special elements (Increased from 32dp)
 )
 
 // Modern elevation system with consistent shadow effects
 object WifiGuardElevation {
     val Level0 = 0.dp
     val Level1 = 1.dp
-    val Level2 = 2.dp
-    val Level3 = 4.dp
-    val Level4 = 8.dp
-    val Level5 = 12.dp
-    val Level6 = 16.dp
-    val Level7 = 24.dp
+    val Level2 = 3.dp      // Slightly increased for better visibility
+    val Level3 = 6.dp      // Slightly increased for better visibility
+    val Level4 = 10.dp     // Slightly increased for better visibility
+    val Level5 = 16.dp
+    val Level6 = 20.dp     // Increased for important elements
+    val Level7 = 28.dp     // Increased for floating elements
 }
 
 // Modern light color scheme
@@ -70,34 +70,34 @@ private val LightColorScheme = lightColorScheme(
     inversePrimary = TechBluePrimaryDark,
 )
 
-// Modern dark color scheme
+// Modern dark color scheme - Cyber Security Theme
 private val DarkColorScheme = darkColorScheme(
-    primary = TechBluePrimaryDark,
-    onPrimary = Color(0xFF002561), // Dark text on light primary in dark mode? No, usually dark mode primary is light.
-    primaryContainer = TechBlueContainerDark,
-    onPrimaryContainer = Color(0xFFDEE9FC),
-    secondary = CyberCyanSecondaryDark,
-    onSecondary = Color(0xFF003642),
-    secondaryContainer = CyberCyanContainerDark,
-    onSecondaryContainer = Color(0xFFE0F7FA),
-    tertiary = DeepPurpleTertiaryDark,
-    onTertiary = Color(0xFF20005F),
-    tertiaryContainer = DeepPurpleContainerDark,
-    onTertiaryContainer = Color(0xFFEDE7F6),
-    background = NeutralBackgroundDark,
-    onBackground = TextPrimaryDark,
-    surface = NeutralSurfaceDark,
-    onSurface = TextPrimaryDark,
-    surfaceVariant = Color(0xFF21262D), // Slightly lighter surface for cards/inputs
-    onSurfaceVariant = TextSecondaryDark,
-    error = ErrorDark,
-    onError = Color(0xFF420D04),
-    errorContainer = ErrorContainerDark,
-    onErrorContainer = Color(0xFFFFEBE6),
-    outline = OutlineDark,
-    inverseOnSurface = TextPrimaryLight,
-    inverseSurface = NeutralSurfaceLight,
-    inversePrimary = TechBluePrimaryLight,
+    primary = TechBluePrimaryDark,          // Deep Navy surface
+    onPrimary = Color(0xFFF8FAFC),          // Light text on primary (F8FAFC)
+    primaryContainer = TechBlueContainerDark, // Deep Navy background
+    onPrimaryContainer = Color(0xFF94A3B8),  // Light secondary text on primary container (94A3B8)
+    secondary = CyberCyanSecondaryDark,     // Emerald accent
+    onSecondary = Color.White,              // White text on secondary
+    secondaryContainer = CyberCyanContainerDark, // Dark emerald container
+    onSecondaryContainer = Color(0xFFECFDF5), // Light emerald container text
+    tertiary = DeepPurpleTertiaryDark,      // Amber for warnings
+    onTertiary = Color.White,               // White text on tertiary
+    tertiaryContainer = DeepPurpleContainerDark, // Red for critical warnings
+    onTertiaryContainer = Color(0xFFFEF2F2), // Light red container text
+    background = NeutralBackgroundDark,     // Deep Navy background (#0F172A)
+    onBackground = TextPrimaryDark,         // Light text on background (#F8FAFC)
+    surface = NeutralSurfaceDark,           // Slate 800 surface (#1E293B)
+    onSurface = TextPrimaryDark,            // Light text on surface (#F8FAFC)
+    surfaceVariant = Color(0xFF334155),     // Darker surface for cards/inputs (Slate 700)
+    onSurfaceVariant = TextSecondaryDark,   // Light secondary text (#94A3B8)
+    error = ErrorDark,                      // Red error
+    onError = Color.White,                  // White text on error
+    errorContainer = ErrorContainerDark,    // Dark red error container
+    onErrorContainer = Color(0xFFFEE2E2),   // Light red error container
+    outline = OutlineDark,                  // Light outline for dark theme (#94A3B8)
+    inverseOnSurface = TextPrimaryLight,    // Dark text for inverse
+    inverseSurface = TextPrimaryDark,       // Light surface for inverse
+    inversePrimary = TechBluePrimaryDark,   // Deep Navy for inverse primary
 )
 
 @Composable

@@ -105,3 +105,9 @@ coveralls.yml
 # Android build cache
 .android/
 .aider*
+
+*.zip
+*.rar
+gradle-install/
+temp_gradle83/
+gradle/wrapper/gradle-wrapper.jar

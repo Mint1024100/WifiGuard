@@ -41,34 +41,42 @@ class WifiScannerService @Inject constructor(
      * @return true если сканирование успешно запущено
      */
     suspend fun startScan(): Boolean {
+        Log.d("WifiGuardDebug", "WifiScannerService: Starting scan")
         return try {
             if (!wifiManager.isWifiEnabled) {
                 Log.w(TAG, "WiFi отключен")
+                Log.d("WifiGuardDebug", "WifiScannerService: WiFi is not enabled")
                 return false
             }
-            
+
             val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Android 10+ - результаты кэшируются системой, не запускаем активное сканирование
                 Log.d(TAG, "Android 10+, активное сканирование ограничено, используем кеш")
+                Log.d("WifiGuardDebug", "WifiScannerService: Android 10+, using system cache for scan")
                 true  // Считаем, что сканирование "успешно" в контексте новых ограничений
             } else {
                 // Android 9 и ниже - можем попытаться запустить сканирование
+                Log.d("WifiGuardDebug", "WifiScannerService: Android 9 or lower, attempting active scan")
                 @Suppress("DEPRECATION")
                 wifiManager.startScan()
             }
-            
+
             if (success) {
                 Log.d(TAG, "Сканирование WiFi запущено успешно")
+                Log.d("WifiGuardDebug", "WifiScannerService: WiFi scan started successfully")
             } else {
                 Log.w(TAG, "Не удалось запустить сканирование WiFi")
+                Log.d("WifiGuardDebug", "WifiScannerService: Failed to start WiFi scan")
             }
-            
+
             success
         } catch (e: SecurityException) {
             Log.e(TAG, "Нет разрешений для сканирования WiFi", e)
+            Log.e("WifiGuardDebug", "WifiScannerService: Security exception during scan: ${e.message}", e)
             false
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске сканирования WiFi", e)
+            Log.e("WifiGuardDebug", "WifiScannerService: Error during scan: ${e.message}", e)
             false
         }
     }
@@ -109,28 +117,42 @@ class WifiScannerService @Inject constructor(
      * @return список результатов сканирования как WifiScanResult
      */
     fun getScanResultsAsCoreModels(): List<WifiScanResult> {
+        Log.d("WifiGuardDebug", "WifiScannerService: Getting scan results as core models")
         return try {
             if (!wifiManager.isWifiEnabled) {
                 Log.w(TAG, "WiFi отключен")
+                Log.d("WifiGuardDebug", "WifiScannerService: WiFi is not enabled, returning empty list")
                 return emptyList()
             }
-            
+
             val scanResults = wifiManager.scanResults
             Log.d(TAG, "Получено ${scanResults.size} результатов сканирования")
-            
-            scanResults.mapNotNull { scanResult ->
+            Log.d("WifiGuardDebug", "WifiScannerService: Got ${scanResults.size} scan results")
+
+            if (scanResults.isEmpty()) {
+                Log.d("WifiGuardDebug", "WifiScannerService: Scan results are empty - this may be due to Android background restrictions")
+            }
+
+            val mappedResults = scanResults.mapNotNull { scanResult ->
                 try {
+                    Log.d("WifiGuardDebug", "WifiScannerService: Processing scan result for ${scanResult.SSID}")
                     scanResultToWifiScanResult(scanResult)
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка преобразования результата сканирования: ${e.message}")
+                    Log.e("WifiGuardDebug", "WifiScannerService: Error converting scan result: ${e.message}", e)
                     null
                 }
             }
+
+            Log.d("WifiGuardDebug", "WifiScannerService: Successfully converted ${mappedResults.size} scan results to core models")
+            mappedResults
         } catch (e: SecurityException) {
             Log.e(TAG, "Нет разрешений для получения результатов сканирования", e)
+            Log.e("WifiGuardDebug", "WifiScannerService: Security exception getting scan results: ${e.message}", e)
             emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при получении результатов сканирования", e)
+            Log.e("WifiGuardDebug", "WifiScannerService: Error getting scan results: ${e.message}", e)
             emptyList()
         }
     }
@@ -140,36 +162,45 @@ class WifiScannerService @Inject constructor(
      * @return Flow с результатами сканирования
      */
     fun observeScanResults(): Flow<List<WifiInfo>> = callbackFlow {
+        Log.d("WifiGuardDebug", "WifiScannerService: Starting to observe scan results")
         val scanReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) {
                     val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
-                    
+                    Log.d("WifiGuardDebug", "WifiScannerService: Scan results available, success = $success")
+
                     if (success) {
                         Log.d(TAG, "Результаты сканирования обновлены")
+                        Log.d("WifiGuardDebug", "WifiScannerService: Sending updated scan results")
                         val results = getScanResults()
+                        Log.d("WifiGuardDebug", "WifiScannerService: Sending ${results.size} scan results to flow")
                         trySend(results)
                     } else {
                         Log.w(TAG, "Сканирование не удалось")
+                        Log.d("WifiGuardDebug", "WifiScannerService: Scan failed, sending empty list")
                         trySend(emptyList())
                     }
                 }
             }
         }
-        
+
         // Регистрируем receiver
         val intentFilter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+        Log.d("WifiGuardDebug", "WifiScannerService: Registering scan results receiver")
         context.registerReceiver(scanReceiver, intentFilter)
-        
+
         // Отправляем текущие результаты
         val currentResults = getScanResults()
+        Log.d("WifiGuardDebug", "WifiScannerService: Sending initial ${currentResults.size} scan results")
         trySend(currentResults)
-        
+
         awaitClose {
             try {
+                Log.d("WifiGuardDebug", "WifiScannerService: Unregistering scan results receiver")
                 context.unregisterReceiver(scanReceiver)
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при отмене регистрации receiver", e)
+                Log.e("WifiGuardDebug", "WifiScannerService: Error unregistering receiver: ${e.message}", e)
             }
         }
     }

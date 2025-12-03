@@ -124,11 +124,16 @@ fun ScannerScreen(
                 .padding(paddingValues)
         ) {
             // Статус индикатор
-            val currentScanResultForStatus = scanResult
+            val networksCount by remember(scanResult, uiState.networks) {
+                derivedStateOf {
+                    val currentScanResult = scanResult
+                    if (currentScanResult is Result.Success) currentScanResult.data.size else uiState.networks.size
+                }
+            }
             StatusIndicator(
                 isWifiEnabled = uiState.isWifiEnabled,
-                isScanning = currentScanResultForStatus is Result.Loading,
-                networksCount = if (currentScanResultForStatus is Result.Success) currentScanResultForStatus.data.size else uiState.networks.size,
+                isScanning = scanResult is Result.Loading,
+                networksCount = networksCount,
                 lastScanTime = uiState.lastScanTime,
                 modifier = Modifier.padding(16.dp)
             )
@@ -247,12 +252,17 @@ fun ScannerScreen(
                         )
                     } else {
                         // Фильтруем результаты сканирования, исключая текущую подключенную сеть если она есть
-                        val filteredNetworks = if (currentNetwork != null) {
-                            currentScanResult.data.filter { it.bssid != currentNetwork?.bssid }
-                        } else {
-                            currentScanResult.data
+                        val filteredNetworks by remember(currentScanResult, currentNetwork) {
+                            derivedStateOf {
+                                val currentData = currentScanResult.data
+                                if (currentNetwork != null) {
+                                    currentData.filter { it.bssid != currentNetwork?.bssid }
+                                } else {
+                                    currentData
+                                }
+                            }
                         }
-                        
+
                         NetworksList(
                             networks = filteredNetworks,
                             onNetworkClick = { network ->

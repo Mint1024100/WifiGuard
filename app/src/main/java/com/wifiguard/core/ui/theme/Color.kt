@@ -3,101 +3,101 @@ package com.wifiguard.core.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ==============================================================================
-// Modern "Cyber Security" Palette
+// Modern "Cyber Security" Palette - Deep Navy & Emerald Theme
 // Designed for high contrast, professional trust, and modern tech aesthetics.
 // ==============================================================================
 
-// Primary Brand Colors (Blue/Indigo based)
-// Light: Deep, trustworthy blue. Dark: Vibrant, electric blue.
-val TechBluePrimaryLight = Color(0xFF0052CC)
-val TechBluePrimaryDark = Color(0xFF4C9AFF)
-val TechBlueContainerLight = Color(0xFFDEE9FC)
-val TechBlueContainerDark = Color(0xFF003380)
+// Primary Brand Colors (Deep Navy based)
+// Dark: Deep Navy for background and surfaces.
+val TechBluePrimaryLight = Color(0xFF3757D4)        // Original blue for light mode compatibility
+val TechBluePrimaryDark = Color(0xFF1E293B)         // Deep Navy surface
+val TechBlueContainerLight = Color(0xFFDEE9FC)      // Original container for light mode
+val TechBlueContainerDark = Color(0xFF0F172A)       // Deep Navy background
 
-// Secondary Brand Colors (Cyan/Teal based)
+// Secondary Brand Colors (Emerald based)
 // Used for accents, actions, and "secure" indicators.
-val CyberCyanSecondaryLight = Color(0xFF008DA6)
-val CyberCyanSecondaryDark = Color(0xFF00D8FF)
-val CyberCyanContainerLight = Color(0xFFE0F7FA)
-val CyberCyanContainerDark = Color(0xFF004D5C)
+val CyberCyanSecondaryLight = Color(0xFF008DA6)     // Original cyan for light mode
+val CyberCyanSecondaryDark = Color(0xFF10B981)      // Emerald primary accent
+val CyberCyanContainerLight = Color(0xFFE0F7FA)     // Original container for light mode
+val CyberCyanContainerDark = Color(0xFF047857)      // Dark emerald container
 
-// Tertiary Brand Colors (Purple/Violet based)
-// Used for special highlights or "premium" features.
-val DeepPurpleTertiaryLight = Color(0xFF651FFF)
-val DeepPurpleTertiaryDark = Color(0xFFB388FF)
-val DeepPurpleContainerLight = Color(0xFFEDE7F6)
-val DeepPurpleContainerDark = Color(0xFF320B86)
+// Tertiary Brand Colors (Amber/Red for warnings)
+// Used for critical warnings and alerts.
+val DeepPurpleTertiaryLight = Color(0xFF651FFF)     // Original purple for light mode
+val DeepPurpleTertiaryDark = Color(0xFFF59E0B)     // Amber for warnings
+val DeepPurpleContainerLight = Color(0xFFEDE7F6)    // Original container for light mode
+val DeepPurpleContainerDark = Color(0xFFDC2626)     // Red for critical warnings
 
-// Neutral / Background Colors
-// Light: Clean, professional gray-white. Dark: Deep, "Github Dimmed" style navy-gray.
-val NeutralBackgroundLight = Color(0xFFF4F5F7)
-val NeutralBackgroundDark = Color(0xFF0D1117)
-val NeutralSurfaceLight = Color(0xFFFFFFFF)
-val NeutralSurfaceDark = Color(0xFF161B22)
+// Neutral / Background Colors - Dark Theme Focus
+// Cyber Security themed: Deep Navy background, Slate surfaces.
+val NeutralBackgroundLight = Color(0xFFF4F5F7)      // Original light background
+val NeutralBackgroundDark = Color(0xFF0F172A)       // Deep Navy background (#0F172A)
+val NeutralSurfaceLight = Color(0xFFFFFFFF)         // Original light surface
+val NeutralSurfaceDark = Color(0xFF1E293B)          // Slate 800 surface (#1E293B)
 
-// Text Colors
-val TextPrimaryLight = Color(0xFF172B4D)
-val TextPrimaryDark = Color(0xFFF0F6FC)
-val TextSecondaryLight = Color(0xFF5E6C84)
-val TextSecondaryDark = Color(0xFF8B949E)
+// Text Colors - High contrast for security tools
+val TextPrimaryLight = Color(0xFF172B4D)            // Original light primary text
+val TextPrimaryDark = Color(0xFFF8FAFC)             // High contrast primary text (#F8FAFC)
+val TextSecondaryLight = Color(0xFF5E6C84)          // Original light secondary text
+val TextSecondaryDark = Color(0xFF94A3B8)           // Slate 400 secondary text (#94A3B8)
 
-// Error Colors
-val ErrorLight = Color(0xFFBF2600)
-val ErrorDark = Color(0xFFFF7B72)
-val ErrorContainerLight = Color(0xFFFFEBE6)
-val ErrorContainerDark = Color(0xFF521816)
+// Error Colors - Cyber Security themed
+val ErrorLight = Color(0xFFBF2600)                  // Original light error
+val ErrorDark = Color(0xFFEF4444)                   // Red 500 for errors (#EF4444)
+val ErrorContainerLight = Color(0xFFFFEBE6)         // Original light error container
+val ErrorContainerDark = Color(0xFFB91C1C)          // Dark red error container
 
 // ==============================================================================
-// Status Indicators (Signals, Security)
+// Status Indicators (Signals, Security) - Cyber Security Themed
 // ==============================================================================
 
-// Security Levels
-val SecuritySafe = Color(0xFF008DA6)      // Cyan/Teal
-val SecurityLow = Color(0xFF36B37E)       // Green
-val SecurityMedium = Color(0xFFFFAB00)    // Amber
-val SecurityHigh = Color(0xFFFF5630)      // Orange-Red
-val SecurityCritical = Color(0xFFBF2600)  // Deep Red
-val SecurityUnknown = Color(0xFF6B778C)   // Slate Gray
+// Security Levels - Updated for Emerald/Red theme
+val SecuritySafe = Color(0xFF10B981)                // Emerald 500 for safe networks
+val SecurityLow = Color(0xFF34D399)                 // Light emerald for low risk
+val SecurityMedium = Color(0xFFF59E0B)               // Amber 500 for medium risk
+val SecurityHigh = Color(0xFFEF4444)                 // Red 500 for high risk
+val SecurityCritical = Color(0xFFDC2626)             // Red 600 for critical risk
+val SecurityUnknown = Color(0xFF94A3B8)              // Slate 400 for unknown
 
-// Signal Strength (distinct from security to avoid confusion, but harmonious)
-val SignalExcellent = Color(0xFF00A3BF)
-val SignalGood = Color(0xFF36B37E)
-val SignalFair = Color(0xFFFFAB00)
-val SignalWeak = Color(0xFFFF8B00)
-val SignalVeryWeak = Color(0xFFFF5630)
-val SignalCritical = Color(0xFFBF2600)
+// Signal Strength - Harmonious with security colors
+val SignalExcellent = Color(0xFF10B981)             // Emerald (same as safe)
+val SignalGood = Color(0xFF34D399)                  // Light emerald
+val SignalFair = Color(0xFFF59E0B)                  // Amber (same as medium risk)
+val SignalWeak = Color(0xFFFBBF24)                  // Yellow for weak signals
+val SignalVeryWeak = Color(0xFFEF4444)              // Red (same as high risk)
+val SignalCritical = Color(0xFFB91C1C)              // Dark red
 
-// Outline & Dividers
-val OutlineLight = Color(0xFFDFE1E6)
-val OutlineDark = Color(0xFF30363D)
+// Outline & Dividers - Updated for dark theme
+val OutlineLight = Color(0xFFDFE1E6)                // Original light outline
+val OutlineDark = Color(0xFF94A3B8)                 // Light outline for dark theme
 
-// Mapping to Generic Names for Theme.kt
-val WifiGuardPrimary = TechBluePrimaryLight
-val WifiGuardPrimaryContainer = TechBlueContainerLight
-val WifiGuardOnPrimary = Color.White
-val WifiGuardOnPrimaryContainer = Color(0xFF002561)
+// Mapping to Generic Names for Theme.kt - Updated for Cyber Security Theme
+val WifiGuardPrimary = TechBluePrimaryDark           // Deep Navy (dark theme primary)
+val WifiGuardPrimaryContainer = TechBlueContainerDark // Deep Navy container
+val WifiGuardOnPrimary = Color(0xFFF8FAFC)           // Light text on primary
+val WifiGuardOnPrimaryContainer = Color(0xFF94A3B8)  // Secondary light text
 
-val WifiGuardSecondary = CyberCyanSecondaryLight
-val WifiGuardSecondaryContainer = CyberCyanContainerLight
-val WifiGuardOnSecondary = Color.White
-val WifiGuardOnSecondaryContainer = Color(0xFF003642)
+val WifiGuardSecondary = CyberCyanSecondaryDark      // Emerald accent
+val WifiGuardSecondaryContainer = CyberCyanContainerDark // Dark emerald container
+val WifiGuardOnSecondary = Color(0xFFFFFFFF)         // White text on secondary
+val WifiGuardOnSecondaryContainer = Color(0xFFECFDF5) // Light emerald container
 
-val WifiGuardTertiary = DeepPurpleTertiaryLight
-val WifiGuardTertiaryContainer = DeepPurpleContainerLight
-val WifiGuardOnTertiary = Color.White
-val WifiGuardOnTertiaryContainer = Color(0xFF20005F)
+val WifiGuardTertiary = DeepPurpleTertiaryDark        // Amber for warnings
+val WifiGuardTertiaryContainer = DeepPurpleContainerDark // Red for critical warnings
+val WifiGuardOnTertiary = Color(0xFFFFFFFF)          // White text on tertiary
+val WifiGuardOnTertiaryContainer = Color(0xFFFEF2F2) // Light red container
 
-val WifiGuardBackground = NeutralBackgroundLight
-val WifiGuardOnBackground = TextPrimaryLight
-val WifiGuardSurface = NeutralSurfaceLight
-val WifiGuardOnSurface = TextPrimaryLight
+val WifiGuardBackground = NeutralBackgroundDark      // Deep Navy background
+val WifiGuardOnBackground = TextPrimaryDark          // Light text on background
+val WifiGuardSurface = NeutralSurfaceDark            // Slate 800 surface
+val WifiGuardOnSurface = TextPrimaryDark             // Light text on surface
 
-val WifiGuardError = ErrorLight
-val WifiGuardOnError = Color.White
-val WifiGuardErrorContainer = ErrorContainerLight
-val WifiGuardOnErrorContainer = Color(0xFF420D04)
+val WifiGuardError = ErrorDark                       // Red error
+val WifiGuardOnError = Color(0xFFFFFFFF)             // White text on error
+val WifiGuardErrorContainer = ErrorContainerDark     // Dark red error container
+val WifiGuardOnErrorContainer = Color(0xFFFEE2E2)    // Light red error container
 
-val WifiGuardOutline = OutlineLight
-val WifiGuardInverseOnSurface = TextPrimaryDark
-val WifiGuardInverseSurface = NeutralSurfaceDark
-val WifiGuardInversePrimary = TechBluePrimaryDark
+val WifiGuardOutline = OutlineDark                   // Light outline for dark theme
+val WifiGuardInverseOnSurface = TextPrimaryLight     // Dark text for inverse
+val WifiGuardInverseSurface = TextPrimaryDark        // Light surface for inverse
+val WifiGuardInversePrimary = TechBluePrimaryDark    // Deep Navy for inverse primary

@@ -16,7 +16,6 @@ import com.wifiguard.feature.analysis.presentation.SecurityReportContent
 @Composable
 fun SecurityReportScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToSettings: () -> Unit,
     viewModel: SecurityReportViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -28,7 +27,7 @@ fun SecurityReportScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Назад"
                         )
                     }

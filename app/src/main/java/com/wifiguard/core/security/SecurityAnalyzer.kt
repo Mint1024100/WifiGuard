@@ -5,6 +5,8 @@ import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.domain.model.SecurityThreat
 import com.wifiguard.core.domain.model.ThreatType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,30 +18,30 @@ class SecurityAnalyzer @Inject constructor(
     private val threatDetector: ThreatDetector,
     private val encryptionAnalyzer: EncryptionAnalyzer
 ) {
-    
+
     /**
      * Анализировать безопасность списка сетей
      */
-    suspend fun analyzeNetworks(scanResults: List<WifiScanResult>): SecurityReport {
+    suspend fun analyzeNetworks(scanResults: List<WifiScanResult>): SecurityReport = withContext(Dispatchers.Default) {
         val threats = mutableListOf<SecurityThreat>()
         val networkAnalysis = mutableListOf<NetworkSecurityAnalysis>()
-        
+
         // Анализируем каждую сеть
         scanResults.forEach { network ->
             val analysis = analyzeNetwork(network, scanResults)
             networkAnalysis.add(analysis)
-            
+
             // Добавляем угрозы
             if (analysis.threatLevel.isHighOrCritical()) {
                 threats.addAll(analysis.threats)
             }
         }
-        
+
         // Детектируем глобальные угрозы
         val globalThreats = threatDetector.detectGlobalThreats(scanResults)
         threats.addAll(globalThreats)
-        
-        return SecurityReport(
+
+        return@withContext SecurityReport(
             timestamp = System.currentTimeMillis(),
             totalNetworks = scanResults.size,
             safeNetworks = networkAnalysis.count { it.threatLevel.isSafe() },

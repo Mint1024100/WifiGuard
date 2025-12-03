@@ -1,63 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Modern Primary Colors - Indigo based -->
-    <color name="primary">#3757D4</color>                    <!-- WifiGuardPrimary -->
-    <color name="primary_container">#DDE1FF</color>          <!-- WifiGuardPrimaryContainer -->
-    <color name="on_primary">#FFFFFF</color>                 <!-- WifiGuardOnPrimary -->
-    <color name="on_primary_container">#001969</color>       <!-- WifiGuardOnPrimaryContainer -->
+    <!-- Modern Primary Colors - Deep Navy based -->
+    <color name="primary">#1E293B</color>                    <!-- Deep Navy Background -->
+    <color name="primary_container">#0F172A</color>          <!-- Darker Navy Container -->
+    <color name="on_primary">#F8FAFC</color>                 <!-- Light text on primary -->
+    <color name="on_primary_container">#94A3B8</color>       <!-- Secondary text on primary container -->
 
-    <!-- Modern Secondary Colors - Teal based -->
-    <color name="secondary">#006A6D</color>                  <!-- WifiGuardSecondary -->
-    <color name="secondary_container">#97F3F5</color>        <!-- WifiGuardSecondaryContainer -->
-    <color name="on_secondary">#FFFFFF</color>               <!-- WifiGuardOnSecondary -->
-    <color name="on_secondary_container">#002021</color>     <!-- WifiGuardOnSecondaryContainer -->
+    <!-- Modern Secondary Colors - Emerald based -->
+    <color name="secondary">#10B981</color>                  <!-- Emerald Accent Green -->
+    <color name="secondary_container">#047857</color>        <!-- Darker Emerald Container -->
+    <color name="on_secondary">#FFFFFF</color>               <!-- White text on secondary -->
+    <color name="on_secondary_container">#ECFDF5</color>     <!-- Light emerald background -->
 
-    <!-- Modern Tertiary Colors - Purple based -->
-    <color name="tertiary">#9A4585</color>                   <!-- WifiGuardTertiary -->
-    <color name="tertiary_container">#FFD8E8</color>         <!-- WifiGuardTertiaryContainer -->
-    <color name="on_tertiary">#FFFFFF</color>                <!-- WifiGuardOnTertiary -->
-    <color name="on_tertiary_container">#390027</color>      <!-- WifiGuardOnTertiaryContainer -->
+    <!-- Modern Tertiary Colors - Amber based for warnings -->
+    <color name="tertiary">#F59E0B</color>                   <!-- Amber for warnings -->
+    <color name="tertiary_container">#DC2626</color>         <!-- Red for critical warnings -->
+    <color name="on_tertiary">#FFFFFF</color>                <!-- White text on tertiary -->
+    <color name="on_tertiary_container">#FEF2F2</color>      <!-- Light red background -->
 
     <!-- Background and Surface Colors -->
-    <color name="background">#FAF9FF</color>                  <!-- WifiGuardBackground -->
-    <color name="surface">#FAF9FF</color>                    <!-- WifiGuardSurface -->
-    <color name="on_background">#1A1B1F</color>              <!-- WifiGuardOnBackground -->
-    <color name="on_surface">#1A1B1F</color>                 <!-- WifiGuardOnSurface -->
+    <color name="background">#0F172A</color>                 <!-- Deep Navy Background -->
+    <color name="surface">#1E293B</color>                    <!-- Surface - Slate 800 -->
+    <color name="on_background">#F8FAFC</color>              <!-- Light text on background -->
+    <color name="on_surface">#F8FAFC</color>                 <!-- Light text on surface -->
 
     <!-- Error Colors -->
-    <color name="error">#BA1A1A</color>                      <!-- WifiGuardError -->
-    <color name="error_container">#FFDAD6</color>            <!-- WifiGuardErrorContainer -->
-    <color name="on_error">#FFFFFF</color>                   <!-- WifiGuardOnError -->
-    <color name="on_error_container">#410002</color>         <!-- WifiGuardOnErrorContainer -->
+    <color name="error">#EF4444</color>                      <!-- Red 500 -->
+    <color name="error_container">#B91C1C</color>            <!-- Red container -->
+    <color name="on_error">#FFFFFF</color>                   <!-- White text on error -->
+    <color name="on_error_container">#FEE2E2</color>         <!-- Light red error container -->
 
     <!-- Outline and Other Colors -->
-    <color name="outline">#747780</color>                    <!-- WifiGuardOutline -->
-    <color name="inverse_on_surface">#F2F0F4</color>         <!-- WifiGuardInverseOnSurface -->
-    <color name="inverse_surface">#2F3033</color>            <!-- WifiGuardInverseSurface -->
-    <color name="inverse_primary">#B9C3FF</color>            <!-- WifiGuardInversePrimary -->
+    <color name="outline">#94A3B8</color>                    <!-- Light outline -->
+    <color name="inverse_on_surface">#1E293B</color>         <!-- Dark inverse surface -->
+    <color name="inverse_surface">#F8FAFC</color>            <!-- Light inverse surface -->
+    <color name="inverse_primary">#1E293B</color>            <!-- Inverse primary -->
 
-    <!-- Security Level Colors - Updated for better visual hierarchy -->
-    <color name="security_safe">#2E7D32</color>              <!-- Deeper green (safe) -->
-    <color name="security_low">#558B2F</color>               <!-- Medium green (low) -->
-    <color name="security_medium">#F57C00</color>            <!-- Deep orange (medium) -->
-    <color name="security_high">#FF5722</color>              <!-- Red-orange (high) -->
-    <color name="security_critical">#B71C1C</color>          <!-- Deeper red (critical) -->
-    <color name="security_unknown">#757575</color>           <!-- Medium gray (unknown) -->
+    <!-- Security Level Colors - Updated for cyber-security theme -->
+    <color name="security_safe">#10B981</color>              <!-- Emerald green (safe) -->
+    <color name="security_low">#34D399</color>               <!-- Light green (low) -->
+    <color name="security_medium">#F59E0B</color>            <!-- Amber (medium) -->
+    <color name="security_high">#EF4444</color>              <!-- Red (high) -->
+    <color name="security_critical">#DC2626</color>          <!-- Dark red (critical) -->
+    <color name="security_unknown">#94A3B8</color>           <!-- Light gray (unknown) -->
 
-    <!-- Signal Strength Colors - Modern harmonious palette -->
-    <color name="signal_excellent">#2E7D32</color>           <!-- Deeper green -->
-    <color name="signal_good">#558B2F</color>                <!-- Medium green -->
-    <color name="signal_fair">#F57C00</color>                <!-- Deep orange -->
-    <color name="signal_weak">#FFA000</color>                <!-- Orange -->
-    <color name="signal_very_weak">#F4511E</color>           <!-- Deep orange-red -->
-    <color name="signal_critical">#BF360C</color>            <!-- Deeper red -->
+    <!-- Signal Strength Colors - Cyber Security themed palette -->
+    <color name="signal_excellent">#10B981</color>           <!-- Emerald green -->
+    <color name="signal_good">#34D399</color>                <!-- Light green -->
+    <color name="signal_fair">#F59E0B</color>                <!-- Amber -->
+    <color name="signal_weak">#FBBF24</color>                <!-- Yellow -->
+    <color name="signal_very_weak">#EF4444</color>           <!-- Red -->
+    <color name="signal_critical">#B91C1C</color>            <!-- Dark red -->
 
     <!-- Network Status Colors -->
-    <color name="network_connected">#2E7D32</color>          <!-- Updated green -->
-    <color name="network_available">#3757D4</color>          <!-- Updated indigo -->
-    <color name="network_hidden">#757575</color>             <!-- Updated gray -->
-    <color name="network_open">#B71C1C</color>               <!-- Updated red -->
-    <color name="network_secured">#2E7D32</color>            <!-- Updated green -->
+    <color name="network_connected">#10B981</color>          <!-- Emerald green -->
+    <color name="network_available">#60A5FA</color>          <!-- Light blue -->
+    <color name="network_hidden">#94A3B8</color>             <!-- Light gray -->
+    <color name="network_open">#EF4444</color>               <!-- Red -->
+    <color name="network_secured">#10B981</color>            <!-- Emerald green -->
 
     <!-- Common Colors -->
     <color name="white">#FFFFFF</color>
@@ -65,20 +65,20 @@
     <color name="transparent">#00000000</color>
 
     <!-- Modern Text Colors -->
-    <color name="text_primary">#1A1B1F</color>               <!-- Dark gray -->
-    <color name="text_secondary">#49454F</color>             <!-- Medium gray -->
-    <color name="text_disabled">#79747E</color>              <!-- Light gray -->
-    <color name="text_hint">#79747E</color>                  <!-- Light gray -->
+    <color name="text_primary">#F8FAFC</color>               <!-- Light primary text -->
+    <color name="text_secondary">#94A3B8</color>             <!-- Secondary text (Slate 400) -->
+    <color name="text_disabled">#64748B</color>              <!-- Disabled text -->
+    <color name="text_hint">#64748B</color>                  <!-- Hint text -->
 
     <!-- Divider Colors -->
-    <color name="divider">#E6E0E9</color>                    <!-- Light gray -->
-    <color name="divider_dark">#4A4458</color>               <!-- Dark gray -->
+    <color name="divider">#334155</color>                    <!-- Dark divider -->
+    <color name="divider_dark">#1E293B</color>               <!-- Darker divider -->
 
     <!-- Status Colors -->
-    <color name="status_success">#2E7D32</color>             <!-- Modern green -->
-    <color name="status_warning">#F57C00</color>             <!-- Modern orange -->
-    <color name="status_error">#B71C1C</color>               <!-- Modern red -->
-    <color name="status_info">#3757D4</color>                <!-- Modern indigo -->
+    <color name="status_success">#10B981</color>             <!-- Emerald green -->
+    <color name="status_warning">#F59E0B</color>             <!-- Amber -->
+    <color name="status_error">#EF4444</color>               <!-- Red -->
+    <color name="status_info">#3B82F6</color>                <!-- Blue -->
 
     <!-- Material Design Colors -->
     <color name="md_blue_500">#3757D4</color>                <!-- Modern indigo -->
@@ -87,34 +87,34 @@
     <color name="md_blue_800">#142255</color>
     <color name="md_blue_900">#0A1330</color>
 
-    <color name="md_green_500">#2E7D32</color>                <!-- Modern green -->
-    <color name="md_green_600">#256328</color>
-    <color name="md_green_700">#1B4A1D</color>
-    <color name="md_green_800">#113013</color>
-    <color name="md_green_900">#081708</color>
+    <color name="md_green_500">#10B981</color>                <!-- Emerald green -->
+    <color name="md_green_600">#059669</color>
+    <color name="md_green_700">#047857</color>
+    <color name="md_green_800">#065F46</color>
+    <color name="md_green_900">#064E3B</color>
 
-    <color name="md_red_500">#B71C1C</color>                  <!-- Modern red -->
-    <color name="md_red_600">#9A1616</color>
-    <color name="md_red_700">#7D1010</color>
-    <color name="md_red_800">#600C0C</color>
-    <color name="md_red_900">#430808</color>
+    <color name="md_red_500">#EF4444</color>                  <!-- Modern red -->
+    <color name="md_red_600">#DC2626</color>
+    <color name="md_red_700">#B91C1C</color>
+    <color name="md_red_800">#991B1B</color>
+    <color name="md_red_900">#7F1D1D</color>
 
-    <color name="md_orange_500">#F57C00</color>               <!-- Modern orange -->
-    <color name="md_orange_600">#D86A00</color>
-    <color name="md_orange_700">#BB5800</color>
-    <color name="md_orange_800">#9D4700</color>
-    <color name="md_orange_900">#803600</color>
+    <color name="md_orange_500">#F59E0B</color>               <!-- Modern orange -->
+    <color name="md_orange_600">#D97706</color>
+    <color name="md_orange_700">#B45309</color>
+    <color name="md_orange_800">#92400E</color>
+    <color name="md_orange_900">#78350F</color>
 
-    <color name="md_grey_100">#F9F9FD</color>                 <!-- Lighter gray -->
-    <color name="md_grey_200">#F1F0F4</color>
-    <color name="md_grey_300">#E6E1E5</color>
-    <color name="md_grey_400">#CAC4D0</color>
-    <color name="md_grey_500">#938F99</color>
-    <color name="md_grey_600">#635F6D</color>
-    <color name="md_grey_700">#49454F</color>
-    <color name="md_grey_800">#313038</color>
-    <color name="md_grey_900">#1C1B1F</color>
+    <color name="md_grey_100">#F8FAFC</color>                 <!-- Light gray -->
+    <color name="md_grey_200">#F1F5F9</color>
+    <color name="md_grey_300">#E2E8F0</color>
+    <color name="md_grey_400">#CBD5E1</color>
+    <color name="md_grey_500">#94A3B8</color>
+    <color name="md_grey_600">#64748B</color>
+    <color name="md_grey_700">#475569</color>
+    <color name="md_grey_800">#334155</color>
+    <color name="md_grey_900">#1E293B</color>
 
     <!-- Launcher Icon Background -->
-    <color name="ic_launcher_background">#3757D4</color>      <!-- WifiGuard primary -->
+    <color name="ic_launcher_background">#0F172A</color>      <!-- Deep Navy background -->
 </resources>
