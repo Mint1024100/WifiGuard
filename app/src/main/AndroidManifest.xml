@@ -31,8 +31,21 @@
         android:name="android.permission.FOREGROUND_SERVICE_LOCATION"
         tools:targetApi="upside_down_cake" />
     
-    <!-- Интернет (ТОЛЬКО если нужно для обновлений базы угроз) -->
-    <!-- Если не используете - УДАЛИТЕ это разрешение! -->
+    <!-- 
+         INTERNET Permission Analysis:
+         This app is designed to work OFFLINE for Wi-Fi security scanning.
+         
+         Current Status: INTERNET permission is INCLUDED but NOT ACTIVELY USED.
+         
+         Reason for keeping:
+         - Future feature: threat database updates (not yet implemented)
+         - Crash reporting (disabled by default, see BuildConfig)
+         - Analytics (disabled by default, see BuildConfig)
+         
+         For maximum privacy:
+         - Remove these permissions if online features are not needed
+         - All core functionality works without internet access
+    -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     

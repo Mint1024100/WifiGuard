@@ -1,12 +1,9 @@
 package com.wifiguard.core.data.preferences
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -15,20 +12,21 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * DataStore wrapper for managing app preferences
+ * DataStore wrapper for managing app preferences.
+ * 
+ * IMPORTANT: DataStore instance is injected via Hilt from DataModule
+ * to ensure single instance across the app.
  */
 @Singleton
 class PreferencesDataSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val dataStore: DataStore<Preferences>
 ) {
-    
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "wifiguard_preferences")
     
     /**
      * Get auto-scan enabled setting
      */
     fun getAutoScanEnabled(): Flow<Boolean> {
-        return context.dataStore.data
+        return dataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -45,7 +43,7 @@ class PreferencesDataSource @Inject constructor(
      * Set auto-scan enabled setting
      */
     suspend fun setAutoScanEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.AUTO_SCAN_ENABLED] = enabled
         }
     }
@@ -54,7 +52,7 @@ class PreferencesDataSource @Inject constructor(
      * Get scan interval in minutes
      */
     fun getScanIntervalMinutes(): Flow<Int> {
-        return context.dataStore.data
+        return dataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -71,7 +69,7 @@ class PreferencesDataSource @Inject constructor(
      * Set scan interval in minutes
      */
     suspend fun setScanIntervalMinutes(minutes: Int) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.SCAN_INTERVAL_MINUTES] = minutes
         }
     }
@@ -80,7 +78,7 @@ class PreferencesDataSource @Inject constructor(
      * Get notifications enabled setting
      */
     fun getNotificationsEnabled(): Flow<Boolean> {
-        return context.dataStore.data
+        return dataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -97,7 +95,7 @@ class PreferencesDataSource @Inject constructor(
      * Set notifications enabled setting
      */
     suspend fun setNotificationsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = enabled
         }
     }
@@ -106,7 +104,7 @@ class PreferencesDataSource @Inject constructor(
      * Get notification sound enabled setting
      */
     fun getNotificationSoundEnabled(): Flow<Boolean> {
-        return context.dataStore.data
+        return dataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -123,7 +121,7 @@ class PreferencesDataSource @Inject constructor(
      * Set notification sound enabled setting
      */
     suspend fun setNotificationSoundEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.NOTIFICATION_SOUND_ENABLED] = enabled
         }
     }
@@ -132,7 +130,7 @@ class PreferencesDataSource @Inject constructor(
      * Get notification vibration enabled setting
      */
     fun getNotificationVibrationEnabled(): Flow<Boolean> {
-        return context.dataStore.data
+        return dataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -149,7 +147,7 @@ class PreferencesDataSource @Inject constructor(
      * Set notification vibration enabled setting
      */
     suspend fun setNotificationVibrationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.NOTIFICATION_VIBRATION_ENABLED] = enabled
         }
     }
@@ -158,7 +156,7 @@ class PreferencesDataSource @Inject constructor(
      * Get data retention days
      */
     fun getDataRetentionDays(): Flow<Int> {
-        return context.dataStore.data
+        return dataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -175,7 +173,7 @@ class PreferencesDataSource @Inject constructor(
      * Set data retention days
      */
     suspend fun setDataRetentionDays(days: Int) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATA_RETENTION_DAYS] = days
         }
     }
@@ -184,7 +182,7 @@ class PreferencesDataSource @Inject constructor(
      * Get all settings as a flow
      */
     fun getAllSettings(): Flow<AppSettings> {
-        return context.dataStore.data
+        return dataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -217,7 +215,7 @@ class PreferencesDataSource @Inject constructor(
      * Update multiple settings at once
      */
     suspend fun updateSettings(settings: AppSettings) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.AUTO_SCAN_ENABLED] = settings.autoScanEnabled
             preferences[PreferencesKeys.SCAN_INTERVAL_MINUTES] = settings.scanIntervalMinutes
             preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = settings.notificationsEnabled
@@ -240,7 +238,7 @@ class PreferencesDataSource @Inject constructor(
      * Clear all settings (reset to defaults)
      */
     suspend fun clearAllSettings() {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences.clear()
         }
     }

@@ -105,9 +105,23 @@ abstract class WifiGuardDatabase : RoomDatabase() {
         }
         
         /**
-         * Фолбэк миграция - УДАЛЯЕТ ВСЕ ДАННЫЕ И СОЗДАЕТ НОВУЮ БАЗУ
-         * ИСПОЛЬЗОВАТЬ ТОЛЬКО В КРАЙНЕМ СЛУЧАЕ!
+         * Migration from version 4 to 5
+         * This is a no-op migration for schema verification purposes
+         * Version 5 is the current stable schema version
          */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // No schema changes in this version
+                // This migration exists to ensure smooth upgrade path
+            }
+        }
+        
+        /**
+         * Fallback migration - DELETES ALL DATA AND CREATES NEW DATABASE
+         * USE ONLY IN EXTREME CASES!
+         * @deprecated This should never be used in production
+         */
+        @Deprecated("This causes data loss and should not be used in production")
         val DESTRUCTIVE_MIGRATION_FALLBACK = object : Migration(1, 4) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // Удаление всех таблиц
@@ -121,9 +135,26 @@ abstract class WifiGuardDatabase : RoomDatabase() {
             }
         }
         
+        /**
+         * DEPRECATED: Use Hilt DI to get WifiGuardDatabase instance instead.
+         * This companion object method is kept only for migration purposes.
+         * 
+         * @see com.wifiguard.di.DatabaseModule for the proper DI configuration
+         */
+        @Deprecated(
+            message = "Use Hilt DI injection instead of this method",
+            replaceWith = ReplaceWith("Inject WifiGuardDatabase via Hilt")
+        )
         @Volatile
         private var INSTANCE: WifiGuardDatabase? = null
         
+        /**
+         * @deprecated Use Hilt injection instead
+         */
+        @Deprecated(
+            message = "Use Hilt DI injection instead",
+            level = DeprecationLevel.WARNING
+        )
         fun getDatabase(context: Context): WifiGuardDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -131,15 +162,14 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     WifiGuardDatabase::class.java,
                     DATABASE_NAME
                 )
-                // Добавляем миграции в порядке возрастания версий
                 .addMigrations(
                     MIGRATION_1_2,
                     MIGRATION_2_3,
                     MIGRATION_3_4
-                    // Добавляйте новые миграции по мере необходимости
+                    // Add new migrations as needed
                 )
-                // ВАЖНО: Не использовать fallbackToDestructiveMigration в production!
-                .fallbackToDestructiveMigration()
+                // CRITICAL: DO NOT use fallbackToDestructiveMigration in production!
+                // This would cause data loss on database schema changes
                 .build()
                 INSTANCE = instance
                 instance

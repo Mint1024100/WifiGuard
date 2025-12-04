@@ -8,7 +8,7 @@ object Constants {
     
     // Database
     const val DATABASE_NAME = "wifiguard_database"
-    const val DATABASE_VERSION = 1
+    const val DATABASE_VERSION = 5 // Must match WifiGuardDatabase @Database version
     
     // WorkManager
     const val WORK_TAG_WIFI_MONITORING = "wifi_monitoring"

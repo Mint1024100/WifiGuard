@@ -38,8 +38,8 @@ subprojects {
                 }
 
                 compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
+                    sourceCompatibility = JavaVersion.VERSION_21
+                    targetCompatibility = JavaVersion.VERSION_21
                 }
             }
         }
@@ -47,13 +47,13 @@ subprojects {
         // Настройка Kotlin для всех модулей
         // Использование jvmToolchain - самый надежный способ исправить ошибки совместимости Java
         extensions.findByType<org.jetbrains.kotlin.gradle.dsl.KotlinBaseExtension>()?.apply {
-            jvmToolchain(17)
+            jvmToolchain(21)
         }
         
         // Дополнительные параметры компиляции
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
             compilerOptions {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
                 freeCompilerArgs.addAll(
                     listOf(
                         "-opt-in=kotlin.RequiresOptIn",

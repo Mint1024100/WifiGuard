@@ -34,16 +34,15 @@ android {
             useSupportLibrary = true
         }
         
-        // Поля BuildConfig для URL, чувствительных к безопасности
-        buildConfigField("String", "API_BASE_URL",
-            "\"${project.findProperty("API_BASE_URL") ?: "https://api.example.com/api/"}\"")
-        buildConfigField("String", "SECURE_API_URL",
-            "\"${project.findProperty("SECURE_API_URL") ?: "https://api.example.com/secure/"}\"")
-        buildConfigField("String", "ANALYTICS_API_URL",
-            "\"${project.findProperty("ANALYTICS_API_URL") ?: "https://api.example.com/analytics/"}\"")
-        buildConfigField("String", "API_VERSION", "\"v1\"")
+        // BuildConfig fields
+        // NOTE: This app is designed to work OFFLINE - no external API connections
+        // The following flags control optional future features
         buildConfigField("boolean", "ENABLE_CRASHLYTICS", "false")
         buildConfigField("boolean", "ENABLE_ANALYTICS", "false")
+        
+        // App configuration
+        buildConfigField("int", "MIN_SDK_FOR_WIFI_6", "30")
+        buildConfigField("long", "SCAN_THROTTLE_MS", "2000L")
     }
     
     signingConfigs {
@@ -97,12 +96,12 @@ android {
     }
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "21"
     }
     
     buildFeatures {

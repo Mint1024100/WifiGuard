@@ -36,8 +36,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideWifiScanner(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        wifiCapabilitiesAnalyzer: WifiCapabilitiesAnalyzer
     ): WifiScanner {
-        return WifiScannerImpl(context)
+        return WifiScannerImpl(context, wifiCapabilitiesAnalyzer)
     }
 }

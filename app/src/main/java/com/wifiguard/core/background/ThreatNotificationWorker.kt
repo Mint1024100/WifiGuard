@@ -1,17 +1,16 @@
 package com.wifiguard.core.background
 
 import android.content.Context
-import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.wifiguard.core.domain.repository.ThreatRepository
+import com.wifiguard.core.common.Logger
 import com.wifiguard.core.data.preferences.PreferencesDataSource
+import com.wifiguard.core.domain.repository.ThreatRepository
 import com.wifiguard.core.notification.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
-import javax.inject.Inject
 
 /**
  * Worker для отправки уведомлений об угрозах
@@ -26,31 +25,32 @@ class ThreatNotificationWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        Log.d("WifiGuardDebug", "ThreatNotificationWorker: Starting work")
+        Logger.d("ThreatNotificationWorker: Starting work")
 
         return try {
-            // Проверяем, включены ли уведомления
+            // Check if notifications are enabled
             val notificationsEnabled = preferencesDataSource.getNotificationsEnabled().first()
-            Log.d("WifiGuardDebug", "ThreatNotificationWorker: Notifications enabled = $notificationsEnabled")
+            Logger.d("ThreatNotificationWorker: Notifications enabled = $notificationsEnabled")
 
             if (!notificationsEnabled) {
-                Log.d("WifiGuardDebug", "ThreatNotificationWorker: Notifications disabled, returning success")
+                Logger.d("ThreatNotificationWorker: Notifications disabled, returning success")
                 return Result.success()
             }
 
-            // Получаем критические угрозы, которые еще не были уведомлены
+            // Get critical unnotified threats
             val criticalThreats = threatRepository.getCriticalUnnotifiedThreats()
-            Log.d("WifiGuardDebug", "ThreatNotificationWorker: Found ${criticalThreats.size} critical unnotified threats")
+            Logger.d("ThreatNotificationWorker: Found ${criticalThreats.size} critical unnotified threats")
 
             if (criticalThreats.isNotEmpty()) {
-                // Проверяем настройки звука и вибрации
+                // Check sound and vibration settings
                 val soundEnabled = preferencesDataSource.getNotificationSoundEnabled().first()
                 val vibrationEnabled = preferencesDataSource.getNotificationVibrationEnabled().first()
-                Log.d("WifiGuardDebug", "ThreatNotificationWorker: Sound enabled = $soundEnabled, Vibration enabled = $vibrationEnabled")
+                Logger.d("ThreatNotificationWorker: Sound=$soundEnabled, Vibration=$vibrationEnabled")
 
-                // Отправляем уведомление для каждой критической угрозы
+                // Send notification for each critical threat
                 for (threat in criticalThreats) {
-                    Log.d("WifiGuardDebug", "ThreatNotificationWorker: Posting notification for threat: ${threat.networkSsid}")
+                    // NOTE: Do not log SSID/BSSID in production for privacy
+                    Logger.d("ThreatNotificationWorker: Posting notification for threat ID: ${threat.id}")
 
                     notificationHelper.showThreatNotification(
                         title = "Обнаружена критическая угроза!",
@@ -59,20 +59,20 @@ class ThreatNotificationWorker @AssistedInject constructor(
                         soundEnabled = soundEnabled
                     )
 
-                    // Отмечаем угрозу как уведомленную
+                    // Mark threat as notified
                     threatRepository.markThreatAsNotified(threat.id)
-                    Log.d("WifiGuardDebug", "ThreatNotificationWorker: Marked threat ${threat.id} as notified")
+                    Logger.d("ThreatNotificationWorker: Marked threat ${threat.id} as notified")
                 }
 
-                Log.d("WifiGuardDebug", "ThreatNotificationWorker: Posted notifications for ${criticalThreats.size} threats")
+                Logger.d("ThreatNotificationWorker: Posted notifications for ${criticalThreats.size} threats")
             } else {
-                Log.d("WifiGuardDebug", "ThreatNotificationWorker: No critical threats to notify")
+                Logger.d("ThreatNotificationWorker: No critical threats to notify")
             }
 
-            Log.d("WifiGuardDebug", "ThreatNotificationWorker: Work completed successfully")
+            Logger.d("ThreatNotificationWorker: Work completed successfully")
             Result.success()
         } catch (e: Exception) {
-            Log.e("WifiGuardDebug", "ThreatNotificationWorker: Error during work: ${e.message}", e)
+            Logger.e("ThreatNotificationWorker: Error during work: ${e.message}", e)
             Result.failure()
         }
     }

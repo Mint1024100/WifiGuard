@@ -34,7 +34,8 @@ import javax.inject.Singleton
 
 @Singleton
 class WifiScannerImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val wifiCapabilitiesAnalyzer: WifiCapabilitiesAnalyzer
 ) : WifiScanner {
     
     private val wifiManager: WifiManager =
@@ -297,32 +298,26 @@ class WifiScannerImpl @Inject constructor(
                             } else {
                                 // Не нашли в сканировании, но знаем, что подключены к этой сети
                                 // Создаем базовую информацию о подключенной сети
-                                // Create a single instance instead of creating multiple instances
-                                val wifiCapabilitiesAnalyzer = WifiCapabilitiesAnalyzer()
+                                // Use injected wifiCapabilitiesAnalyzer instance
+                                val frequency = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                    wifiInfo.frequency
+                                } else {
+                                    0
+                                }
 
                                 WifiScanResult(
                                     ssid = connectedSsid,
                                     bssid = connectedBssid,
                                     capabilities = "",
-                                    frequency = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                        wifiInfo.frequency
-                                    } else {
-                                        0
-                                    },
+                                    frequency = frequency,
                                     level = wifiInfo.rssi,
                                     timestamp = System.currentTimeMillis(),
                                     securityType = SecurityType.UNKNOWN,
                                     threatLevel = ThreatLevel.UNKNOWN,
                                     isConnected = true,
-                                    isHidden = false, // Точная информация о статусе скрытой сети недоступна
+                                    isHidden = false, // Exact hidden network status unavailable
                                     vendor = wifiCapabilitiesAnalyzer.getVendorFromBssid(connectedBssid),
-                                    channel = wifiCapabilitiesAnalyzer.getChannelFromFrequency(
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                            wifiInfo.frequency
-                                        } else {
-                                            0
-                                        }
-                                    ),
+                                    channel = wifiCapabilitiesAnalyzer.getChannelFromFrequency(frequency),
                                     standard = getWifiStandard(
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                                             wifiInfo.frequency
@@ -474,9 +469,7 @@ class WifiScannerImpl @Inject constructor(
             scanResult.BSSID ?: "unknown"
         }
 
-        // Create a single instance instead of creating multiple instances
-        val wifiCapabilitiesAnalyzer = WifiCapabilitiesAnalyzer()
-
+        // Use injected wifiCapabilitiesAnalyzer instance (class property)
         return@withContext WifiScanResult(
             ssid = ssid,
             bssid = bssid,

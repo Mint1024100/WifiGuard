@@ -3,13 +3,13 @@ package com.wifiguard.core.background
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import com.wifiguard.core.common.Logger
 import com.wifiguard.core.data.wifi.WifiScannerService
 import com.wifiguard.core.domain.repository.ThreatRepository
 import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.security.SecurityAnalyzer
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /**
@@ -26,55 +26,55 @@ class WifiMonitoringWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Starting work")
+        Logger.d("WifiMonitoringWorker: Starting work")
         return try {
-            // Проверяем, включена ли Wi-Fi
+            // Check if Wi-Fi is enabled
             if (!wifiScannerService.isWifiEnabled()) {
-                android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: WiFi is not enabled, returning success")
+                Logger.d("WifiMonitoringWorker: WiFi is not enabled, returning success")
                 return Result.success()
             }
 
-            // Запускаем сканирование
-            android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Requesting WiFi scan")
+            // Start scan
+            Logger.d("WifiMonitoringWorker: Requesting WiFi scan")
             val scanStarted = wifiScannerService.startScan()
             if (!scanStarted) {
-                android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Failed to start scan")
+                Logger.d("WifiMonitoringWorker: Failed to start scan")
                 return Result.success()
             }
 
-            // Получаем результаты сканирования как доменные модели для анализа безопасности
-            android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Getting scan results")
+            // Get scan results as domain models for security analysis
+            Logger.d("WifiMonitoringWorker: Getting scan results")
             val scanResults = wifiScannerService.getScanResultsAsCoreModels()
-            android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Got ${scanResults.size} scan results")
+            Logger.d("WifiMonitoringWorker: Got ${scanResults.size} scan results")
 
             if (scanResults.isNotEmpty()) {
-                // Сохраняем все результаты сканирования в базу данных (независимо от уровня угрозы)
+                // Save all scan results to database (regardless of threat level)
                 scanResults.forEach { scanResult ->
                     wifiRepository.insertScanResult(scanResult)
                 }
-                android.util.Log.d("WifiGuardDebug", "Saved ${scanResults.size} scan results to DB")
+                Logger.d("Saved ${scanResults.size} scan results to DB")
 
-                // Анализируем безопасность сетей
-                android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Analyzing network security")
+                // Analyze network security
+                Logger.d("WifiMonitoringWorker: Analyzing network security")
                 val securityReport = securityAnalyzer.analyzeNetworks(scanResults)
-                android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Security analysis complete, found ${securityReport.threats.size} threats")
+                Logger.d("WifiMonitoringWorker: Security analysis complete, found ${securityReport.threats.size} threats")
 
-                // Сохраняем угрозы
+                // Save threats
                 val threats = securityReport.threats
                 if (threats.isNotEmpty()) {
-                    android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Inserting ${threats.size} threats to repository")
+                    Logger.d("WifiMonitoringWorker: Inserting ${threats.size} threats to repository")
                     threatRepository.insertThreats(threats)
                 } else {
-                    android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: No threats detected in security analysis")
+                    Logger.d("WifiMonitoringWorker: No threats detected in security analysis")
                 }
             } else {
-                android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: No scan results received - possibly due to Android background restrictions or no networks available")
+                Logger.d("WifiMonitoringWorker: No scan results received - possibly due to Android background restrictions or no networks available")
             }
 
-            android.util.Log.d("WifiGuardDebug", "WifiMonitoringWorker: Work completed successfully")
+            Logger.d("WifiMonitoringWorker: Work completed successfully")
             Result.success()
         } catch (e: Exception) {
-            android.util.Log.e("WifiGuardDebug", "WifiMonitoringWorker: Error during work: ${e.message}", e)
+            Logger.e("WifiMonitoringWorker: Error during work: ${e.message}", e)
             Result.failure()
         }
     }

@@ -1,28 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <!-- Ограничить передачу открытого текста только определенными доменами -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">wifiguard.com</domain>
-        <domain includeSubdomains="true">api.wifiguard.com</domain>
-        <domain includeSubdomains="true">secure.wifiguard.com</domain>
-        <domain includeSubdomains="true">analytics.wifiguard.com</domain>
-    </domain-config>
+<!--
+    Network Security Configuration for WifiGuard
     
-    <!-- Базовая конфигурация -->
+    This app is designed to work OFFLINE - no external API calls are made.
+    This configuration provides maximum security by:
+    - Disabling cleartext (HTTP) traffic completely
+    - Only trusting system CA certificates in production
+    - User CA certificates only allowed in debug builds
+-->
+<network-security-config>
+    
+    <!-- Base configuration: Maximum security for production -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
-            <!-- Доверять CA, предоставленным системой -->
+            <!-- Trust only system-provided CAs in production -->
             <certificates src="system"/>
-            <!-- Доверять CA, предоставленным пользователем -->
-            <certificates src="user"/>
         </trust-anchors>
     </base-config>
     
-    <!-- Конфигурация отладки для локальной разработки -->
+    <!-- Debug configuration: Allow testing with user certificates -->
     <debug-overrides>
         <trust-anchors>
-            <!-- Доверять CA, предоставленным пользователем, в режиме отладки -->
+            <!-- System CAs -->
+            <certificates src="system"/>
+            <!-- User CAs for debugging (e.g., Charles Proxy) -->
             <certificates src="user"/>
         </trust-anchors>
     </debug-overrides>
+    
 </network-security-config>
