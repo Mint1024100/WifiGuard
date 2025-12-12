@@ -93,7 +93,9 @@ Location permission is required by Android for Wi-Fi scanning (since Android 6.0
 Code available at: github.com/Mint1024100/WifiGuard
 
 🤝 **Support:**
-Found a bug? Have suggestions? Contact us!
+Found a bug? Have suggestions? Contact the developer!
+Developer: Mint1024
+Email: svatozarbozylev@gmail.com
 
 Protect your data with WifiGuard! Download free today.
 

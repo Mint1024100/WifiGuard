@@ -136,7 +136,7 @@ fun AboutScreen(
                     title = "GitHub",
                     content = "Просмотрите исходный код проекта."
                 ) {
-                    openUrl("https://github.com/Mint1024100/wifiguard")
+                    openUrl("https://github.com/Mint1024100/WifiGuard")
                 }
                 
                 // Contact section
@@ -148,16 +148,16 @@ fun AboutScreen(
                 )
                 
                 val contactAnnotatedString = buildAnnotatedString {
-                    append("Для связи с разработчиками: ")
+                    append("Email: ")
 
-                    pushStringAnnotation(tag = LINK_TAG, annotation = "mailto:wifiguard@example.com")
+                    pushStringAnnotation(tag = LINK_TAG, annotation = "mailto:svatozarbozylev@gmail.com")
                     withStyle(
                         SpanStyle(
                             color = MaterialTheme.colorScheme.primary,
                             textDecoration = TextDecoration.Underline
                         )
                     ) {
-                        append("wifiguard@example.com")
+                        append("svatozarbozylev@gmail.com")
                     }
                     pop()
                 }

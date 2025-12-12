@@ -264,6 +264,32 @@ fun ScannerScreen(
             // Основной контент
             val currentScanResult = scanResult
             
+            // #region agent log
+            LaunchedEffect(currentScanResult, uiState.isWifiEnabled) {
+                try {
+                    val logJson = org.json.JSONObject().apply {
+                        put("sessionId", "debug-session")
+                        put("runId", "run1")
+                        put("hypothesisId", "D")
+                        put("location", "ScannerScreen.kt:render")
+                        put("message", "Состояние UI для отображения")
+                        put("data", org.json.JSONObject().apply {
+                            put("isWifiEnabled", uiState.isWifiEnabled)
+                            put("scanResultType", when (currentScanResult) {
+                                is Result.Loading -> "Loading"
+                                is Result.Success -> "Success"
+                                is Result.Error -> "Error"
+                            })
+                            put("networksCount", if (currentScanResult is Result.Success) currentScanResult.data.size else 0)
+                            put("uiStateNetworksCount", uiState.networks.size)
+                        })
+                        put("timestamp", System.currentTimeMillis())
+                    }
+                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+                } catch (e: Exception) {}
+            }
+            // #endregion
+            
             // Если WiFi выключен, показываем EmptyContent с сообщением об отключении
             if (!uiState.isWifiEnabled) {
                 EmptyContent(

@@ -124,3 +124,5 @@ gradle-full-8.5.zip
 # Backup files
 *.backup
 *~
+.DS_Store
+.tmp_gradle/

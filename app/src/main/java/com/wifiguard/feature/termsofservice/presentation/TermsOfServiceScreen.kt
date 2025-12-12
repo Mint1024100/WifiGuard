@@ -60,7 +60,7 @@ fun TermsOfServiceScreen(
             )
 
             Text(
-                text = "Дата вступления в силу: 14 октября 2025 г.",
+                text = "Дата вступления в силу: 12 декабря 2025 г.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -83,11 +83,11 @@ fun TermsOfServiceContent(onLinkClick: (String) -> Unit) {
         )
         
         Text(
-            text = "Добро пожаловать в WifiGuard! Эти Условия использования " +
-                   "управляют вашим использованием мобильного приложения WifiGuard " +
-                   "(\"Приложение\"). Используя наше Приложение, вы соглашаетесь " +
-                   "соблюдать настоящие Условия и все применимые законы и " +
-                   "регулирования.",
+            text = "Добро пожаловать в WifiGuard! WifiGuard — это Android-приложение " +
+                   "для анализа безопасности Wi-Fi сетей. Эти Условия использования управляют " +
+                   "вашим использованием мобильного приложения WifiGuard (\"Приложение\"). " +
+                   "Используя наше Приложение, вы соглашаетесь соблюдать настоящие " +
+                   "Условия и все применимые законы и регулирования.",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(bottom = 16.dp)
         )
@@ -124,8 +124,8 @@ fun TermsOfServiceContent(onLinkClick: (String) -> Unit) {
         
         Text(
             text = "Приложение предоставляется \"как есть\", без каких-либо " +
-                   "гарантий, явных или подразумеваемых. Мы не гарантируем, что " +
-                   "Приложение будет соответствовать всем вашим требованиям или " +
+                   "гарантий, явных или подразумеваемых. Мы не гарантируем, " +
+                   "что Приложение будет соответствовать всем вашим требованиям или " +
                    "что работа будет бесперебойной или безошибочной.\n\n" +
                    "Мы не делаем никаких гарантий относительно точности, " +
                    "надежности или актуальности информации, предоставляемой " +
@@ -227,18 +227,29 @@ fun TermsOfServiceContent(onLinkClick: (String) -> Unit) {
         )
         
         val contactAnnotatedString = buildAnnotatedString {
-            append("Если у вас есть вопросы или предложения относительно " +
-                   "настоящих Условий использования, вы можете связаться с нами по " +
-                   "адресу: ")
+            append("Email: ")
 
-            pushStringAnnotation(tag = LINK_TAG, annotation = "mailto:wifiguard@example.com")
+            pushStringAnnotation(tag = LINK_TAG, annotation = "mailto:svatozarbozylev@gmail.com")
             withStyle(
                 SpanStyle(
                     color = MaterialTheme.colorScheme.primary,
                     textDecoration = TextDecoration.Underline
                 )
             ) {
-                append("wifiguard@example.com")
+                append("svatozarbozylev@gmail.com")
+            }
+            pop()
+            
+            append("\nGitHub: ")
+            
+            pushStringAnnotation(tag = LINK_TAG, annotation = "https://github.com/Mint1024100/WifiGuard")
+            withStyle(
+                SpanStyle(
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline
+                )
+            ) {
+                append("https://github.com/Mint1024100/WifiGuard")
             }
             pop()
         }
@@ -260,7 +271,7 @@ fun TermsOfServiceContent(onLinkClick: (String) -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Дата последнего обновления: 14 октября 2025 г.",
+            text = "Дата последнего обновления: 12 декабря 2025 г.",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium
         )

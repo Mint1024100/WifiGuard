@@ -77,7 +77,7 @@ class NotificationHelper @Inject constructor(
                 "Уведомления об угрозах безопасности",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Критические уведомления о небезопасных WiFi сетях и обнаруженных угрозах"
+                description = "Критические уведомления о небезопасных Wi-Fi сетях и обнаруженных угрозах"
                 
                 // Включаем LED индикатор (красный цвет для угроз)
                 enableLights(true)

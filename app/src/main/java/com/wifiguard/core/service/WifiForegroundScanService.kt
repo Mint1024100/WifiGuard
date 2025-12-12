@@ -52,7 +52,7 @@ class WifiForegroundScanService : Service() {
         private const val TAG = "WifiForegroundScanService"
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "wifi_scan_channel"
-        private const val CHANNEL_NAME = "WiFi Сканирование"
+        private const val CHANNEL_NAME = "Wi-Fi Сканирование"
         
         /**
          * Запустить foreground сканирование
@@ -143,7 +143,7 @@ class WifiForegroundScanService : Service() {
         )
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("WiFi Guard сканирование")
+            .setContentTitle("Wi-Fi Guard сканирование")
             .setContentText(contentText)
             .setSmallIcon(R.drawable.ic_wifi_scan) // Убедитесь, что этот ресурс существует
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -171,7 +171,7 @@ class WifiForegroundScanService : Service() {
             // Проверяем, включен ли WiFi
             if (!wifiScannerService.isWifiEnabled()) {
                 Log.w(TAG, "WiFi is not enabled")
-                updateNotification("WiFi отключен")
+                updateNotification("Wi-Fi отключен")
                 delay(2000)
                 stopSelf()
                 return
