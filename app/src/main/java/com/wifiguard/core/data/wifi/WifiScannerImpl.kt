@@ -6,11 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import com.wifiguard.core.common.Constants
+import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.common.logd
 import com.wifiguard.core.common.loge
 import com.wifiguard.core.common.logw
@@ -218,6 +220,15 @@ class WifiScannerImpl @Inject constructor(
                     return@withContext Result.failure(SecurityException("Требуется разрешение ACCESS_FINE_LOCATION"))
                 }
 
+                // Важно: на части устройств (OEM) scanResults и/или активное сканирование недоступны,
+                // если системная геолокация выключена.
+                if (!isSystemLocationEnabled()) {
+                    val message = "Включите геолокацию для поиска Wi‑Fi сетей"
+                    logw(message)
+                    _scanState.value = ScanState.Error(message)
+                    return@withContext Result.failure(IllegalStateException(message))
+                }
+
                 if (!isWifiEnabled()) {
                     loge("❌ WiFi is disabled, cannot start scan")
                     _scanState.value = ScanState.Error("Wi-Fi отключен")
@@ -393,6 +404,11 @@ class WifiScannerImpl @Inject constructor(
                 File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
             } catch (e: Exception) {}
             // #endregion
+            return@withContext emptyList()
+        }
+
+        if (!isSystemLocationEnabled()) {
+            logw("System location is disabled, scanResults may be restricted on this device")
             return@withContext emptyList()
         }
 
@@ -814,6 +830,22 @@ class WifiScannerImpl @Inject constructor(
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         }
+    }
+
+    /**
+     * Проверка системной геолокации (тумблер в настройках).
+     * На Android 9+ используем isLocationEnabled, иначе проверяем провайдеры.
+     */
+    private fun isSystemLocationEnabled(): Boolean {
+        return runCatching {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                lm.isLocationEnabled
+            } else {
+                lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                    lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            }
+        }.getOrDefault(DeviceDebugLogger.isLocationEnabled(context))
     }
     
     /**

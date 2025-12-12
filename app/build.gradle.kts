@@ -29,8 +29,8 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()  // ДОЛЖНО БЫТЬ 34 минимум для новых приложений
         // ИСПРАВЛЕНО: Синхронизировано с gradle.properties для предотвращения проблем с обновлением
-        val versionCodeValue = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 4
-        val versionNameValue = findProperty("APP_VERSION_NAME") as String? ?: "1.0.2"
+        val versionCodeValue = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 5
+        val versionNameValue = findProperty("APP_VERSION_NAME") as String? ?: "1.0.3"
         versionCode = versionCodeValue
         versionName = versionNameValue
         println("INFO: Building app with versionCode=$versionCodeValue, versionName=$versionNameValue, applicationId=$applicationId")

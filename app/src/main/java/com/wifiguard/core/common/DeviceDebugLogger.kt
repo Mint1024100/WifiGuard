@@ -66,7 +66,13 @@ object DeviceDebugLogger {
     fun isLocationEnabled(context: Context): Boolean {
         return runCatching {
             val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            // Android 9+ (P) предоставляет более надёжный флаг, чем проверка отдельных провайдеров.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                lm.isLocationEnabled
+            } else {
+                lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                    lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            }
         }.getOrDefault(false)
     }
 

@@ -16,11 +16,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.wifiguard.core.common.PermissionHandler
 import com.wifiguard.core.common.Result
 import com.wifiguard.core.domain.model.ThreatLevel
@@ -43,6 +46,7 @@ fun ScannerScreen(
     val scanResult by viewModel.scanResult.collectAsState()
     val currentNetwork by viewModel.currentNetwork.collectAsState()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var showPermissionDialog by remember { mutableStateOf(false) }
     
@@ -82,6 +86,17 @@ fun ScannerScreen(
             isPermanentlyDenied = permissionState is ScannerViewModel.PermissionState.PermanentlyDenied
         )
     }
+
+    // Обновляем состояние геолокации при возврате на экран/в приложение.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshLocationState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     
     Scaffold(
         topBar = {
@@ -91,7 +106,10 @@ fun ScannerScreen(
                 },
                 actions = {
                     IconButton(onClick = { 
-                        if (viewModel.hasWifiPermissions()) {
+                        // При выключенной геолокации сканирование часто недоступно на OEM-устройствах.
+                        if (viewModel.hasWifiPermissions() && !uiState.isLocationEnabled) {
+                            viewModel.permissionHandler.openLocationSettings()
+                        } else if (viewModel.hasWifiPermissions()) {
                             viewModel.startScan()
                         } else {
                             showPermissionDialog = true
@@ -302,6 +320,13 @@ fun ScannerScreen(
                         }
                     }
                 )
+            } else if (viewModel.hasWifiPermissions() && !uiState.isLocationEnabled) {
+                // Отдельный сценарий: геолокация выключена, сканирование/scanResults могут быть недоступны.
+                LocationDisabledContent(
+                    onOpenLocationSettings = {
+                        viewModel.permissionHandler.openLocationSettings()
+                    }
+                )
             } else {
                 when (currentScanResult) {
                     is Result.Loading -> {
@@ -443,6 +468,39 @@ private fun EmptyContent(
                 Button(onClick = onStartScan) {
                     Text("Сканировать")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationDisabledContent(
+    onOpenLocationSettings: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text(
+                text = "Включите геолокацию",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "На некоторых устройствах поиск Wi‑Fi сетей не работает при выключенной геолокации.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onOpenLocationSettings) {
+                Text("Открыть настройки геолокации")
             }
         }
     }

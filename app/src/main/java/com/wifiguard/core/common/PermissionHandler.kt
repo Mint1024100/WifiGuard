@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -81,6 +82,34 @@ class PermissionHandler @Inject constructor(
         context.startActivity(intent)
     }
     
+    /**
+     * Проверяет, включена ли системная геолокация.
+     *
+     * Важно: на части устройств (OEM) Wi‑Fi сканирование/scanResults могут быть недоступны,
+     * если геолокация выключена, даже при выданных runtime-разрешениях.
+     */
+    fun isLocationEnabled(): Boolean {
+        return runCatching {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                lm.isLocationEnabled
+            } else {
+                lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                    lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            }
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Открывает системные настройки геолокации.
+     */
+    fun openLocationSettings() {
+        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    }
+
     private fun hasPermission(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(
             context,

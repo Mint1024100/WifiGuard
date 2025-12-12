@@ -111,6 +111,7 @@ class ScannerViewModel @Inject constructor(
         
         checkPermissions()
         checkWifiStatus()
+        refreshLocationState()
         restoreLastScanTime()
         
         // Загружаем информацию о текущей подключенной сети
@@ -228,6 +229,25 @@ class ScannerViewModel @Inject constructor(
                 Result.Error(
                     AppException.NoPermissionException(),
                     "Нет разрешения на сканирование Wi-Fi"
+                ).toSerializableForWifiList()
+            )
+            return
+        }
+
+        // На части устройств сканирование/scanResults недоступны при выключенной геолокации.
+        // Явно блокируем попытку сканирования, чтобы UI показывал правильную причину.
+        refreshLocationState()
+        if (!_uiState.value.isLocationEnabled) {
+            val message = "Включите геолокацию для поиска Wi‑Fi сетей"
+            _uiState.value = _uiState.value.copy(
+                isScanning = false,
+                error = message
+            )
+            savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(_uiState.value)
+            savedStateHandle[KEY_SCAN_RESULT] = Json.encodeToString(
+                Result.Error(
+                    IllegalStateException(message),
+                    message
                 ).toSerializableForWifiList()
             )
             return
@@ -419,6 +439,22 @@ class ScannerViewModel @Inject constructor(
         _uiState.value = newState
         savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(newState)
     }
+
+    /**
+     * Обновить состояние системной геолокации.
+     * Важно: это не runtime-разрешение, а системный тумблер, который влияет на Wi‑Fi сканирование.
+     */
+    fun refreshLocationState() {
+        val enabled = permissionHandler.isLocationEnabled()
+        val currentState = _uiState.value
+        if (currentState.isLocationEnabled == enabled) return
+
+        val newState = currentState.copy(
+            isLocationEnabled = enabled
+        )
+        _uiState.value = newState
+        savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(newState)
+    }
     
     /**
      * Наблюдает за изменениями состояния WiFi в реальном времени
@@ -551,6 +587,7 @@ class ScannerViewModel @Inject constructor(
             val serializableState = SerializableScannerUiState(
                 isScanning = uiState.isScanning,
                 isWifiEnabled = uiState.isWifiEnabled,
+                isLocationEnabled = uiState.isLocationEnabled,
                 lastScanTime = uiState.lastScanTime,
                 error = uiState.error
             )
@@ -572,6 +609,7 @@ class ScannerViewModel @Inject constructor(
                 ScannerUiState(
                     isScanning = serializableState.isScanning,
                     isWifiEnabled = serializableState.isWifiEnabled,
+                    isLocationEnabled = serializableState.isLocationEnabled,
                     networks = emptyList(), // Сети не сохраняются в состоянии, будут загружены отдельно
                     lastScanTime = serializableState.lastScanTime,
                     error = serializableState.error
@@ -589,6 +627,7 @@ class ScannerViewModel @Inject constructor(
 data class ScannerUiState(
     val isScanning: Boolean = false,
     val isWifiEnabled: Boolean = true,
+    val isLocationEnabled: Boolean = true,
     val networks: List<WifiScanResult> = emptyList(),
     val lastScanTime: Long? = null,
     val error: String? = null,
@@ -599,6 +638,7 @@ data class ScannerUiState(
 data class SerializableScannerUiState(
     val isScanning: Boolean = false,
     val isWifiEnabled: Boolean = true,
+    val isLocationEnabled: Boolean = true,
     val lastScanTime: Long? = null,
     val error: String? = null
     // scanMetadata не сериализуется, так как это сложный объект

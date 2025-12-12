@@ -88,6 +88,22 @@ class WifiScannerService @Inject constructor(
                 return WifiScanStatus.Failed("WiFi is not enabled")
             }
 
+            // На части устройств (OEM) startScan/scanResults ограничены при выключенной геолокации.
+            if (!DeviceDebugLogger.isLocationEnabled(context)) {
+                DeviceDebugLogger.log(
+                    context = context,
+                    runId = "run1",
+                    hypothesisId = "A",
+                    location = "WifiScannerService.kt:startScan",
+                    message = "Старт скана: геолокация выключена (restricted)",
+                    data = org.json.JSONObject().apply {
+                        put("sdkInt", Build.VERSION.SDK_INT)
+                        put("locationEnabled", false)
+                    }
+                )
+                return WifiScanStatus.Restricted("Геолокация выключена")
+            }
+
             val currentTime = System.currentTimeMillis()
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
