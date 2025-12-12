@@ -146,6 +146,8 @@ class SettingsIntegrationTest {
 
             override suspend fun getNetworkBySSID(ssid: String): com.wifiguard.core.domain.model.WifiNetwork? = null
 
+            override suspend fun getNetworkByBssid(bssid: String): com.wifiguard.core.domain.model.WifiNetwork? = null
+
             override suspend fun insertNetwork(network: com.wifiguard.core.domain.model.WifiNetwork) {}
 
             override suspend fun updateNetwork(network: com.wifiguard.core.domain.model.WifiNetwork) {}
@@ -156,6 +158,12 @@ class SettingsIntegrationTest {
                 kotlinx.coroutines.flow.flowOf(emptyList())
 
             override suspend fun insertScanResult(scanResult: com.wifiguard.core.domain.model.WifiScanResult) {}
+
+            override suspend fun insertScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {}
+
+            override suspend fun upsertNetworksFromScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {}
+
+            override suspend fun persistScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {}
 
             override suspend fun clearOldScans(olderThanMillis: Long) {}
 
@@ -296,6 +304,8 @@ class SettingsIntegrationTest {
 
             override suspend fun getNetworkBySSID(ssid: String): com.wifiguard.core.domain.model.WifiNetwork? = null
 
+            override suspend fun getNetworkByBssid(bssid: String): com.wifiguard.core.domain.model.WifiNetwork? = null
+
             override suspend fun insertNetwork(network: com.wifiguard.core.domain.model.WifiNetwork) {}
 
             override suspend fun updateNetwork(network: com.wifiguard.core.domain.model.WifiNetwork) {}
@@ -306,6 +316,12 @@ class SettingsIntegrationTest {
                 kotlinx.coroutines.flow.flowOf(emptyList())
 
             override suspend fun insertScanResult(scanResult: com.wifiguard.core.domain.model.WifiScanResult) {}
+
+            override suspend fun insertScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {}
+
+            override suspend fun upsertNetworksFromScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {}
+
+            override suspend fun persistScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {}
 
             override suspend fun clearOldScans(olderThanMillis: Long) {}
 

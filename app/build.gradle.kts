@@ -28,8 +28,12 @@ android {
         applicationId = findProperty("APP_PACKAGE_NAME") as String? ?: "com.wifiguard" // Safe fallback if property not found
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()  // ДОЛЖНО БЫТЬ 34 минимум для новых приложений
-        versionCode = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 3
-        versionName = findProperty("APP_VERSION_NAME") as String? ?: "1.0.1.1" // Safe fallback if property not found
+        // ИСПРАВЛЕНО: Синхронизировано с gradle.properties для предотвращения проблем с обновлением
+        val versionCodeValue = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 4
+        val versionNameValue = findProperty("APP_VERSION_NAME") as String? ?: "1.0.2"
+        versionCode = versionCodeValue
+        versionName = versionNameValue
+        println("INFO: Building app with versionCode=$versionCodeValue, versionName=$versionNameValue, applicationId=$applicationId")
         
         testInstrumentationRunner = "com.wifiguard.test.CustomTestRunner"
         vectorDrawables {
@@ -102,8 +106,10 @@ android {
             val keystoreFileValue = keystoreProperties["storeFile"] as? String
             if (keystorePropertiesFile.exists() && keystoreFileValue != null && file(keystoreFileValue).exists()) {
                 signingConfig = signingConfigs.getByName("release")
+                println("INFO: Release build будет подписан release keystore: $keystoreFileValue")
             } else {
                 println("WARNING: Release signing configuration not available, using debug signing for release build")
+                println("WARNING: Это может вызвать проблемы при обновлении, если предыдущая версия была подписана release ключом")
                 signingConfig = signingConfigs.findByName("debug")
             }
         }

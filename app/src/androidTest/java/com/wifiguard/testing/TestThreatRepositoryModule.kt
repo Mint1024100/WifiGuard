@@ -194,7 +194,8 @@ class FakeNotificationHelper @javax.inject.Inject constructor() : INotificationH
         networkBssid: String,
         threatLevel: ThreatLevel,
         title: String,
-        content: String
+        content: String,
+        notificationId: Int?
     ): Boolean {
         showThreatNotificationCalled = true
         showThreatNotificationWithBssidCalled = true
@@ -341,6 +342,10 @@ class FakeWifiRepository @javax.inject.Inject constructor() : com.wifiguard.core
         return networks.find { it.ssid == ssid }
     }
 
+    override suspend fun getNetworkByBssid(bssid: String): com.wifiguard.core.domain.model.WifiNetwork? {
+        return networks.find { it.bssid == bssid }
+    }
+
     override suspend fun insertNetwork(network: com.wifiguard.core.domain.model.WifiNetwork) {
         networks.add(network)
     }
@@ -360,6 +365,18 @@ class FakeWifiRepository @javax.inject.Inject constructor() : com.wifiguard.core
 
     override suspend fun insertScanResult(scanResult: com.wifiguard.core.domain.model.WifiScanResult) {
         scans.add(scanResult)
+    }
+
+    override suspend fun insertScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {
+        scans.addAll(scanResults)
+    }
+
+    override suspend fun upsertNetworksFromScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {
+        // No-op for tests
+    }
+
+    override suspend fun persistScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {
+        scans.addAll(scanResults)
     }
 
     override suspend fun clearOldScans(olderThanMillis: Long) {

@@ -1,6 +1,8 @@
 package com.wifiguard
 
 import android.app.Application
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.util.Log
 import androidx.work.Configuration
 import androidx.work.WorkManager
@@ -19,8 +21,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import javax.inject.Inject
 import androidx.hilt.work.HiltWorkerFactory
+import com.wifiguard.BuildConfig
 
 /**
  * Главный класс приложения WifiGuard
@@ -56,6 +60,87 @@ class WifiGuardApp : Application(), Configuration.Provider {
         val runId = "run1"
         DeviceDebugLogger.logAppStart(this, runId)
         installCrashLogger(runId)
+        
+        // #region agent log
+        // Логирование информации о версии приложения для диагностики проблемы обновления
+        try {
+            val packageInfo: PackageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0)
+            }
+            val logData = JSONObject().apply {
+                put("versionCode", packageInfo.longVersionCode)
+                put("versionName", packageInfo.versionName ?: "unknown")
+                put("packageName", packageName)
+                put("applicationId", BuildConfig.APPLICATION_ID)
+                put("buildType", if (BuildConfig.DEBUG) "debug" else "release")
+            }
+            DeviceDebugLogger.log(
+                context = this,
+                runId = runId,
+                hypothesisId = "A",
+                location = "WifiGuardApp.kt:onCreate",
+                message = "Информация о версии приложения (гипотеза A: versionCode)",
+                data = logData
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка логирования версии приложения: ${e.message}", e)
+            DeviceDebugLogger.log(
+                context = this,
+                runId = runId,
+                hypothesisId = "A",
+                location = "WifiGuardApp.kt:onCreate",
+                message = "Ошибка получения информации о версии",
+                data = JSONObject().apply {
+                    put("error", e.message ?: "unknown")
+                }
+            )
+        }
+        // #endregion
+        
+        // #region agent log
+        // Логирование информации о подписи APK (гипотеза B: несоответствие подписи)
+        try {
+            val signatures = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val packageInfo: PackageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNATURES.toLong()))
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
+                }
+                packageInfo.signatures?.map { it.toByteArray().contentHashCode().toString() } ?: emptyList()
+            } else {
+                @Suppress("DEPRECATION")
+                val packageInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
+                packageInfo.signatures?.map { it.toByteArray().contentHashCode().toString() } ?: emptyList()
+            }
+            DeviceDebugLogger.log(
+                context = this,
+                runId = runId,
+                hypothesisId = "B",
+                location = "WifiGuardApp.kt:onCreate",
+                message = "Информация о подписи APK (гипотеза B: несоответствие подписи)",
+                data = JSONObject().apply {
+                    put("signatureHashes", signatures.joinToString(","))
+                    put("signatureCount", signatures.size)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка логирования подписи APK: ${e.message}", e)
+            DeviceDebugLogger.log(
+                context = this,
+                runId = runId,
+                hypothesisId = "B",
+                location = "WifiGuardApp.kt:onCreate",
+                message = "Ошибка получения информации о подписи",
+                data = JSONObject().apply {
+                    put("error", e.message ?: "unknown")
+                }
+            )
+        }
+        // #endregion
 
         // Инициализация приложения
         initializeApp()

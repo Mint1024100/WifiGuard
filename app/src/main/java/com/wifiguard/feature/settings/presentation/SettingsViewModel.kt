@@ -13,6 +13,7 @@ import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,9 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.getAutoScanEnabled().collect { autoScan ->
                     _uiState.value = _uiState.value.copy(autoScanEnabled = autoScan)
                 }
+            } catch (e: CancellationException) {
+                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при загрузке настройки autoScanEnabled: ${e.message}", e)
                 // Используем значения по умолчанию при ошибке
@@ -72,6 +76,9 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.getNotificationsEnabled().collect { notifications ->
                     _uiState.value = _uiState.value.copy(notificationsEnabled = notifications)
                 }
+            } catch (e: CancellationException) {
+                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при загрузке настройки notificationsEnabled: ${e.message}", e)
                 // Используем значения по умолчанию при ошибке
@@ -83,6 +90,9 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.getNotificationSoundEnabled().collect { sound ->
                     _uiState.value = _uiState.value.copy(notificationSoundEnabled = sound)
                 }
+            } catch (e: CancellationException) {
+                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при загрузке настройки notificationSoundEnabled: ${e.message}", e)
                 // Используем значения по умолчанию при ошибке
@@ -94,6 +104,9 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.getNotificationVibrationEnabled().collect { vibration ->
                     _uiState.value = _uiState.value.copy(notificationVibrationEnabled = vibration)
                 }
+            } catch (e: CancellationException) {
+                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при загрузке настройки notificationVibrationEnabled: ${e.message}", e)
                 // Используем значения по умолчанию при ошибке
@@ -105,6 +118,9 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.getScanIntervalMinutes().collect { interval ->
                     _uiState.value = _uiState.value.copy(scanIntervalMinutes = interval)
                 }
+            } catch (e: CancellationException) {
+                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при загрузке настройки scanIntervalMinutes: ${e.message}", e)
                 // Используем значения по умолчанию при ошибке
@@ -116,6 +132,9 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.getThemeMode().collect { mode ->
                     _uiState.value = _uiState.value.copy(themeMode = mode)
                 }
+            } catch (e: CancellationException) {
+                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при загрузке настройки themeMode: ${e.message}", e)
                 // Используем значения по умолчанию при ошибке

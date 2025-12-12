@@ -28,6 +28,7 @@ import android.widget.Toast
 import com.wifiguard.core.ui.theme.calculateLuminance
 import androidx.core.content.FileProvider
 import com.wifiguard.core.common.DeviceDebugLogger
+import com.wifiguard.BuildConfig
 import java.io.File
 
 /**
@@ -365,7 +366,7 @@ fun SettingsScreen(
 
                     SettingsItem(
                         title = "Версия",
-                        subtitle = "1.0.0",
+                        subtitle = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         onClick = onNavigateToAbout
                     )
                     
