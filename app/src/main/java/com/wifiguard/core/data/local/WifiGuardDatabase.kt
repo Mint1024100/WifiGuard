@@ -52,7 +52,7 @@ import com.wifiguard.core.data.local.entity.WifiScanEntity
         ThreatEntity::class,
         ScanSessionEntity::class
     ],
-    version = 10,
+    version = 12,
     exportSchema = true  // ОБЯЗАТЕЛЬНО: экспорт схемы для отслеживания изменений
 )
 @TypeConverters(DatabaseConverters::class)
@@ -1043,6 +1043,98 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                 }
             }
         }
+
+        /**
+         * Миграция с версии 10 на 11
+         * Оптимизация производительности: добавление индексов для wifi_scans.
+         *
+         * ВАЖНО: индексы ускоряют:
+         * - получение последних сканов (ORDER BY timestamp)
+         * - выборки по bssid/ssid/scanSessionId
+         * - фильтры по threatLevel/securityType/isConnected
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "🔄 Начало миграции 10 -> 11: индексы wifi_scans")
+                database.beginTransaction()
+                try {
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_wifi_scans_timestamp` ON `wifi_scans`(`timestamp`)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_wifi_scans_bssid` ON `wifi_scans`(`bssid`)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_wifi_scans_ssid` ON `wifi_scans`(`ssid`)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_wifi_scans_scanSessionId` ON `wifi_scans`(`scanSessionId`)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_wifi_scans_threatLevel` ON `wifi_scans`(`threatLevel`)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_wifi_scans_securityType` ON `wifi_scans`(`securityType`)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_wifi_scans_isConnected` ON `wifi_scans`(`isConnected`)"
+                    )
+
+                    database.setTransactionSuccessful()
+                    Log.i(TAG, "✅ Миграция 10 -> 11 успешно завершена")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Ошибка миграции 10 -> 11: ${e.message}", e)
+                    throw e
+                } finally {
+                    database.endTransaction()
+                }
+            }
+        }
+
+        /**
+         * Миграция с версии 11 на 12
+         * Исправление рассинхрона "Статистики":
+         *
+         * Исторически в БД могли попадать timestamp'ы из ScanResult.timestamp (uptime),
+         * которые НЕ являются unix-epoch. Это ломает:
+         * - фильтры "за 24 часа/неделю"
+         * - дневную статистику (DATE(timestamp/1000, 'unixepoch'))
+         * - автоочистку по cutoffTime (epoch)
+         *
+         * Решение:
+         * - удаляем явно некорректные wifi_scans со слишком маленьким timestamp
+         * - нормализуем wifi_networks.first_seen/last_seen, если они некорректны
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "🔄 Начало миграции 11 -> 12: нормализация timestamp для статистики")
+                database.beginTransaction()
+                try {
+                    // Всё, что раньше 2000-01-01, считаем некорректным (uptime).
+                    val minValidEpochMillis = 946684800000L
+
+                    // Удаляем некорректную историю сканов
+                    database.execSQL("DELETE FROM `wifi_scans` WHERE `timestamp` < $minValidEpochMillis")
+
+                    // Нормализуем времена в wifi_networks (для сортировки/экранов)
+                    val nowMillis = System.currentTimeMillis()
+                    database.execSQL(
+                        "UPDATE `wifi_networks` SET `first_seen` = $nowMillis WHERE `first_seen` < $minValidEpochMillis"
+                    )
+                    database.execSQL(
+                        "UPDATE `wifi_networks` SET `last_seen` = $nowMillis WHERE `last_seen` < $minValidEpochMillis"
+                    )
+
+                    database.setTransactionSuccessful()
+                    Log.i(TAG, "✅ Миграция 11 -> 12 успешно завершена")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Ошибка миграции 11 -> 12: ${e.message}", e)
+                    throw e
+                } finally {
+                    database.endTransaction()
+                }
+            }
+        }
         
         @Volatile
         private var INSTANCE: WifiGuardDatabase? = null
@@ -1072,7 +1164,9 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     MIGRATION_6_7,
                     MIGRATION_7_8,
                     MIGRATION_8_9,
-                    MIGRATION_9_10
+                    MIGRATION_9_10,
+                    MIGRATION_10_11,
+                    MIGRATION_11_12
                 )
                 // Добавляем callback для мониторинга
                 .addCallback(databaseCallback)

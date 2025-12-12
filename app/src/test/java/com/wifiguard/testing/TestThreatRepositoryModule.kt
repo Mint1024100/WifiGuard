@@ -106,7 +106,8 @@ class FakeNotificationHelper @javax.inject.Inject constructor() : INotificationH
         networkBssid: String,
         threatLevel: ThreatLevel,
         title: String,
-        content: String
+        content: String,
+        notificationId: Int?
     ): Boolean {
         showThreatNotificationCalled = true
         lastNetworkBssid = networkBssid

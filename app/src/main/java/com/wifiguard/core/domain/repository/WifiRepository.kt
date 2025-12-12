@@ -64,6 +64,23 @@ interface WifiRepository {
      * @param scanResult результат для сохранения
      */
     suspend fun insertScanResult(scanResult: WifiScanResult)
+
+    /**
+     * Сохранить результаты сканирования батчем (быстрее, чем по одному).
+     */
+    suspend fun insertScanResults(scanResults: List<WifiScanResult>)
+
+    /**
+     * Батч-обновление таблицы wifi_networks на основе результатов сканирования.
+     *
+     * ВАЖНО: сохраняет существующие поля безопасности (например isSuspicious/notes) и корректно увеличивает счётчик.
+     */
+    suspend fun upsertNetworksFromScanResults(scanResults: List<WifiScanResult>)
+
+    /**
+     * Атомарно сохранить результаты сканирования: wifi_scans + обновление wifi_networks.
+     */
+    suspend fun persistScanResults(scanResults: List<WifiScanResult>)
     
     /**
      * Очистить старые результаты сканирования

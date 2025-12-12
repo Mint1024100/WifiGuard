@@ -42,6 +42,12 @@ interface WifiNetworkDao {
      */
     @Query("SELECT * FROM wifi_networks WHERE bssid = :bssid LIMIT 1")
     suspend fun getNetworkByBssid(bssid: String): WifiNetworkEntity?
+
+    /**
+     * Получить сети по списку BSSID одним запросом (для батч-обновлений).
+     */
+    @Query("SELECT * FROM wifi_networks WHERE bssid IN (:bssids)")
+    suspend fun getNetworksByBssids(bssids: List<String>): List<WifiNetworkEntity>
     
     /**
      * Получить сеть по SSID (имя сети)
@@ -101,6 +107,12 @@ interface WifiNetworkDao {
      */
     @Update
     suspend fun updateNetwork(network: WifiNetworkEntity)
+
+    /**
+     * Обновить несколько сетей одним вызовом (батч).
+     */
+    @Update
+    suspend fun updateNetworks(networks: List<WifiNetworkEntity>)
     
     /**
      * Обновить время последнего обнаружения и инкрементировать счетчик

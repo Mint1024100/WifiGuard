@@ -1,6 +1,7 @@
 package com.wifiguard.core.security
 
 import android.util.Log
+import com.wifiguard.core.common.BssidValidator
 import com.wifiguard.core.domain.model.Freshness
 import com.wifiguard.core.domain.model.ScanMetadata
 import com.wifiguard.core.domain.model.SecurityType
@@ -33,12 +34,20 @@ class SecurityAnalyzer @Inject constructor(
         scanResults: List<WifiScanResult>,
         metadata: ScanMetadata? = null
     ): SecurityReport = withContext(Dispatchers.Default) {
+        // ВАЖНО ДЛЯ БЛОКА "СТАТИСТИКА" (AnalysisScreen):
+        // `scanResults` часто приходит из истории (wifi_scans) и может содержать много записей на одну и ту же сеть.
+        // Для корректной статистики нужен "срез" по сетям: 1 запись на BSSID (или SSID, если BSSID неизвестен).
+        val snapshotNetworks = buildSnapshotNetworks(scanResults)
+
         val threats = mutableListOf<SecurityThreat>()
         val networkAnalysis = mutableListOf<NetworkSecurityAnalysis>()
 
+        // Строим индекс для O(1) детекции дубликатов SSID по актуальному срезу
+        threatDetector.buildSsidIndex(snapshotNetworks)
+
         // Анализируем каждую сеть
-        scanResults.forEach { network ->
-            val analysis = analyzeNetwork(network, scanResults, metadata)
+        snapshotNetworks.forEach { network ->
+            val analysis = analyzeNetwork(network, snapshotNetworks, metadata)
             networkAnalysis.add(analysis)
 
             // Добавляем угрозы
@@ -48,12 +57,12 @@ class SecurityAnalyzer @Inject constructor(
         }
 
         // Детектируем глобальные угрозы
-        val globalThreats = threatDetector.detectGlobalThreats(scanResults)
+        val globalThreats = threatDetector.detectGlobalThreats(snapshotNetworks)
         threats.addAll(globalThreats)
 
         return@withContext SecurityReport(
             timestamp = System.currentTimeMillis(),
-            totalNetworks = scanResults.size,
+            totalNetworks = snapshotNetworks.size,
             safeNetworks = networkAnalysis.count { it.threatLevel.isSafe() },
             lowRiskNetworks = networkAnalysis.count { it.threatLevel == ThreatLevel.LOW },
             mediumRiskNetworks = networkAnalysis.count { it.threatLevel == ThreatLevel.MEDIUM },
@@ -64,6 +73,37 @@ class SecurityAnalyzer @Inject constructor(
             overallRiskLevel = calculateOverallRiskLevel(threats),
             recommendations = generateRecommendations(threats, networkAnalysis)
         )
+    }
+
+    /**
+     * Построить актуальный "срез" сетей: один элемент на сеть.
+     *
+     * Почему это важно:
+     * - В БД wifi_scans хранится история, и один BSSID может встречаться много раз.
+     * - Блок "Статистика" должен показывать количество СЕТЕЙ, а не количество ЗАПИСЕЙ истории.
+     *
+     * Стратегия:
+     * - Если BSSID валидный — группируем по BSSID (нижний регистр).
+     * - Иначе группируем по SSID (нижний регистр), чтобы скрытые/неизвестные BSSID не раздували статистику.
+     * - Сохраняем первую встреченную запись (ожидается, что вход уже отсортирован по timestamp DESC).
+     */
+    private fun buildSnapshotNetworks(scanResults: List<WifiScanResult>): List<WifiScanResult> {
+        if (scanResults.isEmpty()) return emptyList()
+
+        val unique = LinkedHashMap<String, WifiScanResult>(scanResults.size)
+
+        scanResults.forEachIndexed { index, scan ->
+            val key = when {
+                // Учитываем пару (BSSID, SSID): в норме BSSID уникален, но на некоторых устройствах/прошивках
+                // возможны некорректные/общие BSSID для разных SSID. Для статистики корректнее разделять по SSID.
+                BssidValidator.isValidForStorage(scan.bssid) -> "bssid:${scan.bssid.lowercase()}|ssid:${scan.ssid.lowercase()}"
+                scan.ssid.isNotBlank() -> "ssid:${scan.ssid.lowercase()}"
+                else -> "unknown:$index"
+            }
+            unique.putIfAbsent(key, scan)
+        }
+
+        return unique.values.toList()
     }
     
     /**

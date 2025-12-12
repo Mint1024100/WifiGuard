@@ -3,10 +3,13 @@ package com.wifiguard
 import android.app.Application
 import android.util.Log
 import androidx.work.Configuration
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.WorkManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import com.wifiguard.core.background.DataCleanupWorker
+import com.wifiguard.core.background.ThreatNotificationWorker
 import com.wifiguard.core.background.WifiMonitoringWorker
 import com.wifiguard.core.common.Constants
+import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.monitoring.WifiConnectionObserver
 import com.wifiguard.feature.settings.domain.repository.SettingsRepository
 import dagger.Lazy
@@ -48,6 +51,12 @@ class WifiGuardApp : Application(), Configuration.Provider {
 
         Log.d(TAG, "🚀 Запуск приложения WifiGuard")
 
+        // ВАЖНО: для диагностики падений/пустых сканов пишем NDJSON-лог на устройстве.
+        // runId фиксированный, чтобы логи из одного запуска группировались.
+        val runId = "run1"
+        DeviceDebugLogger.logAppStart(this, runId)
+        installCrashLogger(runId)
+
         // Инициализация приложения
         initializeApp()
         
@@ -55,22 +64,64 @@ class WifiGuardApp : Application(), Configuration.Provider {
         startWifiConnectionObserver()
     }
 
+    private fun installCrashLogger(runId: String) {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            DeviceDebugLogger.log(
+                context = this,
+                runId = runId,
+                hypothesisId = "CRASH",
+                location = "WifiGuardApp.kt:installCrashLogger",
+                message = "Необработанное исключение (краш)",
+                data = org.json.JSONObject().apply {
+                    put("thread", t.name ?: "unknown")
+                    put("errorType", e.javaClass.simpleName)
+                    put("error", e.message ?: "unknown")
+                    put("stack", e.stackTraceToString().take(4000))
+                }
+            )
+            defaultHandler?.uncaughtException(t, e)
+        }
+    }
+
     private fun initializeApp() {
         applicationScope.launch {
             val workManager = WorkManager.getInstance(this@WifiGuardApp)
+
+            // Убираем дубли, созданные старыми версиями приложения (разные имена unique-work).
+            // ВАЖНО: отмена безопасна - новые имена будут поставлены заново ниже по настройкам.
+            workManager.cancelUniqueWork("wifi_monitoring_work")
+            workManager.cancelUniqueWork("wifi_monitoring_periodic")
+            workManager.cancelUniqueWork("threat_notification_work")
+            workManager.cancelUniqueWork("threat_notification_periodic")
+
+            // Периодическая очистка БД (раз в сутки) - независимо от UI.
+            workManager.enqueueUniquePeriodicWork(
+                Constants.WORK_NAME_DATA_CLEANUP,
+                ExistingPeriodicWorkPolicy.KEEP,
+                DataCleanupWorker.createPeriodicWork()
+            )
+
+            // Периодическая отправка уведомлений по критическим угрозам.
+            workManager.enqueueUniquePeriodicWork(
+                Constants.WORK_NAME_THREAT_NOTIFICATION,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                ThreatNotificationWorker.createPeriodicWork()
+            )
+
             settingsRepository.get()
                 .getAutoScanEnabled()
                 .distinctUntilChanged()
                 .collect { isEnabled ->
                 if (isEnabled) {
                     workManager.enqueueUniquePeriodicWork(
-                        "wifi_monitoring_work",
+                        Constants.WORK_NAME_WIFI_MONITORING,
                         ExistingPeriodicWorkPolicy.UPDATE,
                         WifiMonitoringWorker.createPeriodicWork()
                     )
                     Log.d(TAG, "✅ Автоматическое сканирование включено")
                 } else {
-                    workManager.cancelUniqueWork("wifi_monitoring_work")
+                    workManager.cancelUniqueWork(Constants.WORK_NAME_WIFI_MONITORING)
                     Log.d(TAG, "🔕 Автоматическое сканирование отключено")
                 }
             }

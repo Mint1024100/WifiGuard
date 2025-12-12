@@ -26,7 +26,8 @@ interface INotificationHelper {
         networkBssid: String,
         threatLevel: ThreatLevel,
         title: String,
-        content: String
+        content: String,
+        notificationId: Int? = null
     ): Boolean
     
     /**
@@ -68,6 +69,7 @@ interface INotificationHelper {
      */
     fun getNotificationStatus(): String
 }
+
 
 
 

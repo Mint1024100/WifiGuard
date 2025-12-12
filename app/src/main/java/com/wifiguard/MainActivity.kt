@@ -29,6 +29,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.WorkManager
 import com.wifiguard.core.background.WifiMonitoringWorker
 import com.wifiguard.core.common.Constants
+import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.data.preferences.PreferencesDataSource
 import com.wifiguard.core.ui.theme.WifiGuardTheme
 import com.wifiguard.navigation.WifiGuardNavigation
@@ -284,6 +285,19 @@ class MainActivity : ComponentActivity() {
             try {
                 val currentState = getCurrentPermissionState()
                 _permissionState.value = currentState
+
+                DeviceDebugLogger.log(
+                    context = this@MainActivity,
+                    runId = "run1",
+                    hypothesisId = "C",
+                    location = "MainActivity.kt:checkAndRequestPermissions",
+                    message = "Состояние разрешений рассчитано",
+                    data = org.json.JSONObject().apply {
+                        put("sdkInt", Build.VERSION.SDK_INT)
+                        put("state", currentState.name)
+                        put("locationEnabled", DeviceDebugLogger.isLocationEnabled(this@MainActivity))
+                    }
+                )
                 
                 when (currentState) {
                     PermissionState.GRANTED -> {
@@ -478,7 +492,7 @@ class MainActivity : ComponentActivity() {
             
             // Запускаем уникальную периодическую работу
             workManager.enqueueUniquePeriodicWork(
-                "wifi_monitoring_periodic",
+                com.wifiguard.core.common.Constants.WORK_NAME_WIFI_MONITORING,
                 ExistingPeriodicWorkPolicy.KEEP,
                 periodicWork
             )

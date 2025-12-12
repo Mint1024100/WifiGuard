@@ -7,7 +7,6 @@ import android.os.BatteryManager
 import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
-import com.wifiguard.core.common.BssidValidator
 import com.wifiguard.core.data.wifi.WifiScannerService
 import com.wifiguard.core.domain.model.Freshness
 import com.wifiguard.core.domain.model.WifiScanStatus
@@ -171,54 +170,11 @@ class WifiMonitoringWorker @AssistedInject constructor(
                     Log.d(TAG, "📊 Найдено ${networks.size} сетей (freshness=${metadata.freshness})")
                     
                     if (networks.isNotEmpty()) {
-                        // Сохраняем результаты сканирования и создаем/обновляем записи о сетях
+                        // Сохраняем результаты сканирования
                         networks.forEach { scanResult ->
-                            try {
-                                // Сохраняем результат сканирования
-                                wifiRepository.insertScanResult(scanResult)
-                                
-                                // Создаем или обновляем запись о сети для анализа безопасности
-                                val bssid = scanResult.bssid
-                                if (!BssidValidator.isValidForStorage(bssid)) {
-                                    // ВАЖНО: BSSID является уникальным идентификатором точки доступа.
-                                    // Если BSSID неизвестен, мы не создаем/обновляем запись wifi_networks,
-                                    // чтобы не смешивать разные сети под одной записью.
-                                    Log.w(TAG, "Пропуск обновления wifi_networks: некорректный BSSID для SSID='${scanResult.ssid}'")
-                                    return@forEach
-                                }
-                                
-                                val existingNetwork = wifiRepository.getNetworkByBssid(bssid)
-                                if (existingNetwork != null) {
-                                    // Обновляем существующую сеть
-                                    val updatedNetwork = existingNetwork.copy(
-                                        lastSeen = scanResult.timestamp,
-                                        lastUpdated = System.currentTimeMillis(),
-                                        signalStrength = scanResult.level,
-                                        frequency = scanResult.frequency,
-                                        channel = scanResult.channel,
-                                        securityType = scanResult.securityType
-                                    )
-                                    wifiRepository.updateNetwork(updatedNetwork)
-                                } else {
-                                    // Создаем новую сеть
-                                    val newNetwork = com.wifiguard.core.domain.model.WifiNetwork(
-                                        ssid = scanResult.ssid,
-                                        bssid = bssid,
-                                        securityType = scanResult.securityType,
-                                        signalStrength = scanResult.level,
-                                        frequency = scanResult.frequency,
-                                        channel = scanResult.channel,
-                                        firstSeen = scanResult.timestamp,
-                                        lastSeen = scanResult.timestamp,
-                                        lastUpdated = System.currentTimeMillis()
-                                    )
-                                    wifiRepository.insertNetwork(newNetwork)
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Ошибка обработки результата сканирования для ${scanResult.ssid}: ${e.message}", e)
-                            }
+                            wifiRepository.insertScanResult(scanResult)
                         }
-                        Log.d(TAG, "💾 Сохранено ${networks.size} результатов в БД и обновлены записи о сетях")
+                        Log.d(TAG, "💾 Сохранено ${networks.size} результатов в БД")
                         
                         // Анализируем безопасность
                         val securityReport = securityAnalyzer.analyzeNetworks(networks, metadata)
@@ -241,9 +197,6 @@ class WifiMonitoringWorker @AssistedInject constructor(
                     val (networks, metadata) = wifiScannerService.getScanResultsWithMetadata()
                     
                     if (metadata.freshness != Freshness.EXPIRED && networks.isNotEmpty()) {
-                        // Обновляем записи о сетях из кэшированных результатов
-                        updateNetworksFromScanResults(networks)
-                        
                         val securityReport = securityAnalyzer.analyzeNetworks(networks, metadata)
                         if (securityReport.threats.isNotEmpty()) {
                             threatRepository.insertThreats(securityReport.threats)
@@ -263,9 +216,6 @@ class WifiMonitoringWorker @AssistedInject constructor(
                     val (networks, metadata) = wifiScannerService.getScanResultsWithMetadata()
                     
                     if (networks.isNotEmpty() && metadata.freshness != Freshness.EXPIRED) {
-                        // Обновляем записи о сетях из кэшированных результатов
-                        updateNetworksFromScanResults(networks)
-                        
                         val securityReport = securityAnalyzer.analyzeNetworks(networks, metadata)
                         if (securityReport.threats.isNotEmpty()) {
                             threatRepository.insertThreats(securityReport.threats)
@@ -320,53 +270,5 @@ class WifiMonitoringWorker @AssistedInject constructor(
                 100 // По умолчанию полный заряд
             }
         } ?: 100
-    }
-    
-    /**
-     * Обновляет записи о сетях из результатов сканирования
-     * 
-     * ИСПРАВЛЕНО: Добавлена логика создания/обновления WifiNetwork из WifiScanResult
-     * для обеспечения доступности сетей в SecurityAnalysisViewModel
-     */
-    private suspend fun updateNetworksFromScanResults(scanResults: List<com.wifiguard.core.domain.model.WifiScanResult>) {
-        scanResults.forEach { scanResult ->
-            try {
-                val bssid = scanResult.bssid
-                if (!BssidValidator.isValidForStorage(bssid)) {
-                    Log.w(TAG, "Пропуск обновления wifi_networks: некорректный BSSID для SSID='${scanResult.ssid}'")
-                    return@forEach
-                }
-                
-                val existingNetwork = wifiRepository.getNetworkByBssid(bssid)
-                if (existingNetwork != null) {
-                    // Обновляем существующую сеть
-                    val updatedNetwork = existingNetwork.copy(
-                        lastSeen = scanResult.timestamp,
-                        lastUpdated = System.currentTimeMillis(),
-                        signalStrength = scanResult.level,
-                        frequency = scanResult.frequency,
-                        channel = scanResult.channel,
-                        securityType = scanResult.securityType
-                    )
-                    wifiRepository.updateNetwork(updatedNetwork)
-                } else {
-                    // Создаем новую сеть
-                    val newNetwork = com.wifiguard.core.domain.model.WifiNetwork(
-                        ssid = scanResult.ssid,
-                        bssid = bssid,
-                        securityType = scanResult.securityType,
-                        signalStrength = scanResult.level,
-                        frequency = scanResult.frequency,
-                        channel = scanResult.channel,
-                        firstSeen = scanResult.timestamp,
-                        lastSeen = scanResult.timestamp,
-                        lastUpdated = System.currentTimeMillis()
-                    )
-                    wifiRepository.insertNetwork(newNetwork)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка обновления сети ${scanResult.ssid}: ${e.message}", e)
-            }
-        }
     }
 }

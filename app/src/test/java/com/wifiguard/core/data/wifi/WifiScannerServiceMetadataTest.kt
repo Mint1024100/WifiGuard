@@ -19,6 +19,7 @@ import org.robolectric.annotation.Config
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Тесты для проверки работы WifiScannerService с метаданными сканирования
@@ -93,10 +94,10 @@ class WifiScannerServiceMetadataTest {
     @Test
     fun `getScanResultsWithMetadata should return STALE for old scan`() = runTest {
         // Given: Старое сканирование (10 минут назад)
-        // Используем reflection для установки lastSuccessfulScan
-        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastSuccessfulScan")
+        // Используем reflection для установки lastResultsUpdateTime
+        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastResultsUpdateTime")
         lastScanField.isAccessible = true
-        lastScanField.set(wifiScannerService, System.currentTimeMillis() - 600_000L) // 10 минут назад
+        (lastScanField.get(wifiScannerService) as AtomicLong).set(System.currentTimeMillis() - 600_000L) // 10 минут назад
         
         every { wifiManager.scanResults } returns emptyList()
         
@@ -111,9 +112,9 @@ class WifiScannerServiceMetadataTest {
     @Test
     fun `getScanResultsWithMetadata should return EXPIRED for very old scan`() = runTest {
         // Given: Очень старое сканирование (35 минут назад)
-        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastSuccessfulScan")
+        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastResultsUpdateTime")
         lastScanField.isAccessible = true
-        lastScanField.set(wifiScannerService, System.currentTimeMillis() - 2_100_000L) // 35 минут назад
+        (lastScanField.get(wifiScannerService) as AtomicLong).set(System.currentTimeMillis() - 2_100_000L) // 35 минут назад
         
         every { wifiManager.scanResults } returns emptyList()
         
@@ -242,9 +243,9 @@ class WifiScannerServiceMetadataTest {
     fun `metadata age calculation should be accurate`() = runTest {
         // Given: Сканирование 5 минут назад
         val fiveMinutesAgo = System.currentTimeMillis() - 300_000L
-        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastSuccessfulScan")
+        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastResultsUpdateTime")
         lastScanField.isAccessible = true
-        lastScanField.set(wifiScannerService, fiveMinutesAgo)
+        (lastScanField.get(wifiScannerService) as AtomicLong).set(fiveMinutesAgo)
         
         every { wifiManager.scanResults } returns emptyList()
         
@@ -280,9 +281,9 @@ class WifiScannerServiceMetadataTest {
     fun `metadata should correctly identify SYSTEM_CACHE source`() = runTest {
         // Given: Старое сканирование (2 минуты назад)
         val twoMinutesAgo = System.currentTimeMillis() - 120_000L
-        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastSuccessfulScan")
+        val lastScanField = WifiScannerService::class.java.getDeclaredField("lastResultsUpdateTime")
         lastScanField.isAccessible = true
-        lastScanField.set(wifiScannerService, twoMinutesAgo)
+        (lastScanField.get(wifiScannerService) as AtomicLong).set(twoMinutesAgo)
         
         every { wifiManager.scanResults } returns emptyList()
         

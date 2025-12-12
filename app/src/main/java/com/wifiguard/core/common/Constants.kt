@@ -13,15 +13,31 @@ object Constants {
     // WorkManager
     const val WORK_TAG_WIFI_MONITORING = "wifi_monitoring"
     const val WORK_TAG_THREAT_NOTIFICATION = "threat_notification"
-    const val WORK_NAME_WIFI_MONITORING = "wifi_monitoring_work"
-    const val WORK_NAME_THREAT_NOTIFICATION = "threat_notification_work"
+    const val WORK_TAG_DATA_CLEANUP = "data_cleanup"
+
+    /**
+     * Единые имена уникальных работ.
+     *
+     * ВАЖНО: в проекте исторически использовались разные имена ("*_work" vs "*_periodic").
+     * Для предотвращения дублей используем только эти имена, а старые имена отменяем при старте приложения.
+     */
+    const val WORK_NAME_WIFI_MONITORING = "wifi_monitoring_periodic"
+    const val WORK_NAME_THREAT_NOTIFICATION = "threat_notification_periodic"
+    const val WORK_NAME_DATA_CLEANUP = "data_cleanup_periodic"
     
     // Workers
-    const val THREAT_NOTIFICATION_WORK_NAME = "threat_notification_periodic"
+    const val THREAT_NOTIFICATION_WORK_NAME = WORK_NAME_THREAT_NOTIFICATION
     
     // Notifications
     const val NOTIFICATION_CHANNEL_ID = "threat_notifications"
-    const val NOTIFICATION_ID = 1001
+    const val NOTIFICATION_ID_THREAT_BASE = 1000
+    const val NOTIFICATION_ID_THREAT_FALLBACK = 1001
+
+    // Foreground notifications (сканирование / мониторинг)
+    const val NOTIFICATION_CHANNEL_ID_WIFI_SCAN = "wifi_scan_channel"
+    const val NOTIFICATION_CHANNEL_ID_WIFI_MONITORING = "wifi_monitoring_channel"
+    const val NOTIFICATION_ID_WIFI_SCAN_FOREGROUND = 2001
+    const val NOTIFICATION_ID_WIFI_MONITORING_FOREGROUND = 2002
     
     // Scan intervals
     const val DEFAULT_SCAN_INTERVAL_MS = 15 * 60 * 1000L // 15 minutes

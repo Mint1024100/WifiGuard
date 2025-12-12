@@ -14,3 +14,4 @@ echo "   git checkout -b restore-lost aab8e9a30ee5aa3038520e864f2c83cb61937d8b"
 echo "   git checkout main"
 echo "   git merge restore-lost --no-ff -m 'Восстановление потерянных изменений'"
 echo "   git push origin main"
+

@@ -10,4 +10,4 @@
 - Данные не передаются третьим лицам
 
 ## Контакты
-Email: [ваш email]
+Email: svatozarbozylev@gmail.com

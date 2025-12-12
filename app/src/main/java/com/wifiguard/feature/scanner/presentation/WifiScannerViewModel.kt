@@ -1,7 +1,6 @@
 package com.wifiguard.feature.scanner.presentation
 
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,8 +10,11 @@ import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.io.File
 import javax.inject.Inject
 
 /**
@@ -75,33 +77,46 @@ class WifiScannerViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Запуск сканирования с учетом ограничений Android 10+
-                val scanStarted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    // Android 10+ - активное сканирование ограничено, используем кешированные результаты
-                    true  // Считаем, что сканирование "успешно" в контексте новых ограничений
-                } else {
-                    // Android 9 и ниже - можем запустить сканирование
-                    @Suppress("DEPRECATION")
-                    wifiManager.startScan()
-                }
-                
-                if (scanStarted) {
-                    // Мок данные для тестирования (в реальном приложении заменить на реальные результаты)
-                    processScanResults()
-                    
-                    _uiState.update { 
-                        it.copy(
-                            isScanning = false, 
-                            lastScanTime = System.currentTimeMillis(),
-                            scanCount = it.scanCount + 1
-                        )
+                // ЕДИНЫЙ ПУТЬ: запускаем сканирование через WifiScannerService (он учитывает throttling/restrictions).
+                when (val status = wifiScannerService.startScan()) {
+                    is com.wifiguard.core.domain.model.WifiScanStatus.Success -> {
+                        // Даём системе немного времени обновить scanResults
+                        delay(1200)
+                        processScanResults()
+                        _uiState.update {
+                            it.copy(
+                                isScanning = false,
+                                lastScanTime = System.currentTimeMillis(),
+                                scanCount = it.scanCount + 1
+                            )
+                        }
                     }
-                } else {
-                    _uiState.update { 
-                        it.copy(
-                            isScanning = false, 
-                            errorMessage = "Не удалось запустить сканирование"
-                        )
+                    is com.wifiguard.core.domain.model.WifiScanStatus.Throttled -> {
+                        // Используем кэшированные результаты, обновляем wifi_networks без добавления шума в wifi_scans
+                        val cached = wifiScannerService.getScanResultsAsCoreModels()
+                        wifiRepository.upsertNetworksFromScanResults(cached)
+                        _uiState.update {
+                            it.copy(
+                                isScanning = false,
+                                errorMessage = "Сканирование ограничено системой. Показаны кэшированные данные."
+                            )
+                        }
+                    }
+                    is com.wifiguard.core.domain.model.WifiScanStatus.Restricted -> {
+                        _uiState.update {
+                            it.copy(
+                                isScanning = false,
+                                errorMessage = "Сканирование ограничено системой. Попробуйте позже."
+                            )
+                        }
+                    }
+                    is com.wifiguard.core.domain.model.WifiScanStatus.Failed -> {
+                        _uiState.update {
+                            it.copy(
+                                isScanning = false,
+                                errorMessage = "Ошибка сканирования: ${status.error}"
+                            )
+                        }
                     }
                 }
                 
@@ -179,66 +194,141 @@ class WifiScannerViewModel @Inject constructor(
     
     /**
      * Обработать результаты сканирования
+     * ИСПРАВЛЕНО: Используем безопасный метод из WifiScannerService вместо прямого доступа к wifiManager.scanResults
      */
     private suspend fun processScanResults() {
+        // #region agent log
         try {
-            // Получаем реальные результаты сканирования
-            val scanResults = wifiManager.scanResults
+            val logJson = org.json.JSONObject().apply {
+                put("sessionId", "debug-session")
+                put("runId", "run1")
+                put("hypothesisId", "A")
+                put("location", "WifiScannerViewModel.kt:196")
+                put("message", "Начало обработки результатов сканирования")
+                put("data", org.json.JSONObject().apply {
+                    put("wifiEnabled", wifiManager.isWifiEnabled)
+                })
+                put("timestamp", System.currentTimeMillis())
+            }
+            java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+        } catch (e: Exception) {}
+        // #endregion
+        
+        try {
+            // ИСПРАВЛЕНО: Используем безопасный метод из WifiScannerService, который обрабатывает разрешения и ошибки
+            val (scanResults, metadata) = wifiScannerService.getScanResultsWithMetadata()
+            
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "A")
+                    put("location", "WifiScannerViewModel.kt:210")
+                    put("message", "Получены результаты сканирования из WifiScannerService")
+                    put("data", org.json.JSONObject().apply {
+                        put("resultsCount", scanResults.size)
+                        put("source", metadata.source.toString())
+                        put("freshness", metadata.freshness.toString())
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (e: Exception) {}
+            // #endregion
             
             if (scanResults.isEmpty()) {
                 Log.d("WifiScannerViewModel", "Нет результатов сканирования")
+                // #region agent log
+                try {
+                    val logJson = org.json.JSONObject().apply {
+                        put("sessionId", "debug-session")
+                        put("runId", "run1")
+                        put("hypothesisId", "B")
+                        put("location", "WifiScannerViewModel.kt:225")
+                        put("message", "Пустой список результатов сканирования")
+                        put("data", org.json.JSONObject().apply {
+                            put("source", metadata.source.toString())
+                            put("freshness", metadata.freshness.toString())
+                        })
+                        put("timestamp", System.currentTimeMillis())
+                    }
+                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+                } catch (e: Exception) {}
+                // #endregion
                 return
             }
             
             Log.d("WifiScannerViewModel", "Обработка ${scanResults.size} результатов сканирования")
             
-            // Преобразуем и сохраняем каждый результат
-            scanResults.forEach { androidScanResult ->
-                try {
-                    val wifiScanResult = wifiScannerService.scanResultToWifiScanResult(
-                        androidScanResult,
-                        com.wifiguard.core.domain.model.ScanType.MANUAL
-                    )
-                    wifiRepository.insertScanResult(wifiScanResult)
-                    
-                    // Также обновляем/создаем запись о сети
-                    val existingNetwork = wifiRepository.getNetworkBySSID(wifiScanResult.ssid)
-                    if (existingNetwork != null) {
-                        // Обновляем существующую сеть
-                        val updatedNetwork = existingNetwork.copy(
-                            lastSeen = wifiScanResult.timestamp,
-                            lastUpdated = System.currentTimeMillis(),
-                            signalStrength = wifiScanResult.level
-                        )
-                        wifiRepository.updateNetwork(updatedNetwork)
-                    } else {
-                        // Создаем новую сеть
-                        val newNetwork = com.wifiguard.core.domain.model.WifiNetwork(
-                            ssid = wifiScanResult.ssid,
-                            bssid = wifiScanResult.bssid,
-                            securityType = wifiScanResult.securityType ?: com.wifiguard.core.domain.model.SecurityType.UNKNOWN,
-                            signalStrength = wifiScanResult.level,
-                            frequency = wifiScanResult.frequency,
-                            channel = wifiScanResult.channel,
-                            firstSeen = wifiScanResult.timestamp,
-                            lastSeen = wifiScanResult.timestamp,
-                            lastUpdated = System.currentTimeMillis()
-                        )
-                        wifiRepository.insertNetwork(newNetwork)
-                    }
-                } catch (e: Exception) {
-                    Log.e("WifiScannerViewModel", "Ошибка обработки результата: ${e.message}")
-                }
+            // Результаты уже преобразованы в WifiScanResult в WifiScannerService
+            val results = scanResults.map { result ->
+                result.copy(scanType = com.wifiguard.core.domain.model.ScanType.MANUAL)
             }
+
+            // ОПТИМИЗАЦИЯ: атомарная батч-запись (wifi_scans + wifi_networks)
+            wifiRepository.persistScanResults(results)
+            
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "A")
+                    put("location", "WifiScannerViewModel.kt:250")
+                    put("message", "Результаты сканирования успешно обработаны и сохранены")
+                    put("data", org.json.JSONObject().apply {
+                        put("savedCount", results.size)
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (e: Exception) {}
+            // #endregion
             
             Log.d("WifiScannerViewModel", "Результаты сканирования успешно обработаны")
         } catch (e: SecurityException) {
             Log.e("WifiScannerViewModel", "Нет разрешений для получения результатов", e)
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "C")
+                    put("location", "WifiScannerViewModel.kt:265")
+                    put("message", "SecurityException при получении результатов сканирования")
+                    put("data", org.json.JSONObject().apply {
+                        put("error", e.message ?: "unknown")
+                        put("errorType", "SecurityException")
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (logEx: Exception) {}
+            // #endregion
             _uiState.update { 
                 it.copy(errorMessage = "Нет разрешений для получения результатов сканирования")
             }
         } catch (e: Exception) {
             Log.e("WifiScannerViewModel", "Ошибка обработки результатов", e)
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "D")
+                    put("location", "WifiScannerViewModel.kt:282")
+                    put("message", "Общая ошибка при обработке результатов сканирования")
+                    put("data", org.json.JSONObject().apply {
+                        put("error", e.message ?: "unknown")
+                        put("errorType", e.javaClass.simpleName)
+                        put("stackTrace", e.stackTraceToString().take(500))
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (logEx: Exception) {}
+            // #endregion
             _uiState.update { 
                 it.copy(errorMessage = "Ошибка обработки результатов: ${e.message}")
             }

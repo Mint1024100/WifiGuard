@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.wifiguard.core.common.Constants
 import com.wifiguard.core.domain.repository.ThreatRepository
 import com.wifiguard.core.data.preferences.PreferencesDataSource
 import com.wifiguard.core.notification.INotificationHelper
@@ -51,7 +52,8 @@ class ThreatNotificationWorker @AssistedInject constructor(
                         networkBssid = threat.networkBssid,
                         threatLevel = threat.severity,
                         title = "Обнаружена критическая угроза!",
-                        content = "Сеть: ${threat.networkSsid} - ${threat.description}"
+                        content = "Сеть: ${threat.networkSsid} - ${threat.description}",
+                        notificationId = buildThreatNotificationId(threat.id)
                     )
 
                     // Отмечаем угрозу как уведомленную
@@ -77,8 +79,13 @@ class ThreatNotificationWorker @AssistedInject constructor(
             return androidx.work.PeriodicWorkRequestBuilder<ThreatNotificationWorker>(
                 60, java.util.concurrent.TimeUnit.MINUTES  // Check for new threats every hour
             )
-                .addTag("threat_notifications")
+                .addTag(Constants.WORK_TAG_THREAT_NOTIFICATION)
                 .build()
+        }
+
+        private fun buildThreatNotificationId(threatId: Long): Int {
+            val safe = (threatId % 9_000_000L).toInt()
+            return Constants.NOTIFICATION_ID_THREAT_BASE + safe
         }
     }
 }

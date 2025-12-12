@@ -126,3 +126,4 @@ git merge restored-morning-state
 - `git reflog` - история всех операций
 - `git log --all --graph` - визуализация истории
 - `git show <commit-hash>` - содержимое коммита
+

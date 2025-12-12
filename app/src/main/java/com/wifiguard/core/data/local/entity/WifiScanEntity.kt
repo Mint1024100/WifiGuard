@@ -1,6 +1,7 @@
 package com.wifiguard.core.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.wifiguard.core.data.local.converter.DatabaseConverters
@@ -11,7 +12,18 @@ import com.wifiguard.core.domain.model.WifiStandard
 /**
  * Entity для истории сканирований Wi-Fi сетей
  */
-@Entity(tableName = "wifi_scans")
+@Entity(
+    tableName = "wifi_scans",
+    indices = [
+        Index(value = ["timestamp"]),
+        Index(value = ["bssid"]),
+        Index(value = ["ssid"]),
+        Index(value = ["scanSessionId"]),
+        Index(value = ["threatLevel"]),
+        Index(value = ["securityType"]),
+        Index(value = ["isConnected"])
+    ]
+)
 @TypeConverters(DatabaseConverters::class)
 data class WifiScanEntity(
     @PrimaryKey(autoGenerate = true)

@@ -19,31 +19,17 @@ import com.wifiguard.core.domain.repository.ThreatRepository
 import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.security.SecurityAnalyzer
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 /**
  * Foreground Service для выполнения полного сканирования Wi-Fi сетей
  * Используется для обхода ограничений Android 10+ на фоновое сканирование
- * 
- * КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ БЕЗОПАСНОСТИ И ПРОИЗВОДИТЕЛЬНОСТИ:
- * ✅ Использует SupervisorJob() для изоляции ошибок дочерних корутин
- * ✅ START_STICKY для автоматического перезапуска при убийстве системой
- * ✅ Корректная отмена корутин в onDestroy()
- * ✅ CoroutineExceptionHandler для обработки необработанных исключений
- * ✅ AtomicBoolean для предотвращения множественных запусков сканирования
- * ✅ Проверка isActive перед длительными операциями
- * 
- * @author WifiGuard Security Team
  */
 @AndroidEntryPoint
 class WifiForegroundScanService : Service() {
@@ -60,22 +46,7 @@ class WifiForegroundScanService : Service() {
     @Inject
     lateinit var threatRepository: ThreatRepository
     
-    // Обработчик исключений для корутин
-    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        Log.e(TAG, "❌ Необработанное исключение в serviceScope: ${throwable.message}", throwable)
-        // Останавливаем сервис при критической ошибке
-        stopSelf()
-    }
-    
-    // ИСПРАВЛЕНО: SupervisorJob + CoroutineExceptionHandler для безопасного выполнения
-    private val serviceJob = SupervisorJob()
-    private val serviceScope = CoroutineScope(serviceJob + Dispatchers.Main + exceptionHandler)
-    
-    // Флаг для предотвращения множественных сканирований
-    private val isScanningInProgress = AtomicBoolean(false)
-    
-    // Текущая задача сканирования для отмены
-    private var scanJob: Job? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
     companion object {
         private const val TAG = "WifiForegroundScanService"
@@ -87,7 +58,6 @@ class WifiForegroundScanService : Service() {
          * Запустить foreground сканирование
          */
         fun start(context: Context) {
-            Log.d(TAG, "🚀 Запуск foreground сканирования")
             val intent = Intent(context, WifiForegroundScanService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -100,7 +70,6 @@ class WifiForegroundScanService : Service() {
          * Остановить foreground сканирование
          */
         fun stop(context: Context) {
-            Log.d(TAG, "🛑 Остановка foreground сканирования")
             val intent = Intent(context, WifiForegroundScanService::class.java)
             context.stopService(intent)
         }
@@ -108,34 +77,23 @@ class WifiForegroundScanService : Service() {
     
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "📦 Service created")
+        Log.d(TAG, "Service created")
         createNotificationChannel()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "▶️ Service started (startId=$startId)")
+        Log.d(TAG, "Service started")
         
-        // Запускаем foreground notification СРАЗУ (требование Android 8+)
+        // Запускаем foreground notification
         val notification = createNotification("Подготовка к сканированию...")
         startForeground(NOTIFICATION_ID, notification)
         
-        // Проверяем, не выполняется ли уже сканирование
-        if (isScanningInProgress.compareAndSet(false, true)) {
-            // Запускаем сканирование в корутине
-            scanJob = serviceScope.launch {
-                try {
-                    performFullScan()
-                } finally {
-                    isScanningInProgress.set(false)
-                }
-            }
-        } else {
-            Log.w(TAG, "⚠️ Сканирование уже выполняется, пропускаем")
+        // Запускаем сканирование в корутине
+        serviceScope.launch {
+            performFullScan()
         }
         
-        // ИСПРАВЛЕНО: START_STICKY - сервис будет перезапущен системой
-        // если будет убит из-за нехватки памяти
-        return START_STICKY
+        return START_NOT_STICKY
     }
     
     override fun onBind(intent: Intent?): IBinder? {
@@ -143,19 +101,9 @@ class WifiForegroundScanService : Service() {
     }
     
     override fun onDestroy() {
-        Log.d(TAG, "🗑️ Service destroyed")
-        
-        // ИСПРАВЛЕНО: Отменяем текущую задачу сканирования
-        scanJob?.cancel()
-        scanJob = null
-        
-        // ИСПРАВЛЕНО: Отменяем все корутины в scope
-        serviceScope.cancel()
-        
-        // Сбрасываем флаг сканирования
-        isScanningInProgress.set(false)
-        
         super.onDestroy()
+        Log.d(TAG, "Service destroyed")
+        serviceScope.cancel()
     }
     
     /**
@@ -215,114 +163,90 @@ class WifiForegroundScanService : Service() {
     
     /**
      * Выполнить полное сканирование
-     * 
-     * ИСПРАВЛЕНО: Добавлены проверки isActive для корректной отмены
      */
     private suspend fun performFullScan() {
-        Log.d(TAG, "🔍 Starting full scan")
+        Log.d(TAG, "Starting full scan")
         
         try {
-            // ИСПРАВЛЕНО: Проверка isActive перед операциями
-            if (!serviceScope.isActive) {
-                Log.w(TAG, "⚠️ Scope неактивен, прерывание сканирования")
-                return
-            }
-            
             // Проверяем, включен ли WiFi
             if (!wifiScannerService.isWifiEnabled()) {
-                Log.w(TAG, "⚠️ WiFi is not enabled")
+                Log.w(TAG, "WiFi is not enabled")
                 updateNotification("WiFi отключен")
-                if (serviceScope.isActive) delay(2000)
+                delay(2000)
                 stopSelf()
                 return
             }
             
             updateNotification("Сканирование сетей...")
             
-            // ИСПРАВЛЕНО: Проверка isActive перед длительной операцией
-            if (!serviceScope.isActive) return
-            
             // Запускаем сканирование
             val scanStatus = wifiScannerService.startScan()
             
-            // ИСПРАВЛЕНО: Проверка isActive после операции
-            if (!serviceScope.isActive) return
-            
             when (scanStatus) {
                 is WifiScanStatus.Success -> {
-                    Log.d(TAG, "✅ Scan successful")
+                    Log.d(TAG, "Scan successful")
                     updateNotification("Обработка результатов...")
                     
                     // Небольшая задержка для получения результатов
-                    if (serviceScope.isActive) delay(1000)
-                    if (!serviceScope.isActive) return
+                    delay(1000)
                     
                     // Получаем результаты с метаданными
                     val (networks, metadata) = wifiScannerService.getScanResultsWithMetadata()
-                    Log.d(TAG, "📊 Found ${networks.size} networks")
+                    Log.d(TAG, "Found ${networks.size} networks")
                     
-                    if (networks.isNotEmpty() && serviceScope.isActive) {
+                    if (networks.isNotEmpty()) {
                         updateNotification("Найдено ${networks.size} сетей. Анализ безопасности...")
                         
                         // Сохраняем результаты
                         networks.forEach { network ->
-                            if (!serviceScope.isActive) return
                             wifiRepository.insertScanResult(network)
                         }
                         
-                        if (!serviceScope.isActive) return
-                        
                         // Анализируем безопасность
                         val securityReport = securityAnalyzer.analyzeNetworks(networks, metadata)
-                        Log.d(TAG, "🛡️ Security analysis complete. Found ${securityReport.threats.size} threats")
+                        Log.d(TAG, "Security analysis complete. Found ${securityReport.threats.size} threats")
                         
                         // Сохраняем угрозы
-                        if (securityReport.threats.isNotEmpty() && serviceScope.isActive) {
+                        if (securityReport.threats.isNotEmpty()) {
                             threatRepository.insertThreats(securityReport.threats)
                             updateNotification("Обнаружено ${securityReport.threats.size} угроз")
                         } else {
                             updateNotification("Угроз не обнаружено")
                         }
                         
-                        if (serviceScope.isActive) delay(2000)
+                        delay(2000)
                     } else {
-                        Log.w(TAG, "⚠️ No networks found")
+                        Log.w(TAG, "No networks found")
                         updateNotification("Сети не найдены")
-                        if (serviceScope.isActive) delay(2000)
+                        delay(2000)
                     }
                 }
                 
                 is WifiScanStatus.Throttled -> {
-                    Log.w(TAG, "⏳ Scan throttled")
+                    Log.w(TAG, "Scan throttled")
                     val minutesUntilNext = (scanStatus.nextAvailableTime - System.currentTimeMillis()) / 60000
                     updateNotification("Сканирование ограничено. Повторите через $minutesUntilNext мин.")
-                    if (serviceScope.isActive) delay(3000)
+                    delay(3000)
                 }
                 
                 is WifiScanStatus.Restricted -> {
-                    Log.w(TAG, "🚫 Scan restricted: ${scanStatus.reason}")
+                    Log.w(TAG, "Scan restricted: ${scanStatus.reason}")
                     updateNotification("Сканирование ограничено системой")
-                    if (serviceScope.isActive) delay(3000)
+                    delay(3000)
                 }
                 
                 is WifiScanStatus.Failed -> {
-                    Log.e(TAG, "❌ Scan failed: ${scanStatus.error}")
+                    Log.e(TAG, "Scan failed: ${scanStatus.error}")
                     updateNotification("Ошибка сканирования: ${scanStatus.error}")
-                    if (serviceScope.isActive) delay(3000)
+                    delay(3000)
                 }
             }
             
-            Log.d(TAG, "✅ Full scan completed")
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            // ИСПРАВЛЕНО: Корректная обработка отмены корутины
-            Log.d(TAG, "🛑 Сканирование отменено")
-            throw e // Пробрасываем для корректной отмены
+            Log.d(TAG, "Full scan completed")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error during full scan", e)
-            if (serviceScope.isActive) {
-                updateNotification("Ошибка: ${e.message}")
-                delay(3000)
-            }
+            Log.e(TAG, "Error during full scan", e)
+            updateNotification("Ошибка: ${e.message}")
+            delay(3000)
         } finally {
             // Останавливаем сервис
             stopSelf()

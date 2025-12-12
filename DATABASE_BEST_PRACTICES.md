@@ -462,3 +462,4 @@ adb shell run-as com.wifiguard sqlite3 /data/data/com.wifiguard/databases/wifigu
 
 
 
+

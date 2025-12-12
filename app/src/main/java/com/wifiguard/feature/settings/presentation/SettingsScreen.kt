@@ -3,6 +3,7 @@ package com.wifiguard.feature.settings.presentation
 // РЕЗЕРВНАЯ КОПИЯ: Удаленные импорты для экспорта/импорта
 // import androidx.activity.compose.rememberLauncherForActivityResult
 // import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +26,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.wifiguard.core.ui.theme.*
 import android.widget.Toast
 import com.wifiguard.core.ui.theme.calculateLuminance
+import androidx.core.content.FileProvider
+import com.wifiguard.core.common.DeviceDebugLogger
+import java.io.File
 
 /**
  * Экран настроек
@@ -309,6 +313,56 @@ fun SettingsScreen(
                     title = "О приложении",
                     icon = Icons.Filled.Info
                 ) {
+                    SettingsItem(
+                        title = "Экспортировать debug-лог",
+                        subtitle = "Отправить файл для диагностики падений/сканирования",
+                        onClick = {
+                            val logFile: File = DeviceDebugLogger.getFile(context)
+                            if (!logFile.exists() || logFile.length() == 0L) {
+                                Toast.makeText(
+                                    context,
+                                    "Файл лога пуст. Сначала воспроизведите проблему.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@SettingsItem
+                            }
+
+                            runCatching {
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    logFile
+                                )
+
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/x-ndjson"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Отправить debug-лог"))
+                            }.onFailure {
+                                Toast.makeText(
+                                    context,
+                                    "Не удалось отправить debug-лог: ${it.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    )
+
+                    SettingsItem(
+                        title = "Очистить debug-лог",
+                        subtitle = "Сбросить файл перед новым тестом",
+                        onClick = {
+                            DeviceDebugLogger.clear(context)
+                            Toast.makeText(
+                                context,
+                                "Debug-лог очищен: ${DeviceDebugLogger.filePathForUser(context)}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    )
+
                     SettingsItem(
                         title = "Версия",
                         subtitle = "1.0.0",

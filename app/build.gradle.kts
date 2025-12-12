@@ -28,8 +28,8 @@ android {
         applicationId = findProperty("APP_PACKAGE_NAME") as String? ?: "com.wifiguard" // Safe fallback if property not found
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()  // ДОЛЖНО БЫТЬ 34 минимум для новых приложений
-        versionCode = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 1
-        versionName = findProperty("APP_VERSION_NAME") as String? ?: "1.0.1" // Safe fallback if property not found
+        versionCode = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 3
+        versionName = findProperty("APP_VERSION_NAME") as String? ?: "1.0.1.1" // Safe fallback if property not found
         
         testInstrumentationRunner = "com.wifiguard.test.CustomTestRunner"
         vectorDrawables {

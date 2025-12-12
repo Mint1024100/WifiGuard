@@ -1,17 +1,21 @@
 package com.wifiguard.core.data.wifi
 
+import android.Manifest
 import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.wifiguard.core.common.Constants
+import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.domain.model.Freshness
 import com.wifiguard.core.domain.model.ScanMetadata
 import com.wifiguard.core.domain.model.ScanSource
@@ -23,10 +27,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.coroutines.resume
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Сервис для сканирования Wi-Fi сетей с использованием Android WiFi API.
@@ -49,8 +54,14 @@ class WifiScannerService @Inject constructor(
         private const val STALE_DATA_THRESHOLD = 1_800_000L // 30 минут
     }
     
-    // Время последнего успешного сканирования
-    private var lastSuccessfulScan: Long = 0L
+    // Время последнего запроса на активное сканирование (startScan)
+    private val lastScanRequestTime = AtomicLong(0L)
+
+    // Время последнего получения обновлённых результатов (EXTRA_RESULTS_UPDATED = true)
+    private val lastResultsUpdateTime = AtomicLong(0L)
+
+    // Сериализация startScan() для предотвращения гонок при одновременных вызовах (Worker/Service/UI)
+    private val scanMutex = Mutex()
     
     /**
      * Запускает сканирование Wi-Fi сетей с учетом ограничений Android 10+
@@ -58,10 +69,22 @@ class WifiScannerService @Inject constructor(
      */
     suspend fun startScan(): WifiScanStatus {
         Log.d("WifiGuardDebug", "WifiScannerService: Starting scan")
-        return try {
+        return scanMutex.withLock {
+            try {
             if (!wifiManager.isWifiEnabled) {
                 Log.w(TAG, "WiFi отключен")
                 Log.d("WifiGuardDebug", "WifiScannerService: WiFi is not enabled")
+                DeviceDebugLogger.log(
+                    context = context,
+                    runId = "run1",
+                    hypothesisId = "A",
+                    location = "WifiScannerService.kt:startScan",
+                    message = "Старт скана: WiFi выключен",
+                    data = org.json.JSONObject().apply {
+                        put("sdkInt", Build.VERSION.SDK_INT)
+                        put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                    }
+                )
                 return WifiScanStatus.Failed("WiFi is not enabled")
             }
 
@@ -69,7 +92,8 @@ class WifiScannerService @Inject constructor(
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Android 10+: проверяем ограничения throttling
-                val timeSinceLastScan = currentTime - lastSuccessfulScan
+                val lastRequest = lastScanRequestTime.get()
+                val timeSinceLastScan = if (lastRequest > 0) currentTime - lastRequest else Long.MAX_VALUE
                 val isInForeground = isAppInForeground()
                 val throttleInterval = if (isInForeground) {
                     FOREGROUND_THROTTLE_INTERVAL // 30 секунд для foreground (4 раза за 2 минуты)
@@ -79,8 +103,8 @@ class WifiScannerService @Inject constructor(
                 
                 Log.d(TAG, "Android 10+: timeSinceLastScan=$timeSinceLastScan, throttleInterval=$throttleInterval, isInForeground=$isInForeground")
                 
-                if (timeSinceLastScan < throttleInterval && lastSuccessfulScan > 0) {
-                    val nextAvailableTime = lastSuccessfulScan + throttleInterval
+                if (timeSinceLastScan < throttleInterval && lastRequest > 0) {
+                    val nextAvailableTime = lastRequest + throttleInterval
                     Log.w(TAG, "Scan throttled. Next available in: ${throttleInterval - timeSinceLastScan}ms")
                     Log.d("WifiGuardDebug", "WifiScannerService: Scan throttled, next available at $nextAvailableTime")
                     return WifiScanStatus.Throttled(nextAvailableTime)
@@ -91,13 +115,42 @@ class WifiScannerService @Inject constructor(
                 val scanStarted = wifiManager.startScan()
                 
                 if (scanStarted) {
-                    lastSuccessfulScan = currentTime
+                    lastScanRequestTime.set(currentTime)
+                    // Оптимистично считаем результаты "свежими" сразу после успешного запуска.
+                    // Реальное обновление также фиксируется в BroadcastReceiver (EXTRA_RESULTS_UPDATED = true).
+                    lastResultsUpdateTime.set(currentTime)
                     Log.d(TAG, "Сканирование WiFi запущено успешно (Android 10+)")
                     Log.d("WifiGuardDebug", "WifiScannerService: WiFi scan started successfully")
+                    DeviceDebugLogger.log(
+                        context = context,
+                        runId = "run1",
+                        hypothesisId = "A",
+                        location = "WifiScannerService.kt:startScan",
+                        message = "Старт скана: startScan()=true",
+                        data = org.json.JSONObject().apply {
+                            put("sdkInt", Build.VERSION.SDK_INT)
+                            put("isInForeground", isInForeground)
+                            put("throttleIntervalMs", throttleInterval)
+                            put("timeSinceLastScanMs", timeSinceLastScan)
+                            put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                        }
+                    )
                     return WifiScanStatus.Success(currentTime)
                 } else {
                     Log.w(TAG, "Android 10+ background scan restricted")
                     Log.d("WifiGuardDebug", "WifiScannerService: Scan restricted on Android 10+")
+                    DeviceDebugLogger.log(
+                        context = context,
+                        runId = "run1",
+                        hypothesisId = "A",
+                        location = "WifiScannerService.kt:startScan",
+                        message = "Старт скана: startScan()=false (restricted)",
+                        data = org.json.JSONObject().apply {
+                            put("sdkInt", Build.VERSION.SDK_INT)
+                            put("isInForeground", isInForeground)
+                            put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                        }
+                    )
                     return WifiScanStatus.Restricted(
                         "Android 10+ background scan restricted. Use foreground service or wait for throttle interval."
                     )
@@ -109,24 +162,73 @@ class WifiScannerService @Inject constructor(
                 val scanStarted = wifiManager.startScan()
                 
                 if (scanStarted) {
-                    lastSuccessfulScan = currentTime
+                    lastScanRequestTime.set(currentTime)
+                    lastResultsUpdateTime.set(currentTime)
                     Log.d(TAG, "Сканирование WiFi запущено успешно")
                     Log.d("WifiGuardDebug", "WifiScannerService: WiFi scan started successfully")
+                    DeviceDebugLogger.log(
+                        context = context,
+                        runId = "run1",
+                        hypothesisId = "A",
+                        location = "WifiScannerService.kt:startScan",
+                        message = "Старт скана (до Android 10): startScan()=true",
+                        data = org.json.JSONObject().apply {
+                            put("sdkInt", Build.VERSION.SDK_INT)
+                            put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                        }
+                    )
                     return WifiScanStatus.Success(currentTime)
                 } else {
                     Log.w(TAG, "Не удалось запустить сканирование WiFi")
                     Log.d("WifiGuardDebug", "WifiScannerService: Failed to start WiFi scan")
+                    DeviceDebugLogger.log(
+                        context = context,
+                        runId = "run1",
+                        hypothesisId = "A",
+                        location = "WifiScannerService.kt:startScan",
+                        message = "Старт скана (до Android 10): startScan()=false",
+                        data = org.json.JSONObject().apply {
+                            put("sdkInt", Build.VERSION.SDK_INT)
+                            put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                        }
+                    )
                     return WifiScanStatus.Failed("WifiManager.startScan() returned false")
                 }
             }
-        } catch (e: SecurityException) {
+            } catch (e: SecurityException) {
             Log.e(TAG, "Нет разрешений для сканирования WiFi", e)
             Log.e("WifiGuardDebug", "WifiScannerService: Security exception during scan: ${e.message}", e)
+            DeviceDebugLogger.log(
+                context = context,
+                runId = "run1",
+                hypothesisId = "C",
+                location = "WifiScannerService.kt:startScan",
+                message = "SecurityException при startScan()",
+                data = org.json.JSONObject().apply {
+                    put("sdkInt", Build.VERSION.SDK_INT)
+                    put("error", e.message ?: "unknown")
+                    put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                }
+            )
             WifiScanStatus.Failed("Security exception: ${e.message}")
-        } catch (e: Exception) {
+            } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске сканирования WiFi", e)
             Log.e("WifiGuardDebug", "WifiScannerService: Error during scan: ${e.message}", e)
+            DeviceDebugLogger.log(
+                context = context,
+                runId = "run1",
+                hypothesisId = "D",
+                location = "WifiScannerService.kt:startScan",
+                message = "Exception при startScan()",
+                data = org.json.JSONObject().apply {
+                    put("sdkInt", Build.VERSION.SDK_INT)
+                    put("errorType", e.javaClass.simpleName)
+                    put("error", e.message ?: "unknown")
+                    put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                }
+            )
             WifiScanStatus.Failed("Exception: ${e.message}")
+            }
         }
     }
     
@@ -139,7 +241,11 @@ class WifiScannerService @Inject constructor(
             val appProcesses = activityManager.runningAppProcesses ?: return false
             appProcesses.any { 
                 it.processName == context.packageName && 
-                it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND 
+                (
+                    it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
+                    it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE ||
+                    it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
+                )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при проверке foreground статуса", e)
@@ -156,7 +262,14 @@ class WifiScannerService @Inject constructor(
         
         val scanResults = getScanResultsAsCoreModels()
         val currentTime = System.currentTimeMillis()
-        val age = if (lastSuccessfulScan > 0) currentTime - lastSuccessfulScan else Long.MAX_VALUE
+        val lastUpdated = lastResultsUpdateTime.get()
+        val lastRequested = lastScanRequestTime.get()
+        val baseTime = when {
+            lastUpdated > 0 -> lastUpdated
+            lastRequested > 0 -> lastRequested
+            else -> 0L
+        }
+        val age = if (baseTime > 0) currentTime - baseTime else Long.MAX_VALUE
         
         val freshness = when {
             age < FRESH_DATA_THRESHOLD -> Freshness.FRESH      // < 5 минут
@@ -164,10 +277,14 @@ class WifiScannerService @Inject constructor(
             else -> Freshness.EXPIRED                          // > 30 минут
         }
         
-        val source = if (age < 60_000L) ScanSource.ACTIVE_SCAN else ScanSource.SYSTEM_CACHE
+        val source = if (lastUpdated > 0 && (currentTime - lastUpdated) < 60_000L) {
+            ScanSource.ACTIVE_SCAN
+        } else {
+            ScanSource.SYSTEM_CACHE
+        }
         
         val metadata = ScanMetadata(
-            timestamp = if (lastSuccessfulScan > 0) lastSuccessfulScan else currentTime,
+            timestamp = if (baseTime > 0) baseTime else currentTime,
             source = source,
             freshness = freshness
         )
@@ -212,19 +329,134 @@ class WifiScannerService @Inject constructor(
     /**
      * Получает результаты последнего сканирования как core доменные модели
      * @return список результатов сканирования как WifiScanResult
+     * ИСПРАВЛЕНО: Добавлена проверка разрешений и улучшена обработка ошибок
      */
     fun getScanResultsAsCoreModels(): List<WifiScanResult> {
         Log.d("WifiGuardDebug", "WifiScannerService: Getting scan results as core models")
+        
+        // #region agent log
+        try {
+            val logJson = org.json.JSONObject().apply {
+                put("sessionId", "debug-session")
+                put("runId", "run1")
+                put("hypothesisId", "B")
+                put("location", "WifiScannerService.kt:245")
+                put("message", "Начало получения результатов сканирования как core models")
+                put("data", org.json.JSONObject().apply {
+                    put("wifiEnabled", wifiManager.isWifiEnabled)
+                    put("sdkVersion", Build.VERSION.SDK_INT)
+                })
+                put("timestamp", System.currentTimeMillis())
+            }
+            java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+        } catch (e: Exception) {}
+        // #endregion
+        
         return try {
             if (!wifiManager.isWifiEnabled) {
                 Log.w(TAG, "WiFi отключен")
                 Log.d("WifiGuardDebug", "WifiScannerService: WiFi is not enabled, returning empty list")
+                DeviceDebugLogger.log(
+                    context = context,
+                    runId = "run1",
+                    hypothesisId = "B",
+                    location = "WifiScannerService.kt:getScanResultsAsCoreModels",
+                    message = "scanResults: WiFi выключен -> пусто",
+                    data = org.json.JSONObject().apply {
+                        put("sdkInt", Build.VERSION.SDK_INT)
+                        put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                    }
+                )
+                // #region agent log
+                try {
+                    val logJson = org.json.JSONObject().apply {
+                        put("sessionId", "debug-session")
+                        put("runId", "run1")
+                        put("hypothesisId", "B")
+                        put("location", "WifiScannerService.kt:264")
+                        put("message", "WiFi отключен, возвращаем пустой список")
+                        put("data", org.json.JSONObject())
+                        put("timestamp", System.currentTimeMillis())
+                    }
+                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+                } catch (e: Exception) {}
+                // #endregion
+                return emptyList()
+            }
+
+            // ИСПРАВЛЕНО: Проверяем разрешения перед доступом к scanResults
+            val hasPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                PackageManager.PERMISSION_GRANTED == 
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) &&
+                PackageManager.PERMISSION_GRANTED == 
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.NEARBY_WIFI_DEVICES
+                    )
+            } else {
+                PackageManager.PERMISSION_GRANTED == 
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    )
+            }
+            
+            if (!hasPermissions) {
+                Log.w(TAG, "Нет разрешений для получения результатов сканирования")
+                // #region agent log
+                try {
+                    val logJson = org.json.JSONObject().apply {
+                        put("sessionId", "debug-session")
+                        put("runId", "run1")
+                        put("hypothesisId", "C")
+                        put("location", "WifiScannerService.kt:295")
+                        put("message", "Нет разрешений для получения результатов сканирования")
+                        put("data", org.json.JSONObject().apply {
+                            put("sdkVersion", Build.VERSION.SDK_INT)
+                        })
+                        put("timestamp", System.currentTimeMillis())
+                    }
+                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+                } catch (e: Exception) {}
+                // #endregion
                 return emptyList()
             }
 
             val scanResults = wifiManager.scanResults
             Log.d(TAG, "Получено ${scanResults.size} результатов сканирования")
             Log.d("WifiGuardDebug", "WifiScannerService: Got ${scanResults.size} scan results")
+            DeviceDebugLogger.log(
+                context = context,
+                runId = "run1",
+                hypothesisId = "B",
+                location = "WifiScannerService.kt:getScanResultsAsCoreModels",
+                message = "scanResults получены",
+                data = org.json.JSONObject().apply {
+                    put("sdkInt", Build.VERSION.SDK_INT)
+                    put("rawResultsCount", scanResults.size)
+                    put("locationEnabled", DeviceDebugLogger.isLocationEnabled(context))
+                }
+            )
+            
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "B")
+                    put("location", "WifiScannerService.kt:315")
+                    put("message", "Получены raw результаты сканирования из WifiManager")
+                    put("data", org.json.JSONObject().apply {
+                        put("rawResultsCount", scanResults.size)
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (e: Exception) {}
+            // #endregion
 
             if (scanResults.isEmpty()) {
                 Log.d("WifiGuardDebug", "WifiScannerService: Scan results are empty - this may be due to Android background restrictions")
@@ -244,19 +476,89 @@ class WifiScannerService @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка преобразования результата сканирования: ${e.message}")
                     Log.e("WifiGuardDebug", "WifiScannerService: Error converting scan result: ${e.message}", e)
+                    // #region agent log
+                    try {
+                        val logJson = org.json.JSONObject().apply {
+                            put("sessionId", "debug-session")
+                            put("runId", "run1")
+                            put("hypothesisId", "D")
+                            put("location", "WifiScannerService.kt:343")
+                            put("message", "Ошибка преобразования результата сканирования")
+                            put("data", org.json.JSONObject().apply {
+                                put("error", e.message ?: "unknown")
+                                put("errorType", e.javaClass.simpleName)
+                            })
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+                    } catch (logEx: Exception) {}
+                    // #endregion
                     null
                 }
             }
 
             Log.d("WifiGuardDebug", "WifiScannerService: Successfully converted ${mappedResults.size} scan results to core models")
+            
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "B")
+                    put("location", "WifiScannerService.kt:362")
+                    put("message", "Успешно преобразованы результаты сканирования")
+                    put("data", org.json.JSONObject().apply {
+                        put("mappedCount", mappedResults.size)
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (e: Exception) {}
+            // #endregion
+            
             mappedResults
         } catch (e: SecurityException) {
             Log.e(TAG, "Нет разрешений для получения результатов сканирования", e)
             Log.e("WifiGuardDebug", "WifiScannerService: Security exception getting scan results: ${e.message}", e)
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "C")
+                    put("location", "WifiScannerService.kt:380")
+                    put("message", "SecurityException при получении результатов сканирования")
+                    put("data", org.json.JSONObject().apply {
+                        put("error", e.message ?: "unknown")
+                        put("sdkVersion", Build.VERSION.SDK_INT)
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (logEx: Exception) {}
+            // #endregion
             emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при получении результатов сканирования", e)
             Log.e("WifiGuardDebug", "WifiScannerService: Error getting scan results: ${e.message}", e)
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "D")
+                    put("location", "WifiScannerService.kt:397")
+                    put("message", "Общая ошибка при получении результатов сканирования")
+                    put("data", org.json.JSONObject().apply {
+                        put("error", e.message ?: "unknown")
+                        put("errorType", e.javaClass.simpleName)
+                        put("sdkVersion", Build.VERSION.SDK_INT)
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (logEx: Exception) {}
+            // #endregion
             emptyList()
         }
     }
@@ -276,6 +578,7 @@ class WifiScannerService @Inject constructor(
                     if (success) {
                         Log.d(TAG, "Результаты сканирования обновлены")
                         Log.d("WifiGuardDebug", "WifiScannerService: Sending updated scan results")
+                        lastResultsUpdateTime.set(System.currentTimeMillis())
                         val results = getScanResults()
                         Log.d("WifiGuardDebug", "WifiScannerService: Sending ${results.size} scan results to flow")
                         trySend(results)
@@ -539,11 +842,9 @@ class WifiScannerService @Inject constructor(
             capabilities = scanResult.capabilities ?: "",
             level = scanResult.level,
             frequency = frequency,
-            timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                scanResult.timestamp / 1000 // Convert microseconds to milliseconds
-            } else {
-                System.currentTimeMillis()
-            },
+            // ВАЖНО: ScanResult.timestamp — это время в микросекундах с момента загрузки устройства,
+            // а не unix-epoch. Для статистики/сортировки/очистки в БД используем epoch-время.
+            timestamp = System.currentTimeMillis(),
             encryptionType = encryptionType,
             signalStrength = scanResult.level,
             channel = channel,
@@ -594,11 +895,9 @@ class WifiScannerService @Inject constructor(
             capabilities = scanResult.capabilities ?: "",
             frequency = frequency,
             level = scanResult.level,
-            timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                scanResult.timestamp / 1000
-            } else {
-                System.currentTimeMillis()
-            },
+            // ВАЖНО: ScanResult.timestamp — uptime, не unix-epoch.
+            // Статистика и очистка используют epoch-время.
+            timestamp = System.currentTimeMillis(),
             scanType = scanType,
             securityType = securityType,
             channel = channel

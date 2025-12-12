@@ -98,6 +98,10 @@ case "$(uname)" in
 esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+# ВАЖНО: в новых версиях Gradle wrapper может состоять из нескольких JAR.
+# В репозитории храним все необходимые части, чтобы сборка работала без дополнительных шагов.
+CLASSPATH=$CLASSPATH:$APP_HOME/gradle/wrapper/gradle-wrapper-shared.jar
+CLASSPATH=$CLASSPATH:$APP_HOME/gradle/wrapper/gradle-cli.jar
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then

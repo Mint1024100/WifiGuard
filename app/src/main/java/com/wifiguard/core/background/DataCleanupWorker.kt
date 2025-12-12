@@ -54,7 +54,7 @@ class DataCleanupWorker @AssistedInject constructor(
             )
                 .setConstraints(constraints)
                 .setInitialDelay(1, TimeUnit.HOURS)  // Первый запуск через 1 час после установки
-                .addTag(Constants.WORK_TAG_WIFI_MONITORING)
+                .addTag(Constants.WORK_TAG_DATA_CLEANUP)
                 .build()
         }
     }

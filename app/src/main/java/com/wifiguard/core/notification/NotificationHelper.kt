@@ -124,7 +124,8 @@ class NotificationHelper @Inject constructor(
         networkBssid: String,
         threatLevel: ThreatLevel,
         title: String,
-        content: String
+        content: String,
+        notificationId: Int?
     ): Boolean {
         Log.d(TAG, "📢 Попытка отправить уведомление: BSSID='$networkBssid', ThreatLevel=$threatLevel")
         
@@ -184,12 +185,13 @@ class NotificationHelper @Inject constructor(
             }
 
             val notification = notificationBuilder.build()
-            notificationManager.notify(Constants.NOTIFICATION_ID, notification)
+            val safeNotificationId = notificationId ?: buildNotificationId(networkBssid, threatLevel)
+            notificationManager.notify(safeNotificationId, notification)
             
             // Обновляем кэш throttling
             updateNotificationCache(networkBssid, threatLevel)
             
-            Log.d(TAG, "✅ Уведомление успешно отправлено (ID: ${Constants.NOTIFICATION_ID})")
+            Log.d(TAG, "✅ Уведомление успешно отправлено (ID: $safeNotificationId)")
             return true
             
         } catch (e: SecurityException) {
@@ -314,9 +316,9 @@ class NotificationHelper @Inject constructor(
             }
 
             val notification = notificationBuilder.build()
-            notificationManager.notify(Constants.NOTIFICATION_ID, notification)
+            notificationManager.notify(Constants.NOTIFICATION_ID_THREAT_FALLBACK, notification)
             
-            Log.d(TAG, "✅ Уведомление успешно отправлено (ID: ${Constants.NOTIFICATION_ID})")
+            Log.d(TAG, "✅ Уведомление успешно отправлено (ID: ${Constants.NOTIFICATION_ID_THREAT_FALLBACK})")
             return true
             
         } catch (e: SecurityException) {
@@ -348,8 +350,8 @@ class NotificationHelper @Inject constructor(
      * Отменить уведомление
      */
     override fun cancelNotification() {
-        notificationManager.cancel(Constants.NOTIFICATION_ID)
-        Log.d(TAG, "🔕 Уведомление отменено (ID: ${Constants.NOTIFICATION_ID})")
+        notificationManager.cancel(Constants.NOTIFICATION_ID_THREAT_FALLBACK)
+        Log.d(TAG, "🔕 Уведомление отменено (ID: ${Constants.NOTIFICATION_ID_THREAT_FALLBACK})")
     }
 
     /**
@@ -456,5 +458,15 @@ class NotificationHelper @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Собрать стабильный ID уведомления, чтобы разные сети/уровни не перетирали друг друга.
+     */
+    private fun buildNotificationId(networkBssid: String, threatLevel: ThreatLevel): Int {
+        val raw = "$networkBssid:${threatLevel.name}"
+        val hash = raw.hashCode()
+        val positive = if (hash == Int.MIN_VALUE) 0 else kotlin.math.abs(hash)
+        return Constants.NOTIFICATION_ID_THREAT_BASE + (positive % 9_000_000)
     }
 }

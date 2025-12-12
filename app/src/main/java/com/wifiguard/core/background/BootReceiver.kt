@@ -10,11 +10,12 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.work.*
 import com.wifiguard.core.common.Constants
-import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
-import javax.inject.Inject
 
 /**
  * Receiver для обработки событий загрузки системы
@@ -34,12 +35,20 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_PACKAGE_REPLACED -> {
                 Log.d(TAG, "System boot completed, starting background monitoring")
-                startBackgroundMonitoring(context)
+                // ВАЖНО: BroadcastReceiver имеет жёсткие таймауты. Нельзя блокировать поток через runBlocking().
+                val pendingResult = goAsync()
+                CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                    try {
+                        startBackgroundMonitoring(context)
+                    } finally {
+                        pendingResult.finish()
+                    }
+                }
             }
         }
     }
 
-    private fun startBackgroundMonitoring(context: Context) {
+    private suspend fun startBackgroundMonitoring(context: Context) {
         try {
             // Проверяем наличие необходимых разрешений перед запуском фоновой задачи
             if (!hasRequiredPermissions(context)) {
@@ -55,16 +64,16 @@ class BootReceiver : BroadcastReceiver() {
             // Create periodic work with the user's preferred interval
             val wifiPeriodicWork = WifiMonitoringWorker.createPeriodicWorkWithInterval(scanIntervalMinutes)
             workManager.enqueueUniquePeriodicWork(
-                "wifi_monitoring_periodic",
-                ExistingPeriodicWorkPolicy.REPLACE, // Use REPLACE to update the work if it already exists
+                Constants.WORK_NAME_WIFI_MONITORING,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 wifiPeriodicWork
             )
 
             // Запускаем периодический мониторинг уведомлений об угрозах
             val notificationPeriodicWork = ThreatNotificationWorker.createPeriodicWork()
             workManager.enqueueUniquePeriodicWork(
-                "threat_notification_periodic",
-                ExistingPeriodicWorkPolicy.REPLACE, // Use REPLACE to update the work if it already exists
+                Constants.WORK_NAME_THREAT_NOTIFICATION,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 notificationPeriodicWork
             )
 
@@ -74,21 +83,15 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
     
-    private fun getScanIntervalFromDataStore(context: Context): Int {
-        // Read scan interval from DataStore synchronously
+    private suspend fun getScanIntervalFromDataStore(context: Context): Int {
         val scanIntervalKey = intPreferencesKey("scan_interval")
-        var scanInterval = 15 // default value
-        
-        runBlocking {
-            try {
-                val preferences = context.settingsDataStore.data.first()
-                scanInterval = preferences[scanIntervalKey] ?: 15
-            } catch (e: Exception) {
-                Log.e(TAG, "Error reading scan interval from DataStore: ${'$'}{e.message}")
-            }
+        return try {
+            val preferences = context.settingsDataStore.data.first()
+            preferences[scanIntervalKey] ?: 15
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading scan interval from DataStore: ${'$'}{e.message}")
+            15
         }
-        
-        return scanInterval
     }
 
     private fun hasRequiredPermissions(context: Context): Boolean {

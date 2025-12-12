@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.util.Log
+import com.wifiguard.core.common.Constants
 import javax.inject.Inject
 
 /**
@@ -151,7 +152,7 @@ class SettingsViewModel @Inject constructor(
             val workManager = WorkManager.getInstance(context)
 
             // Cancel existing periodic work
-            workManager.cancelUniqueWork("wifi_monitoring_periodic").await()
+            workManager.cancelUniqueWork(Constants.WORK_NAME_WIFI_MONITORING).await()
 
             // Create new periodic work with updated interval
             val newPeriodicWork = com.wifiguard.core.background.WifiMonitoringWorker.createPeriodicWorkWithInterval(
@@ -160,8 +161,8 @@ class SettingsViewModel @Inject constructor(
 
             // Schedule new work
             workManager.enqueueUniquePeriodicWork(
-                "wifi_monitoring_periodic",
-                androidx.work.ExistingPeriodicWorkPolicy.REPLACE,
+                Constants.WORK_NAME_WIFI_MONITORING,
+                androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
                 newPeriodicWork
             )
         } catch (e: Exception) {

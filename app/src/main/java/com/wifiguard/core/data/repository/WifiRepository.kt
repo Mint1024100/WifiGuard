@@ -1,14 +1,18 @@
 package com.wifiguard.core.data.repository
 
+import android.util.Log
+import androidx.room.withTransaction
 import com.wifiguard.core.common.WifiNetworkDomainToEntityMapper
 import com.wifiguard.core.common.WifiNetworkEntityToDomainMapper
 import com.wifiguard.core.common.WifiScanDomainToEntityMapper
 import com.wifiguard.core.common.WifiScanEntityToDomainMapper
+import com.wifiguard.core.common.BssidValidator
 import com.wifiguard.core.data.local.WifiGuardDatabase
 import com.wifiguard.core.data.local.dao.ScanSessionDao
 import com.wifiguard.core.data.local.dao.ThreatDao
 import com.wifiguard.core.data.local.dao.WifiNetworkDao
 import com.wifiguard.core.data.local.dao.WifiScanDao
+import com.wifiguard.core.data.local.entity.WifiNetworkEntity
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.domain.repository.WifiRepository
@@ -16,7 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import android.util.Log
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -98,8 +101,10 @@ class WifiRepositoryImpl @Inject constructor(
      * Удалить сеть
      */
     override suspend fun deleteNetwork(network: WifiNetwork) {
-        val entity = wifiNetworkDomainToEntityMapper.map(network)
-        wifiNetworkDao.deleteNetwork(entity)
+        withContext(Dispatchers.IO) {
+            val entity = wifiNetworkDomainToEntityMapper.map(network)
+            wifiNetworkDao.deleteNetwork(entity)
+        }
     }
 
     /**
@@ -127,11 +132,179 @@ class WifiRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun insertScanResults(scanResults: List<WifiScanResult>) {
+        if (scanResults.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            try {
+                val entities = scanResults.map { wifiScanDomainToEntityMapper.map(it) }
+                wifiScanDao.insertScans(entities)
+                Log.d("WifiRepository", "✅ Батч: сохранено результатов сканирования: ${entities.size}")
+            } catch (e: Exception) {
+                Log.e("WifiRepository", "❌ Ошибка батч-сохранения сканов: ${e.message}", e)
+                throw e
+            }
+        }
+    }
+
+    override suspend fun upsertNetworksFromScanResults(scanResults: List<WifiScanResult>) {
+        if (scanResults.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            val validResults = scanResults
+                .asSequence()
+                .filter { BssidValidator.isValidForStorage(it.bssid) }
+                .toList()
+
+            if (validResults.isEmpty()) return@withContext
+
+            try {
+                val bssids = validResults.map { it.bssid }.distinct()
+                val (updatedCount, insertedCount) = database.withTransaction {
+                    val existing = wifiNetworkDao.getNetworksByBssids(bssids)
+                    val existingByBssid = existing.associateBy { it.bssid }
+
+                    val toUpdate = mutableListOf<WifiNetworkEntity>()
+                    val toInsert = mutableListOf<WifiNetworkEntity>()
+
+                    validResults.forEach { scan ->
+                        val ssid = scan.ssid.takeIf { it.isNotBlank() }
+                        val existingEntity = existingByBssid[scan.bssid]
+
+                        if (existingEntity != null) {
+                            toUpdate += existingEntity.copy(
+                                ssid = ssid ?: existingEntity.ssid,
+                                frequency = scan.frequency,
+                                signalStrength = scan.level,
+                                securityType = scan.securityType,
+                                channel = scan.channel,
+                                // threatLevel сохраняем как есть (он управляется бизнес-логикой/анализом)
+                                isHidden = scan.isHidden,
+                                lastSeen = scan.timestamp,
+                                detectionCount = existingEntity.detectionCount + 1,
+                                vendor = existingEntity.vendor ?: scan.vendor,
+                                // notes / isSuspicious сохраняем
+                                // firstSeen сохраняем
+                            )
+                        } else {
+                            toInsert += WifiNetworkEntity(
+                                id = 0,
+                                bssid = scan.bssid,
+                                ssid = ssid,
+                                frequency = scan.frequency,
+                                signalStrength = scan.level,
+                                securityType = scan.securityType,
+                                channel = scan.channel,
+                                threatLevel = com.wifiguard.core.domain.model.ThreatLevel.UNKNOWN,
+                                isHidden = scan.isHidden,
+                                firstSeen = scan.timestamp,
+                                lastSeen = scan.timestamp,
+                                detectionCount = 1,
+                                isSuspicious = false,
+                                vendor = scan.vendor,
+                                notes = null
+                            )
+                        }
+                    }
+
+                    if (toUpdate.isNotEmpty()) {
+                        wifiNetworkDao.updateNetworks(toUpdate)
+                    }
+                    if (toInsert.isNotEmpty()) {
+                        // Вставляем только новые записи; конфликтов по bssid не ожидается
+                        wifiNetworkDao.insertNetworks(toInsert)
+                    }
+                    Pair(toUpdate.size, toInsert.size)
+                }
+
+                Log.d("WifiRepository", "✅ Батч wifi_networks: update=$updatedCount, insert=$insertedCount")
+            } catch (e: Exception) {
+                Log.e("WifiRepository", "❌ Ошибка батч-upsert сетей: ${e.message}", e)
+                throw e
+            }
+        }
+    }
+
+    override suspend fun persistScanResults(scanResults: List<WifiScanResult>) {
+        if (scanResults.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            try {
+                database.withTransaction {
+                    val entities = scanResults.map { wifiScanDomainToEntityMapper.map(it) }
+                    wifiScanDao.insertScans(entities)
+                    // Обновляем wifi_networks атомарно вместе со сканами
+                    // (без повторной вставки в wifi_scans)
+                    // Внутри транзакции: безопасно и быстро
+                    // NOTE: upsertNetworksFromScanResults сама использует транзакцию,
+                    // поэтому здесь вызываем её "внутреннюю" логику напрямую не получится.
+                    // Для простоты выполняем отдельной транзакцией? НЕЛЬЗЯ (уже внутри).
+                    // Поэтому используем приватный путь через DAO здесь.
+                    val validResults = scanResults
+                        .asSequence()
+                        .filter { BssidValidator.isValidForStorage(it.bssid) }
+                        .toList()
+
+                    if (validResults.isNotEmpty()) {
+                        val bssids = validResults.map { it.bssid }.distinct()
+                        val existing = wifiNetworkDao.getNetworksByBssids(bssids)
+                        val existingByBssid = existing.associateBy { it.bssid }
+
+                        val toUpdate = mutableListOf<WifiNetworkEntity>()
+                        val toInsert = mutableListOf<WifiNetworkEntity>()
+
+                        validResults.forEach { scan ->
+                            val ssid = scan.ssid.takeIf { it.isNotBlank() }
+                            val existingEntity = existingByBssid[scan.bssid]
+
+                            if (existingEntity != null) {
+                                toUpdate += existingEntity.copy(
+                                    ssid = ssid ?: existingEntity.ssid,
+                                    frequency = scan.frequency,
+                                    signalStrength = scan.level,
+                                    securityType = scan.securityType,
+                                    channel = scan.channel,
+                                    isHidden = scan.isHidden,
+                                    lastSeen = scan.timestamp,
+                                    detectionCount = existingEntity.detectionCount + 1,
+                                    vendor = existingEntity.vendor ?: scan.vendor
+                                )
+                            } else {
+                                toInsert += WifiNetworkEntity(
+                                    id = 0,
+                                    bssid = scan.bssid,
+                                    ssid = ssid,
+                                    frequency = scan.frequency,
+                                    signalStrength = scan.level,
+                                    securityType = scan.securityType,
+                                    channel = scan.channel,
+                                    threatLevel = com.wifiguard.core.domain.model.ThreatLevel.UNKNOWN,
+                                    isHidden = scan.isHidden,
+                                    firstSeen = scan.timestamp,
+                                    lastSeen = scan.timestamp,
+                                    detectionCount = 1,
+                                    isSuspicious = false,
+                                    vendor = scan.vendor,
+                                    notes = null
+                                )
+                            }
+                        }
+
+                        if (toUpdate.isNotEmpty()) wifiNetworkDao.updateNetworks(toUpdate)
+                        if (toInsert.isNotEmpty()) wifiNetworkDao.insertNetworks(toInsert)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("WifiRepository", "❌ Ошибка persistScanResults: ${e.message}", e)
+                throw e
+            }
+        }
+    }
+
     /**
      * Очистить старые результаты сканирования
      */
     override suspend fun clearOldScans(olderThanMillis: Long) {
-        wifiScanDao.clearOldScans(olderThanMillis)
+        withContext(Dispatchers.IO) {
+            wifiScanDao.clearOldScans(olderThanMillis)
+        }
     }
     
     /**
