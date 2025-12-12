@@ -1,0 +1,132 @@
+# Privacy Policy for WifiGuard
+
+**Last Updated:** October 15, 2025
+
+## Introduction
+
+WifiGuard ("we", "our", "us") respects your privacy and is committed to protecting your personal information. This Privacy Policy describes how we collect, use, and protect information when you use our WifiGuard application.
+
+## Information We Collect
+
+### Wi-Fi Network Data
+Our app scans and analyzes information about available Wi-Fi networks:
+- SSID (network name)
+- BSSID (access point MAC address)
+- Signal level (RSSI)
+- Encryption type (WEP, WPA, WPA2, WPA3, Open)
+- Frequency signal (2.4 GHz / 5 GHz)
+- Broadcasting channel
+
+**Important:** This data is stored ONLY on your device and is NEVER transmitted to external servers.
+
+### Scan History Data
+The app saves your scan history locally on the device for:
+- Tracking network environment changes
+- Detecting new potential threats
+- Providing network statistics
+
+You can delete the scan history at any time in the app settings.
+
+### Location Data
+**Why Location Permission is Required:**
+Starting with Android 6.0, location permission is required by Android to scan Wi-Fi networks.
+
+**How We Use This Permission:**
+- ONLY for obtaining a list of available Wi-Fi networks
+- We DO NOT track your physical location
+- We DO NOT use GPS coordinates
+- Permission is used ONLY for Wi-Fi scanning
+- No location data is saved or transmitted
+
+## How We Use Information
+
+Collected data is used exclusively for:
+- Wi-Fi network security analysis
+- Detecting potential threats (Evil Twin attacks, insecure encryption)
+- Providing security recommendations
+- Displaying network statistics
+- Background network monitoring (if enabled in settings)
+
+## Data Storage and Security
+
+**All data is stored locally on your device:**
+- Data is encrypted using AES-256 encryption
+- Android KeyStore is used for storing encryption keys
+- Data is NOT synced to the cloud
+- Data is NOT transmitted to third parties
+
+## Data Sharing
+
+**We DO NOT share your data:**
+- No data is sent to external servers
+- The app can work completely offline
+- We do NOT use analytics services (Google Analytics, Firebase, etc.)
+- We do NOT show advertisements
+- We do NOT share data with advertising networks
+
+## App Permissions
+
+WifiGuard requests the following permissions:
+
+### ACCESS_FINE_LOCATION (Precise Location)
+- **Purpose:** Required by Android to scan Wi-Fi networks (starting with Android 6.0)
+- **Usage:** ONLY to get a list of available Wi-Fi networks
+
+### ACCESS_WIFI_STATE
+- **Purpose:** To get information about the current Wi-Fi state
+
+### CHANGE_WIFI_STATE
+- **Purpose:** To initiate Wi-Fi network scanning
+- **Note:** On Android 10+, this permission does not allow programmatically turning Wi-Fi on/off
+
+### POST_NOTIFICATIONS (Android 13+)
+- **Purpose:** To send notifications about detected threats
+- **Usage:** Notifications only about critical security threats
+
+### WAKE_LOCK
+- **Purpose:** For background operation
+
+### RECEIVE_BOOT_COMPLETED
+- **Purpose:** To resume background monitoring after device reboot (if enabled)
+
+### NEARBY_WIFI_DEVICES (Android 13+)
+- **Purpose:** Required for Wi-Fi scanning on Android 13+
+- **Usage:** ONLY for Wi-Fi scanning
+- **Location Flag:** NEVER_FOR_LOCATION
+
+## Data Security
+
+We implement the following security measures:
+- AES-256 encryption for the local database
+- Android KeyStore for storing encryption keys
+- Secure storage of settings (DataStore Preferences)
+- ProGuard/R8 code obfuscation
+- Regular security updates
+
+## Your Rights
+
+You have the right to:
+- **Delete Data:** Clear scan history in app settings
+- **Revoke Permissions:** Disable any permissions in Android settings
+- **Delete the App:** When uninstalling the app, all data is automatically deleted
+- **Disable Background Monitoring:** Can be disabled in app settings
+
+## Children's Privacy
+
+WifiGuard is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13 years of age. If you believe that a child has provided us with personal data, please contact us.
+
+## Changes to This Privacy Policy
+
+We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.
+
+We recommend periodically reviewing this Privacy Policy for information about any changes.
+
+## Contact Information
+
+If you have questions about this Privacy Policy, please contact us:
+- **Email:** svatozarbozylev@gmail.com
+- **GitHub:** https://github.com/Mint1024100/WifiGuard
+
+## Jurisdiction
+
+This Privacy Policy is governed by and construed in accordance with the laws of the Russian Federation. Any disputes relating to this Policy shall be resolved in the courts of the Russian Federation.

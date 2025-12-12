@@ -1,0 +1,101 @@
+package com.wifiguard
+
+import android.app.Application
+import android.util.Log
+import androidx.work.Configuration
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.WorkManager
+import com.wifiguard.core.background.WifiMonitoringWorker
+import com.wifiguard.core.common.Constants
+import com.wifiguard.core.monitoring.WifiConnectionObserver
+import com.wifiguard.feature.settings.domain.repository.SettingsRepository
+import dagger.Lazy
+import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import androidx.hilt.work.HiltWorkerFactory
+
+/**
+ * Главный класс приложения WifiGuard
+ * 
+ * ОБНОВЛЕНО: Добавлен WifiConnectionObserver для автоматических уведомлений
+ */
+@HiltAndroidApp
+class WifiGuardApp : Application(), Configuration.Provider {
+
+    companion object {
+        private const val TAG = "${Constants.LOG_TAG}_App"
+    }
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var settingsRepository: Lazy<SettingsRepository>
+    
+    @Inject
+    lateinit var wifiConnectionObserver: Lazy<WifiConnectionObserver>
+
+    // Используем SupervisorJob для изоляции ошибок
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    override fun onCreate() {
+        super.onCreate()
+
+        Log.d(TAG, "🚀 Запуск приложения WifiGuard")
+
+        // Инициализация приложения
+        initializeApp()
+        
+        // НОВОЕ: Запуск наблюдателя WiFi подключений
+        startWifiConnectionObserver()
+    }
+
+    private fun initializeApp() {
+        applicationScope.launch {
+            val workManager = WorkManager.getInstance(this@WifiGuardApp)
+            settingsRepository.get()
+                .getAutoScanEnabled()
+                .distinctUntilChanged()
+                .collect { isEnabled ->
+                if (isEnabled) {
+                    workManager.enqueueUniquePeriodicWork(
+                        "wifi_monitoring_work",
+                        ExistingPeriodicWorkPolicy.UPDATE,
+                        WifiMonitoringWorker.createPeriodicWork()
+                    )
+                    Log.d(TAG, "✅ Автоматическое сканирование включено")
+                } else {
+                    workManager.cancelUniqueWork("wifi_monitoring_work")
+                    Log.d(TAG, "🔕 Автоматическое сканирование отключено")
+                }
+            }
+        }
+    }
+    
+    /**
+     * Запустить наблюдатель WiFi подключений для автоматических уведомлений
+     * 
+     * РЕШЕНИЕ ПРОБЛЕМЫ 1.1: Теперь уведомления об угрозах приходят автоматически
+     * при подключении к небезопасной сети, а не только при ручном сканировании.
+     */
+    private fun startWifiConnectionObserver() {
+        applicationScope.launch {
+            try {
+                wifiConnectionObserver.get().startObserving(applicationScope)
+                Log.d(TAG, "✅ WifiConnectionObserver запущен - уведомления об угрозах активны")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Ошибка запуска WifiConnectionObserver: ${e.message}", e)
+            }
+        }
+    }
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
+}

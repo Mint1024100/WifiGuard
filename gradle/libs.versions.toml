@@ -1,0 +1,248 @@
+# Каталог версий зависимостей
+
+[versions]
+# Android Gradle Plugin (стабильная версия, фикс R8 ConcurrentModificationException)
+agp = "8.6.1"
+
+# Kotlin
+kotlin = "2.1.0"
+
+# Compose
+compose-bom = "2024.04.01"
+
+# Serialization
+kotlinx-serialization = "1.7.3"
+
+# Hilt
+hilt = "2.55"
+hilt-compiler = "1.2.0"
+hilt-navigation-compose = "1.2.0"
+hilt-testing = "2.55"
+
+# KSP
+ksp = "2.1.0-1.0.29"
+
+# Room
+room = "2.7.0"
+
+# Coroutines
+coroutines = "1.8.1"
+
+# Lifecycle
+lifecycle = "2.8.4"
+
+# Activity
+activity = "1.9.1"
+
+# Fragment
+fragment = "1.8.1"
+
+
+
+# SDK Versions
+compileSdk = "35"
+targetSdk = "35"
+minSdk = "26"
+
+# AndroidX Core
+core = "1.13.1"
+
+# Navigation
+navigation = "2.7.7"
+
+# Datastore
+datastore = "1.1.1"
+
+# Work Manager
+work = "2.9.1"
+hilt-work = "1.2.0"
+hilt-work-compiler = "1.2.0"
+
+# Permissions (Accompanist)
+accompanist-permissions = "0.34.0"
+
+# Security
+security = "1.1.0-alpha06"
+
+# Gson
+gson = "2.11.0"
+
+# Testing
+junit = "1.2.1"
+espresso = "3.6.1"
+
+# Performance / Startup (Baseline Profile, Macrobenchmark)
+# Важно: версии подобраны как стабильные и совместимые с AGP 8.x.
+benchmark = "1.2.4"
+baselineprofile = "1.3.1"
+profileinstaller = "1.3.1"
+test-runner = "1.6.2"
+uiautomator = "2.3.0"
+
+# Material Components Version
+material = "1.13.0"
+# Material3 Version for Compose
+material3 = "1.3.0"
+
+# Material Icons
+material-icons = "1.7.5"
+material-icons-extended = "1.7.5"
+
+[libraries]
+# AndroidX Core
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
+
+# Compose BOM
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+# Compose Icons
+androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "material-icons" }
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "material-icons-extended" }
+
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+
+# Lifecycle
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+
+# Navigation
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
+
+# DataStore
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+
+# Work Manager
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hilt-work" }
+androidx-hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hilt-work-compiler" }
+
+# Permissions
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist-permissions" }
+
+# Security
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security" }
+
+# Material Components (for XML themes and resources)
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+
+# Compose Material3
+compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+
+
+
+# Gson
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+
+# KotlinX Serialization
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+
+# Hilt
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
+androidx-hilt-navigation-fragment = { group = "androidx.hilt", name = "hilt-navigation-fragment", version.ref = "hilt" }
+androidx-hilt-lifecycle-viewmodel = { group = "androidx.hilt", name = "hilt-lifecycle-viewmodel", version.ref = "hilt" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt-testing" }
+
+# Room
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+# Coroutines
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# JUnit
+junit = { group = "junit", name = "junit", version = "4.13.2" }
+
+# Testing
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junit" }
+androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
+
+# AndroidX Test runtime (нужно для macrobenchmark/baselineprofile)
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "test-runner" }
+androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "test-runner" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+
+# Macrobenchmark (измерение старта/навигации)
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
+
+# Profile Installer (установка baseline profile на устройстве)
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
+
+# Compose Additional
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+
+[bundles]
+# Compose
+compose = [
+    "androidx-compose-ui",
+    "androidx-compose-ui-graphics", 
+    "androidx-compose-ui-tooling-preview",
+    "compose-material3",
+    "androidx-compose-material-icons-core",
+    "androidx-compose-material-icons-extended",
+    "androidx-navigation-compose"
+]
+
+# Hilt
+hilt = ["hilt-android", "hilt-compiler", "androidx-hilt-navigation-compose"]
+
+# Room
+room = ["room-runtime", "room-ktx"]
+
+# Room Testing
+room-testing = ["room-runtime", "room-ktx", "room-testing"]
+
+# Testing
+testing = [
+    "androidx-test-ext-junit",
+    "androidx-test-espresso-core"
+]
+
+# Hilt Testing
+hilt-testing = [
+    "hilt-android-testing"
+]
+
+# Work Testing
+work-testing = [
+    "androidx-work-testing"
+]
+
+# Compose debug
+compose-debug = [
+    "androidx-compose-ui-tooling",
+    "androidx-compose-ui-test-manifest",
+    "compose-material3"
+]
+
+# Compose test
+compose-test = [
+    "androidx-compose-ui-test-junit4",
+    "compose-material3"
+]
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }
+
+# Benchmark/Startup
+androidx-benchmark = { id = "androidx.benchmark", version.ref = "benchmark" }
+androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }

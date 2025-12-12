@@ -1,0 +1,28 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.5.0"
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // JitPack для библиотек GitHub
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+
+// Каталог libs автоматически загружается из gradle/libs.versions.toml
+
+rootProject.name = "WifiGuard"
+include(":app")
+include(":baselineprofile")
+include(":benchmark")

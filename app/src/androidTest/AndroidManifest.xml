@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    
+    <!--
+        Тестовый манифест для инструментальных тестов с Hilt
+        
+        КРИТИЧЕСКИ ВАЖНО: Указываем HiltTestApplication как тестовое приложение.
+        HiltTestApplication правильно инициализирует Hilt компоненты для всех Activity,
+        включая MainActivity, что предотвращает ошибку "The component was not created".
+        
+        Без этого манифеста Android будет использовать WifiGuardApp из основного
+        манифеста, что вызовет ошибку:
+        "Hilt test cannot use a @HiltAndroidApp application but found com.wifiguard.WifiGuardApp"
+        
+        @see com.wifiguard.test.CustomTestRunner
+        @see com.wifiguard.test.TestApplication
+    -->
+    
+    <!-- Отключаем автоматическую инициализацию WorkManager в тестах -->
+    <!-- Это необходимо для правильной работы HiltWorkerFactory -->
+    <provider
+        android:name="androidx.startup.InitializationProvider"
+        android:authorities="${applicationId}.androidx-startup"
+        android:exported="false"
+        tools:node="remove" />
+    
+    <application
+        android:name="dagger.hilt.android.testing.HiltTestApplication"
+        tools:replace="android:name" />
+</manifest>
+
+
+

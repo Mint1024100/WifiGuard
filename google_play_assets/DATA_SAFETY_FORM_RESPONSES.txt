@@ -1,0 +1,87 @@
+# Data Safety Form Responses for Google Play Console
+
+## App Does Not Collect Any Personal Data
+
+This app does not collect, transmit, or share any personal or sensitive user data. All data is stored locally on the user's device and is never transmitted to external servers.
+
+### Detailed Explanation:
+
+1. **Wi-Fi Network Data**: Scanned network information (SSID, BSSID, signal strength, encryption type) is stored only locally on the device for security analysis purposes.
+
+2. **Location Data**: Location permission is required by Android for Wi-Fi scanning (since Android 6.0), but we do NOT track or store your physical location. No GPS coordinates are collected or transmitted.
+
+3. **Scan History**: Historical scan data is stored locally for comparing network environments and detecting changes, but is never transmitted.
+
+4. **Settings Data**: User preferences are stored locally using Android DataStore Preferences and are never transmitted.
+
+## No Data Transmission
+
+The app operates completely offline and does not require an internet connection for its core functionality. No data is ever transmitted to external servers or third parties.
+
+## No Third-Party Services
+
+The app does not integrate with any third-party services that might collect user data:
+- No analytics services (Google Analytics, Firebase Analytics, etc.)
+- No advertising networks
+- No crash reporting services that transmit data
+- No social media integrations
+- No cloud synchronization services
+
+## No Monetization
+
+The app does not use any monetization methods that might involve data collection:
+- No advertisements
+- No in-app purchases
+- No subscriptions
+- No sponsored content
+
+## Data Security
+
+All locally stored data is protected using industry-standard security practices:
+- AES-256 encryption for the local database
+- Android KeyStore for storing encryption keys
+- Secure storage of user preferences
+- ProGuard/R8 code obfuscation
+
+## User Control
+
+Users have full control over their data:
+- Can delete scan history at any time through app settings
+- Can disable background monitoring
+- Can revoke app permissions through Android settings
+- All data is automatically deleted when the app is uninstalled
+
+## Compliance with Privacy Regulations
+
+The app complies with major privacy regulations:
+- **GDPR**: No personal data collection means no GDPR compliance issues
+- **CCPA**: No sale or sharing of personal information
+- **COPPA**: Not intended for children under 13
+
+## Transparency
+
+We maintain complete transparency about our data practices:
+- Open source code available on GitHub
+- Clear privacy policy explaining all data handling
+- No hidden data collection mechanisms
+- Regular security audits
+
+## Data Safety Section Answers
+
+### Does your app collect or share any personal or sensitive user data?
+**No**
+
+### Is your app exempt from the Privacy Policy & Security Practices requirement?
+**Yes**
+
+**Reason:** Our app does not collect, transmit, or share any personal or sensitive user data. All data is stored locally on the user's device and is never transmitted to external servers.
+
+### Additional Information
+
+The only permissions that might appear to collect data are required by the Android operating system for Wi-Fi scanning functionality:
+
+1. **ACCESS_FINE_LOCATION**: Required by Android since version 6.0 to scan Wi-Fi networks. We do NOT use this permission to track your physical location.
+
+2. **NEARBY_WIFI_DEVICES**: Required by Android 13+ for Wi-Fi scanning. We do NOT use this permission for location purposes.
+
+These permissions are used exclusively for the core functionality of Wi-Fi network scanning and analysis, and no location data is ever collected or transmitted.

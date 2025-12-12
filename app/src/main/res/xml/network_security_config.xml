@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Ограничить передачу открытого текста только определенными доменами -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">wifiguard.com</domain>
+        <domain includeSubdomains="true">api.wifiguard.com</domain>
+        <domain includeSubdomains="true">secure.wifiguard.com</domain>
+        <domain includeSubdomains="true">analytics.wifiguard.com</domain>
+    </domain-config>
+    
+    <!-- Базовая конфигурация -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Доверять CA, предоставленным системой -->
+            <certificates src="system"/>
+            <!-- Доверять CA, предоставленным пользователем -->
+            <certificates src="user"/>
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Конфигурация отладки для локальной разработки -->
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Доверять CA, предоставленным пользователем, в режиме отладки -->
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

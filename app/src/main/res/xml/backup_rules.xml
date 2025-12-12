@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!--
+        Резервное копирование отключено в AndroidManifest.xml:
+        - android:allowBackup="false"
+        - android:fullBackupContent="false"
+        
+        Этот файл оставлен, чтобы избежать ошибок валидации lint, но не содержит правил.
+    -->
+</full-backup-content>
