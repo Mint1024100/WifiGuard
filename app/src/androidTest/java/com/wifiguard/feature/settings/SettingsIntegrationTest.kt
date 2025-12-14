@@ -176,6 +176,9 @@ class SettingsIntegrationTest {
             override fun getNetworkStatistics(ssid: String): kotlinx.coroutines.flow.Flow<List<com.wifiguard.core.domain.model.WifiScanResult>> =
                 kotlinx.coroutines.flow.flowOf(emptyList())
 
+            override fun getNetworkStatisticsByBssid(bssid: String): kotlinx.coroutines.flow.Flow<List<com.wifiguard.core.domain.model.WifiScanResult>> =
+                kotlinx.coroutines.flow.flowOf(emptyList())
+
             override suspend fun markNetworkAsSuspicious(ssid: String, reason: String) {}
 
             override fun getSuspiciousNetworks(): kotlinx.coroutines.flow.Flow<List<com.wifiguard.core.domain.model.WifiNetwork>> =
@@ -332,6 +335,9 @@ class SettingsIntegrationTest {
             override suspend fun optimizeDatabase() {}
 
             override fun getNetworkStatistics(ssid: String): kotlinx.coroutines.flow.Flow<List<com.wifiguard.core.domain.model.WifiScanResult>> =
+                kotlinx.coroutines.flow.flowOf(emptyList())
+
+            override fun getNetworkStatisticsByBssid(bssid: String): kotlinx.coroutines.flow.Flow<List<com.wifiguard.core.domain.model.WifiScanResult>> =
                 kotlinx.coroutines.flow.flowOf(emptyList())
 
             override suspend fun markNetworkAsSuspicious(ssid: String, reason: String) {}

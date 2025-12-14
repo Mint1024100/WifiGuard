@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,7 +30,9 @@ import android.widget.Toast
 import com.wifiguard.core.ui.theme.calculateLuminance
 import androidx.core.content.FileProvider
 import com.wifiguard.core.common.DeviceDebugLogger
+import com.wifiguard.core.common.Constants
 import com.wifiguard.BuildConfig
+import android.os.Build
 import java.io.File
 
 /**
@@ -45,6 +49,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // РЕЗЕРВНАЯ КОПИЯ: Удаленный функционал экспорта/импорта данных
     // val exportLauncher = rememberLauncherForActivityResult(
@@ -64,22 +69,37 @@ fun SettingsScreen(
     val scanIntervalDialogVisible by viewModel.scanIntervalDialogVisible.collectAsState()
     val clearDataDialogVisible by viewModel.clearDataDialogVisible.collectAsState()
     val clearDataResult by viewModel.clearDataResult.collectAsState()
+    val dataRetentionDialogVisible by viewModel.dataRetentionDialogVisible.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     
     var themeDialogVisible by remember { mutableStateOf(false) }
 
-    // Обработка результата очистки данных
+    // ИСПРАВЛЕНО: Безопасная обработка результата очистки данных
+    // Проверяем жизненный цикл перед показом Toast
     LaunchedEffect(clearDataResult) {
-        clearDataResult?.let { result ->
-            when (result) {
-                is ClearDataResult.Success -> {
-                    Toast.makeText(context, "Все данные удалены", Toast.LENGTH_SHORT).show()
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            clearDataResult?.let { result ->
+                when (result) {
+                    is ClearDataResult.Success -> {
+                        Toast.makeText(context, "Все данные удалены", Toast.LENGTH_SHORT).show()
+                    }
+                    is ClearDataResult.Error -> {
+                        Toast.makeText(context, "Ошибка: ${result.message}", Toast.LENGTH_LONG).show()
+                    }
                 }
-                is ClearDataResult.Error -> {
-                    Toast.makeText(context, "Ошибка: ${result.message}", Toast.LENGTH_LONG).show()
-                }
+                // Сбрасываем результат после показа
+                viewModel.resetClearDataResult()
             }
-            // Сбрасываем результат после показа
-            viewModel.resetClearDataResult()
+        }
+    }
+
+    // ИСПРАВЛЕНО: Безопасная обработка ошибок сохранения настроек
+    LaunchedEffect(errorMessage) {
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            errorMessage?.let { message ->
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                viewModel.clearErrorMessage()
+            }
         }
     }
 
@@ -134,28 +154,9 @@ fun SettingsScreen(
                         title = "Автоматическое сканирование",
                         subtitle = "Периодическое сканирование в фоне",
                         trailing = {
-                            val isDarkTheme = MaterialTheme.colorScheme.surface.calculateLuminance() < 0.5f
-                            Switch(
+                            SettingsSwitch(
                                 checked = uiState.autoScanEnabled,
-                                onCheckedChange = { viewModel.setAutoScanEnabled(it) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondary 
-                                    else 
-                                        Color(0xFF2E7D32), // Темно-зеленый для светлой темы
-                                    checkedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondaryContainer 
-                                    else 
-                                        Color(0xFF2E7D32).copy(alpha = 0.5f), // Средняя прозрачность зеленого
-                                    uncheckedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.outline 
-                                    else 
-                                        Color(0xFF555555), // Темно-серый для светлой темы
-                                    uncheckedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.surfaceVariant 
-                                    else 
-                                        Color(0xFFE0E0E0) // Светло-серый для светлой темы
-                                )
+                                onCheckedChange = { viewModel.setAutoScanEnabled(it) }
                             )
                         }
                     )
@@ -184,8 +185,19 @@ fun SettingsScreen(
                 ) {
                     SettingsItem(
                         title = "Хранение данных",
-                        subtitle = "Период хранения истории сканирований",
-                        onClick = { /* TODO: Show retention picker */ }
+                        subtitle = "Период хранения истории сканирований: ${
+                            when (uiState.dataRetentionDays) {
+                                1 -> "1 день"
+                                7 -> "1 неделя"
+                                30 -> "1 месяц"
+                                90 -> "3 месяца"
+                                -1 -> "Навсегда"
+                                else -> "${uiState.dataRetentionDays} дней"
+                            }
+                        }",
+                        onClick = { 
+                            viewModel.showDataRetentionDialog() 
+                        }
                     )
                     
                     // РЕЗЕРВНАЯ КОПИЯ: Удаленный функционал экспорта данных
@@ -220,28 +232,9 @@ fun SettingsScreen(
                         title = "Уведомления об угрозах",
                         subtitle = "Получать уведомления о критических угрозах",
                         trailing = {
-                            val isDarkTheme = MaterialTheme.colorScheme.surface.calculateLuminance() < 0.5f
-                            Switch(
+                            SettingsSwitch(
                                 checked = uiState.notificationsEnabled,
-                                onCheckedChange = { viewModel.setNotificationsEnabled(it) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondary 
-                                    else 
-                                        Color(0xFF2E7D32), // Темно-зеленый для светлой темы
-                                    checkedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondaryContainer 
-                                    else 
-                                        Color(0xFF2E7D32).copy(alpha = 0.5f), // Средняя прозрачность зеленого
-                                    uncheckedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.outline 
-                                    else 
-                                        Color(0xFF555555), // Темно-серый для светлой темы
-                                    uncheckedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.surfaceVariant 
-                                    else 
-                                        Color(0xFFE0E0E0) // Светло-серый для светлой темы
-                                )
+                                onCheckedChange = { viewModel.setNotificationsEnabled(it) }
                             )
                         }
                     )
@@ -250,28 +243,9 @@ fun SettingsScreen(
                         title = "Звук уведомлений",
                         subtitle = "Звук уведомлений",
                         trailing = {
-                            val isDarkTheme = MaterialTheme.colorScheme.surface.calculateLuminance() < 0.5f
-                            Switch(
+                            SettingsSwitch(
                                 checked = uiState.notificationSoundEnabled,
-                                onCheckedChange = { viewModel.setNotificationSoundEnabled(it) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondary 
-                                    else 
-                                        Color(0xFF2E7D32), // Темно-зеленый для светлой темы
-                                    checkedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondaryContainer 
-                                    else 
-                                        Color(0xFF2E7D32).copy(alpha = 0.5f), // Средняя прозрачность зеленого
-                                    uncheckedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.outline 
-                                    else 
-                                        Color(0xFF555555), // Темно-серый для светлой темы
-                                    uncheckedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.surfaceVariant 
-                                    else 
-                                        Color(0xFFE0E0E0) // Светло-серый для светлой темы
-                                )
+                                onCheckedChange = { viewModel.setNotificationSoundEnabled(it) }
                             )
                         }
                     )
@@ -280,28 +254,9 @@ fun SettingsScreen(
                         title = "Вибрация",
                         subtitle = "Вибрация уведомлений",
                         trailing = {
-                            val isDarkTheme = MaterialTheme.colorScheme.surface.calculateLuminance() < 0.5f
-                            Switch(
+                            SettingsSwitch(
                                 checked = uiState.notificationVibrationEnabled,
-                                onCheckedChange = { viewModel.setNotificationVibrationEnabled(it) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondary 
-                                    else 
-                                        Color(0xFF2E7D32), // Темно-зеленый для светлой темы
-                                    checkedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.secondaryContainer 
-                                    else 
-                                        Color(0xFF2E7D32).copy(alpha = 0.5f), // Средняя прозрачность зеленого
-                                    uncheckedThumbColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.outline 
-                                    else 
-                                        Color(0xFF555555), // Темно-серый для светлой темы
-                                    uncheckedTrackColor = if (isDarkTheme) 
-                                        MaterialTheme.colorScheme.surfaceVariant 
-                                    else 
-                                        Color(0xFFE0E0E0) // Светло-серый для светлой темы
-                                )
+                                onCheckedChange = { viewModel.setNotificationVibrationEnabled(it) }
                             )
                         }
                     )
@@ -318,8 +273,25 @@ fun SettingsScreen(
                         title = "Экспортировать debug-лог",
                         subtitle = "Отправить файл для диагностики падений/сканирования",
                         onClick = {
+                            // ИСПРАВЛЕНО: Безопасная проверка контекста
+                            val activity = context as? android.app.Activity
+                            if (activity == null || activity.isFinishing || activity.isDestroyed) {
+                                return@SettingsItem
+                            }
+                            
                             val logFile: File = DeviceDebugLogger.getFile(context)
-                            if (!logFile.exists() || logFile.length() == 0L) {
+                            
+                            // ИСПРАВЛЕНО: Проверка существования и доступности файла
+                            if (!logFile.exists()) {
+                                Toast.makeText(
+                                    context,
+                                    "Файл лога не найден. Сначала воспроизведите проблему.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@SettingsItem
+                            }
+                            
+                            if (logFile.length() == 0L) {
                                 Toast.makeText(
                                     context,
                                     "Файл лога пуст. Сначала воспроизведите проблему.",
@@ -327,20 +299,55 @@ fun SettingsScreen(
                                 ).show()
                                 return@SettingsItem
                             }
+                            
+                            // Проверка доступности файла для чтения
+                            if (!logFile.canRead()) {
+                                Toast.makeText(
+                                    context,
+                                    "Нет доступа для чтения файла лога",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@SettingsItem
+                            }
 
                             runCatching {
-                                val uri = FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    logFile
-                                )
+                                // ИСПРАВЛЕНО: Добавлены проверки версий Android для FileProvider
+                                val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                    // FileProvider доступен с API 24+
+                                    FileProvider.getUriForFile(
+                                        context,
+                                        "${context.packageName}.fileprovider",
+                                        logFile
+                                    )
+                                } else {
+                                    // ИСПРАВЛЕНО: Для Android < 7.0 (API < 24) используем file:// URI
+                                    // ВАЖНО: На Android 7+ (API 24+) это не работает из-за FileUriExposedException
+                                    // Но так как мы проверяем Build.VERSION.SDK_INT >= N, это безопасно
+                                    @Suppress("DEPRECATION")
+                                    android.net.Uri.fromFile(logFile)
+                                }
 
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "application/x-ndjson"
                                     putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    // FLAG_GRANT_READ_URI_PERMISSION доступен с API 18+
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, "Отправить debug-лог"))
+                                
+                                // ИСПРАВЛЕНО: Безопасная проверка перед запуском Activity
+                                val chooser = Intent.createChooser(shareIntent, "Отправить debug-лог")
+                                val resolveInfo = chooser.resolveActivity(context.packageManager)
+                                if (resolveInfo != null && activity != null && !activity.isFinishing && !activity.isDestroyed) {
+                                    context.startActivity(chooser)
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Нет приложения для отправки файла",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
                             }.onFailure {
                                 Toast.makeText(
                                     context,
@@ -418,6 +425,18 @@ fun SettingsScreen(
             }
         )
     }
+
+    // Show data retention dialog if requested
+    if (dataRetentionDialogVisible) {
+        DataRetentionDialog(
+            currentRetentionDays = uiState.dataRetentionDays,
+            onDismiss = { viewModel.hideDataRetentionDialog() },
+            onConfirm = { days ->
+                viewModel.setDataRetentionDays(days)
+                viewModel.hideDataRetentionDialog()
+            }
+        )
+    }
 }
 
 @Composable
@@ -461,6 +480,40 @@ private fun SettingsSection(
             content()
         }
     }
+}
+
+/**
+ * ИСПРАВЛЕНО: Переиспользуемый Switch компонент для настроек
+ * Устраняет дублирование кода и обеспечивает единообразный стиль
+ */
+@Composable
+private fun SettingsSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val isDarkTheme = MaterialTheme.colorScheme.surface.calculateLuminance() < 0.5f
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = if (isDarkTheme) 
+                MaterialTheme.colorScheme.secondary 
+            else 
+                Color(0xFF2E7D32), // Темно-зеленый для светлой темы
+            checkedTrackColor = if (isDarkTheme) 
+                MaterialTheme.colorScheme.secondaryContainer 
+            else 
+                Color(0xFF2E7D32).copy(alpha = 0.5f), // Средняя прозрачность зеленого
+            uncheckedThumbColor = if (isDarkTheme) 
+                MaterialTheme.colorScheme.outline 
+            else 
+                Color(0xFF555555), // Темно-серый для светлой темы
+            uncheckedTrackColor = if (isDarkTheme) 
+                MaterialTheme.colorScheme.surfaceVariant 
+            else 
+                Color(0xFFE0E0E0) // Светло-серый для светлой темы
+        )
+    )
 }
 
 @Composable
@@ -524,28 +577,38 @@ fun ScanIntervalDialog(
         120 to "2 часа"
     )
 
-    var selectedInterval by remember { mutableIntStateOf(currentInterval) }
+    // ИСПРАВЛЕНО: Обновляем selectedInterval при изменении currentInterval
+    var selectedInterval by remember(currentInterval) { mutableIntStateOf(currentInterval) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Интервал сканирования") },
         text = {
-            LazyColumn {
-                scanIntervals.forEach { (minutes, label) ->
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { selectedInterval = minutes }
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = selectedInterval == minutes,
-                                onClick = { selectedInterval = minutes }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = label)
+            Column {
+                // ИСПРАВЛЕНО: Добавлено предупреждение о минимальном интервале
+                Text(
+                    text = "Минимальный интервал: ${Constants.MIN_SCAN_INTERVAL_MINUTES} минут (требование Android WorkManager)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                LazyColumn {
+                    scanIntervals.forEach { (minutes, label) ->
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedInterval = minutes }
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedInterval == minutes,
+                                    onClick = { selectedInterval = minutes }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = label)
+                            }
                         }
                     }
                 }
@@ -553,7 +616,11 @@ fun ScanIntervalDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(selectedInterval) }
+                onClick = { 
+                    // Валидация: убеждаемся, что интервал не меньше минимального
+                    val validInterval = maxOf(Constants.MIN_SCAN_INTERVAL_MINUTES, selectedInterval)
+                    onConfirm(validInterval)
+                }
             ) {
                 Text("OK")
             }
@@ -669,6 +736,69 @@ fun ThemeSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
+
+/**
+ * Dialog for selecting data retention period
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DataRetentionDialog(
+    currentRetentionDays: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val retentionOptions = mapOf(
+        1 to "1 день",
+        7 to "1 неделя",
+        30 to "1 месяц",
+        90 to "3 месяца",
+        -1 to "Навсегда"
+    )
+
+    // ИСПРАВЛЕНО: Обновляем selectedDays при изменении currentRetentionDays
+    var selectedDays by remember(currentRetentionDays) { mutableIntStateOf(currentRetentionDays) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Хранение данных") },
+        text = {
+            LazyColumn {
+                retentionOptions.forEach { (days, label) ->
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedDays = days }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedDays == days,
+                                onClick = { selectedDays = days }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = label)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(selectedDays) }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
                 Text("Отмена")
             }
         }

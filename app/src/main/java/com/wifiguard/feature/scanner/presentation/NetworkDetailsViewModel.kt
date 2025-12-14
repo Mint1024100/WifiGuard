@@ -7,6 +7,7 @@ import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -29,6 +30,10 @@ class NetworkDetailsViewModel @Inject constructor(
     // Информация о текущей сети
     private val _currentNetwork = MutableStateFlow<WifiNetwork?>(null)
     val currentNetwork: StateFlow<WifiNetwork?> = _currentNetwork.asStateFlow()
+
+    // Текущий BSSID, для которого загружены детали (важно для списка с переворотом карточек)
+    private val _loadedBssid = MutableStateFlow<String?>(null)
+    val loadedBssid: StateFlow<String?> = _loadedBssid.asStateFlow()
     
     // Статистика сканирования по сети
     private val _networkStatistics = MutableStateFlow<List<WifiScanResult>>(emptyList())
@@ -37,33 +42,86 @@ class NetworkDetailsViewModel @Inject constructor(
     // Аналитика сигнала
     private val _signalAnalytics = MutableStateFlow<SignalAnalytics?>(null)
     val signalAnalytics: StateFlow<SignalAnalytics?> = _signalAnalytics.asStateFlow()
+
+    private var statisticsJob: Job? = null
     
     /**
-     * Загрузить детали сети по SSID
+     * Загрузить детали сети по BSSID (уникальный MAC точки доступа).
      */
-    fun loadNetworkDetails(ssid: String) {
+    fun loadNetworkDetails(bssid: String) {
         viewModelScope.launch(ioDispatcher) {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _loadedBssid.value = bssid
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, bssid = bssid) }
+            
+            // #region agent log
+            try {
+                val logJson = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "D")
+                    put("location", "NetworkDetailsViewModel.kt:loadNetworkDetails")
+                    put("message", "Начало загрузки деталей сети")
+                    put("data", org.json.JSONObject().apply {
+                        put("bssid", bssid)
+                    })
+                    put("timestamp", System.currentTimeMillis())
+                }
+                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+            } catch (e: Exception) {}
+            // #endregion
             
             try {
                 // Получаем сеть
-                val network = wifiRepository.getNetworkBySSID(ssid)
-                if (network != null) {
-                    _currentNetwork.value = network
-                    
-                    // Загружаем статистику
-                    loadNetworkStatistics(ssid)
-                    
-                    _uiState.update { it.copy(isLoading = false) }
-                } else {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "Сеть не найдена: $ssid"
-                        )
+                val network = wifiRepository.getNetworkByBssid(bssid)
+                // #region agent log
+                try {
+                    val logJson = org.json.JSONObject().apply {
+                        put("sessionId", "debug-session")
+                        put("runId", "run1")
+                        put("hypothesisId", "D")
+                        put("location", "NetworkDetailsViewModel.kt:loadNetworkDetails:afterGetNetwork")
+                        put("message", "Результат getNetworkByBssid")
+                        put("data", org.json.JSONObject().apply {
+                            put("bssid", bssid)
+                            put("networkFound", network != null)
+                            if (network != null) {
+                                put("ssid", network.ssid)
+                                put("firstSeen", network.firstSeen)
+                            }
+                        })
+                        put("timestamp", System.currentTimeMillis())
                     }
-                }
+                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+                } catch (e: Exception) {}
+                // #endregion
+                
+                // Сеть может отсутствовать в БД - это нормально для новых сетей
+                _currentNetwork.value = network
+                
+                // Загружаем статистику (даже если сети нет в БД, статистика может быть)
+                loadNetworkStatisticsByBssid(bssid)
+                
+                _uiState.update { it.copy(isLoading = false, errorMessage = null) }
             } catch (e: Exception) {
+                // #region agent log
+                try {
+                    val logJson = org.json.JSONObject().apply {
+                        put("sessionId", "debug-session")
+                        put("runId", "run1")
+                        put("hypothesisId", "D")
+                        put("location", "NetworkDetailsViewModel.kt:loadNetworkDetails:exception")
+                        put("message", "Исключение при загрузке сети")
+                        put("data", org.json.JSONObject().apply {
+                            put("bssid", bssid)
+                            put("error", e.message ?: "unknown")
+                            put("errorType", e.javaClass.simpleName)
+                        })
+                        put("timestamp", System.currentTimeMillis())
+                    }
+                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
+                } catch (logEx: Exception) {}
+                // #endregion
+                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -75,21 +133,22 @@ class NetworkDetailsViewModel @Inject constructor(
     }
     
     /**
-     * Загрузить статистику сканирования сети
+     * Загрузить статистику сканирования сети по BSSID.
      */
-    private fun loadNetworkStatistics(ssid: String) {
-        viewModelScope.launch(ioDispatcher) {
+    private fun loadNetworkStatisticsByBssid(bssid: String) {
+        statisticsJob?.cancel()
+        statisticsJob = viewModelScope.launch(ioDispatcher) {
             try {
-                wifiRepository.getNetworkStatistics(ssid).collect { scans ->
+                wifiRepository.getNetworkStatisticsByBssid(bssid).collect { scans ->
                     _networkStatistics.value = scans
-                    
-                    // Вычисляем аналитику сигнала
                     if (scans.isNotEmpty()) {
                         calculateSignalAnalytics(scans)
+                    } else {
+                        _signalAnalytics.value = null
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(errorMessage = "Ошибка загрузки статистики: ${e.message}")
                 }
             }
@@ -104,7 +163,13 @@ class NetworkDetailsViewModel @Inject constructor(
         
         viewModelScope.launch(ioDispatcher) {
             try {
-                wifiRepository.markNetworkAsSuspicious(network.ssid, reason)
+                val ssid = network.ssid
+                if (ssid.isBlank()) {
+                    _uiState.update { it.copy(errorMessage = "Нельзя пометить сеть без SSID") }
+                    return@launch
+                }
+
+                wifiRepository.markNetworkAsSuspicious(ssid, reason)
                 
                 // Обновляем локальное состояние
                 _currentNetwork.value = network.copy(
@@ -135,7 +200,10 @@ class NetworkDetailsViewModel @Inject constructor(
         _uiState.update { it.copy(statisticsPeriod = period) }
         
         // Перезагружаем статистику с новым периодом
-        _currentNetwork.value?.let { loadNetworkDetails(it.ssid) }
+        val bssid = _loadedBssid.value
+        if (!bssid.isNullOrBlank()) {
+            loadNetworkDetails(bssid)
+        }
     }
     
     /**
@@ -176,7 +244,8 @@ class NetworkDetailsViewModel @Inject constructor(
 data class NetworkDetailsUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val statisticsPeriod: StatisticsPeriod = StatisticsPeriod.LAST_24_HOURS
+    val statisticsPeriod: StatisticsPeriod = StatisticsPeriod.LAST_24_HOURS,
+    val bssid: String? = null
 )
 
 /**

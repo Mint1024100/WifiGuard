@@ -114,6 +114,13 @@ interface WifiRepository {
      * @return Flow с историей сканирования сети
      */
     fun getNetworkStatistics(ssid: String): Flow<List<WifiScanResult>>
+
+    /**
+     * Получить статистику по конкретной сети по BSSID (уникальный MAC точки доступа).
+     *
+     * Важно: BSSID позволяет различать сети с одинаковым SSID.
+     */
+    fun getNetworkStatisticsByBssid(bssid: String): Flow<List<WifiScanResult>>
     
     /**
      * Пометить сеть как подозрительную

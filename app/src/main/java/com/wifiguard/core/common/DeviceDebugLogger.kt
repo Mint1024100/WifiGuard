@@ -18,6 +18,22 @@ object DeviceDebugLogger {
     private const val SESSION_ID = "debug-session"
     private const val FILE_NAME = "wifiguard_debug.ndjson"
 
+    @Volatile
+    private var activeRunId: String = createRunId()
+
+    /**
+     * Текущий runId для группировки логов одного запуска приложения.
+     */
+    fun currentRunId(): String = activeRunId
+
+    /**
+     * Генерирует новый runId (например, на старте приложения).
+     */
+    fun startNewRun(): String {
+        activeRunId = createRunId()
+        return activeRunId
+    }
+
     fun clear(context: Context) {
         runCatching { file(context).delete() }
     }
@@ -88,6 +104,14 @@ object DeviceDebugLogger {
         val dir = context.getExternalFilesDir(null) ?: context.filesDir
         return File(dir, FILE_NAME)
     }
+
+    private fun createRunId(): String {
+        // Не используем UUID, чтобы избежать лишних зависимостей/аллоков в критичном пути старта.
+        // Достаточно уникальности по времени.
+        return "run_" + System.currentTimeMillis().toString(36)
+    }
 }
+
+
 
 

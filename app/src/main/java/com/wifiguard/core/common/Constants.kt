@@ -44,9 +44,16 @@ object Constants {
     const val MIN_SCAN_INTERVAL_MS = 5 * 60 * 1000L // 5 minutes
     const val MAX_SCAN_INTERVAL_MS = 60 * 60 * 1000L // 1 hour
     
+    // Scan intervals (minutes) - для WorkManager требуется минимум 15 минут
+    const val MIN_SCAN_INTERVAL_MINUTES = 15
+    const val MAX_SCAN_INTERVAL_MINUTES = 120
+    
     // Data retention
     const val DEFAULT_DATA_RETENTION_DAYS = 30
     const val MAX_DATA_RETENTION_DAYS = 365
+    
+    // Valid data retention days values
+    val VALID_DATA_RETENTION_DAYS = setOf(-1, 1, 7, 30, 90)
     
     // Security
     const val MIN_SIGNAL_STRENGTH = -100 // dBm

@@ -63,12 +63,12 @@ class BatteryOptimizationHelper @Inject constructor(
         return when {
             manufacturer.contains("xiaomi") || manufacturer.contains("redmi") -> {
                 """
-                Для Xiaomi/Redmi устройств:
-                1. Настройки → Приложения → WifiGuard
-                2. Раздел "Батарея"
-                3. Выберите "Без ограничений"
-                4. Включите "Автозапуск"
-                5. В MIUI Security → Разрешения → Автозапуск → Разрешить WifiGuard
+                Для Xiaomi/Redmi (MIUI/HyperOS):
+                1. Настройки → Приложения → WifiGuard → Батарея
+                2. Режим энергосбережения: выберите "Без ограничений"
+                3. Настройки → Приложения → Автозапуск: включите для WifiGuard
+                4. Безопасность (Security) → Разрешения → Автозапуск: разрешите WifiGuard
+                5. Если уведомления пропадают: Настройки → Уведомления → WifiGuard → включите все пункты
                 """.trimIndent()
             }
             manufacturer.contains("huawei") || manufacturer.contains("honor") -> {
@@ -106,6 +106,15 @@ class BatteryOptimizationHelper @Inject constructor(
                 2. WifiGuard → Не оптимизировать
                 3. Настройки → Приложения → WifiGuard
                 4. Оптимизация батареи → Выключить
+                """.trimIndent()
+            }
+            manufacturer.contains("vivo") || manufacturer.contains("iqoo") -> {
+                """
+                Для vivo/iQOO устройств:
+                1. Настройки → Батарея → Фоновое энергопотребление
+                2. Найдите WifiGuard → разрешите "Фоновая активность"
+                3. iManager → Управление приложениями → Автозапуск: включите WifiGuard
+                4. Настройки → Уведомления → WifiGuard: включите уведомления и показ на экране блокировки
                 """.trimIndent()
             }
             else -> {

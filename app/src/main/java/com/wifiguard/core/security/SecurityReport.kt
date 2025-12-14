@@ -7,6 +7,7 @@ import com.wifiguard.core.domain.model.SecurityThreat
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
+import kotlin.math.roundToInt
 
 /**
  * Отчет о безопасности Wi-Fi сетей
@@ -60,6 +61,41 @@ data class SecurityReport(
             ThreatLevel.CRITICAL -> 20
             ThreatLevel.UNKNOWN -> 50
         }
+    }
+
+    /**
+     * Получить детализированную общую оценку безопасности (0..100).
+     *
+     * В отличие от [getOverallSecurityScore], эта оценка:
+     * - опирается на средний [NetworkSecurityAnalysis.securityScore] по сетям,
+     * - учитывает общий уровень риска как ограничитель (fail-safe),
+     * - дополнительно штрафует за количество (глобальных) угроз в отчёте.
+     */
+    fun getOverallSecurityScoreDetailed(): Int {
+        if (networkAnalysis.isEmpty()) return getOverallSecurityScore()
+
+        val avgNetworkScore = networkAnalysis
+            .asSequence()
+            .map { it.securityScore }
+            .average()
+            .roundToInt()
+            .coerceIn(0, 100)
+
+        // Fail-safe: если общий риск высокий, не показываем «слишком хорошую» оценку.
+        val riskCap = when (overallRiskLevel) {
+            ThreatLevel.SAFE -> 100
+            ThreatLevel.LOW -> 95
+            ThreatLevel.MEDIUM -> 80
+            ThreatLevel.HIGH -> 65
+            ThreatLevel.CRITICAL -> 45
+            ThreatLevel.UNKNOWN -> 75
+        }
+
+        // Штраф за глобальные угрозы (например, детектированные на наборе сетей).
+        val globalThreatPenalty = (threats.size * 2).coerceAtMost(20)
+
+        return (minOf(avgNetworkScore, riskCap) - globalThreatPenalty)
+            .coerceIn(0, 100)
     }
     
     /**

@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.WorkManager
 import com.wifiguard.core.background.WifiMonitoringWorker
+import com.wifiguard.core.background.WorkManagerSafe
 import com.wifiguard.core.common.Constants
 import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.data.preferences.PreferencesDataSource
@@ -92,7 +92,8 @@ class MainActivity : ComponentActivity() {
             checkAndRequestPermissions()
             
             setContent {
-                // Читаем сохраненный режим темы из настроек
+                // ИСПРАВЛЕНО: Читаем сохраненный режим темы из настроек
+                // collectAsState автоматически обновляет UI при изменении темы в настройках
                 val themeMode by preferencesDataSource.getThemeMode().collectAsState(initial = "system")
                 val isSystemInDarkTheme = isSystemInDarkTheme()
                 
@@ -103,6 +104,7 @@ class MainActivity : ComponentActivity() {
                     else -> isSystemInDarkTheme // "system"
                 }
                 
+                // Тема автоматически обновляется при изменении themeMode через collectAsState
                 WifiGuardTheme(darkTheme = darkTheme) {
                     WifiGuardMainContent()
                 }
@@ -288,7 +290,7 @@ class MainActivity : ComponentActivity() {
 
                 DeviceDebugLogger.log(
                     context = this@MainActivity,
-                    runId = "run1",
+                    runId = DeviceDebugLogger.currentRunId(),
                     hypothesisId = "C",
                     location = "MainActivity.kt:checkAndRequestPermissions",
                     message = "Состояние разрешений рассчитано",
@@ -485,7 +487,11 @@ class MainActivity : ComponentActivity() {
      */
     private fun setupBackgroundMonitoring() {
         try {
-            val workManager = WorkManager.getInstance(this)
+            val workManager = WorkManagerSafe.getInstanceOrNull(this)
+            if (workManager == null) {
+                Log.w(TAG, "WorkManager недоступен. Фоновый мониторинг не будет запущен.")
+                return
+            }
             
             // Создаем периодическую работу для мониторинга Wi-Fi
             val periodicWork = WifiMonitoringWorker.createPeriodicWork()

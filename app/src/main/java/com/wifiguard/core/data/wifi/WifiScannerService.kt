@@ -69,6 +69,7 @@ class WifiScannerService @Inject constructor(
      */
     suspend fun startScan(): WifiScanStatus {
         Log.d("WifiGuardDebug", "WifiScannerService: Starting scan")
+        val runId = DeviceDebugLogger.currentRunId()
         return scanMutex.withLock {
             try {
             if (!wifiManager.isWifiEnabled) {
@@ -76,7 +77,7 @@ class WifiScannerService @Inject constructor(
                 Log.d("WifiGuardDebug", "WifiScannerService: WiFi is not enabled")
                 DeviceDebugLogger.log(
                     context = context,
-                    runId = "run1",
+                    runId = runId,
                     hypothesisId = "A",
                     location = "WifiScannerService.kt:startScan",
                     message = "Старт скана: WiFi выключен",
@@ -92,7 +93,7 @@ class WifiScannerService @Inject constructor(
             if (!DeviceDebugLogger.isLocationEnabled(context)) {
                 DeviceDebugLogger.log(
                     context = context,
-                    runId = "run1",
+                    runId = runId,
                     hypothesisId = "A",
                     location = "WifiScannerService.kt:startScan",
                     message = "Старт скана: геолокация выключена (restricted)",
@@ -139,7 +140,7 @@ class WifiScannerService @Inject constructor(
                     Log.d("WifiGuardDebug", "WifiScannerService: WiFi scan started successfully")
                     DeviceDebugLogger.log(
                         context = context,
-                        runId = "run1",
+                        runId = runId,
                         hypothesisId = "A",
                         location = "WifiScannerService.kt:startScan",
                         message = "Старт скана: startScan()=true",
@@ -157,7 +158,7 @@ class WifiScannerService @Inject constructor(
                     Log.d("WifiGuardDebug", "WifiScannerService: Scan restricted on Android 10+")
                     DeviceDebugLogger.log(
                         context = context,
-                        runId = "run1",
+                        runId = runId,
                         hypothesisId = "A",
                         location = "WifiScannerService.kt:startScan",
                         message = "Старт скана: startScan()=false (restricted)",
@@ -184,7 +185,7 @@ class WifiScannerService @Inject constructor(
                     Log.d("WifiGuardDebug", "WifiScannerService: WiFi scan started successfully")
                     DeviceDebugLogger.log(
                         context = context,
-                        runId = "run1",
+                        runId = runId,
                         hypothesisId = "A",
                         location = "WifiScannerService.kt:startScan",
                         message = "Старт скана (до Android 10): startScan()=true",
@@ -199,7 +200,7 @@ class WifiScannerService @Inject constructor(
                     Log.d("WifiGuardDebug", "WifiScannerService: Failed to start WiFi scan")
                     DeviceDebugLogger.log(
                         context = context,
-                        runId = "run1",
+                        runId = runId,
                         hypothesisId = "A",
                         location = "WifiScannerService.kt:startScan",
                         message = "Старт скана (до Android 10): startScan()=false",
@@ -216,7 +217,7 @@ class WifiScannerService @Inject constructor(
             Log.e("WifiGuardDebug", "WifiScannerService: Security exception during scan: ${e.message}", e)
             DeviceDebugLogger.log(
                 context = context,
-                runId = "run1",
+                runId = runId,
                 hypothesisId = "C",
                 location = "WifiScannerService.kt:startScan",
                 message = "SecurityException при startScan()",
@@ -232,7 +233,7 @@ class WifiScannerService @Inject constructor(
             Log.e("WifiGuardDebug", "WifiScannerService: Error during scan: ${e.message}", e)
             DeviceDebugLogger.log(
                 context = context,
-                runId = "run1",
+                runId = runId,
                 hypothesisId = "D",
                 location = "WifiScannerService.kt:startScan",
                 message = "Exception при startScan()",
@@ -349,12 +350,13 @@ class WifiScannerService @Inject constructor(
      */
     fun getScanResultsAsCoreModels(): List<WifiScanResult> {
         Log.d("WifiGuardDebug", "WifiScannerService: Getting scan results as core models")
+        val runId = DeviceDebugLogger.currentRunId()
         
         // #region agent log
         try {
             val logJson = org.json.JSONObject().apply {
                 put("sessionId", "debug-session")
-                put("runId", "run1")
+                put("runId", runId)
                 put("hypothesisId", "B")
                 put("location", "WifiScannerService.kt:245")
                 put("message", "Начало получения результатов сканирования как core models")
@@ -374,7 +376,7 @@ class WifiScannerService @Inject constructor(
                 Log.d("WifiGuardDebug", "WifiScannerService: WiFi is not enabled, returning empty list")
                 DeviceDebugLogger.log(
                     context = context,
-                    runId = "run1",
+                    runId = runId,
                     hypothesisId = "B",
                     location = "WifiScannerService.kt:getScanResultsAsCoreModels",
                     message = "scanResults: WiFi выключен -> пусто",
@@ -387,7 +389,7 @@ class WifiScannerService @Inject constructor(
                 try {
                     val logJson = org.json.JSONObject().apply {
                         put("sessionId", "debug-session")
-                        put("runId", "run1")
+                        put("runId", runId)
                         put("hypothesisId", "B")
                         put("location", "WifiScannerService.kt:264")
                         put("message", "WiFi отключен, возвращаем пустой список")
@@ -426,7 +428,7 @@ class WifiScannerService @Inject constructor(
                 try {
                     val logJson = org.json.JSONObject().apply {
                         put("sessionId", "debug-session")
-                        put("runId", "run1")
+                        put("runId", runId)
                         put("hypothesisId", "C")
                         put("location", "WifiScannerService.kt:295")
                         put("message", "Нет разрешений для получения результатов сканирования")
@@ -446,7 +448,7 @@ class WifiScannerService @Inject constructor(
             Log.d("WifiGuardDebug", "WifiScannerService: Got ${scanResults.size} scan results")
             DeviceDebugLogger.log(
                 context = context,
-                runId = "run1",
+                runId = runId,
                 hypothesisId = "B",
                 location = "WifiScannerService.kt:getScanResultsAsCoreModels",
                 message = "scanResults получены",
@@ -461,7 +463,7 @@ class WifiScannerService @Inject constructor(
             try {
                 val logJson = org.json.JSONObject().apply {
                     put("sessionId", "debug-session")
-                    put("runId", "run1")
+                    put("runId", runId)
                     put("hypothesisId", "B")
                     put("location", "WifiScannerService.kt:315")
                     put("message", "Получены raw результаты сканирования из WifiManager")
@@ -496,7 +498,7 @@ class WifiScannerService @Inject constructor(
                     try {
                         val logJson = org.json.JSONObject().apply {
                             put("sessionId", "debug-session")
-                            put("runId", "run1")
+                            put("runId", runId)
                             put("hypothesisId", "D")
                             put("location", "WifiScannerService.kt:343")
                             put("message", "Ошибка преобразования результата сканирования")
@@ -519,7 +521,7 @@ class WifiScannerService @Inject constructor(
             try {
                 val logJson = org.json.JSONObject().apply {
                     put("sessionId", "debug-session")
-                    put("runId", "run1")
+                    put("runId", runId)
                     put("hypothesisId", "B")
                     put("location", "WifiScannerService.kt:362")
                     put("message", "Успешно преобразованы результаты сканирования")
@@ -540,7 +542,7 @@ class WifiScannerService @Inject constructor(
             try {
                 val logJson = org.json.JSONObject().apply {
                     put("sessionId", "debug-session")
-                    put("runId", "run1")
+                    put("runId", runId)
                     put("hypothesisId", "C")
                     put("location", "WifiScannerService.kt:380")
                     put("message", "SecurityException при получении результатов сканирования")
@@ -561,7 +563,7 @@ class WifiScannerService @Inject constructor(
             try {
                 val logJson = org.json.JSONObject().apply {
                     put("sessionId", "debug-session")
-                    put("runId", "run1")
+                    put("runId", runId)
                     put("hypothesisId", "D")
                     put("location", "WifiScannerService.kt:397")
                     put("message", "Общая ошибка при получении результатов сканирования")

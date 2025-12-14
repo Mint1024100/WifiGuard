@@ -399,6 +399,10 @@ class FakeWifiRepository @javax.inject.Inject constructor() : com.wifiguard.core
         return flowOf(scans.filter { it.ssid == ssid })
     }
 
+    override fun getNetworkStatisticsByBssid(bssid: String): Flow<List<com.wifiguard.core.domain.model.WifiScanResult>> {
+        return flowOf(scans.filter { it.bssid == bssid })
+    }
+
     override suspend fun markNetworkAsSuspicious(ssid: String, reason: String) {
         val network = networks.find { it.ssid == ssid }
         if (network != null) {

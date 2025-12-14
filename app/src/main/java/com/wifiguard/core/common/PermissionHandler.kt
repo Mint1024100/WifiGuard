@@ -83,6 +83,19 @@ class PermissionHandler @Inject constructor(
     }
     
     /**
+     * Проверяет, требуется ли включенная Location для WiFi сканирования
+     * На Android 13+ с NEARBY_WIFI_DEVICES location не требуется
+     */
+    fun isLocationRequiredForWifiScan(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+: если есть NEARBY_WIFI_DEVICES, location не требуется
+            return !hasPermission(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+        // Android 6-12: location всегда требуется для WiFi сканирования
+        return true
+    }
+    
+    /**
      * Проверяет, включена ли системная геолокация.
      *
      * Важно: на части устройств (OEM) Wi‑Fi сканирование/scanResults могут быть недоступны,

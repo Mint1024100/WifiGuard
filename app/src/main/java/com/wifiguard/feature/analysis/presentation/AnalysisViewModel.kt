@@ -1,16 +1,24 @@
 package com.wifiguard.feature.analysis.presentation
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wifiguard.core.data.wifi.ScanStatusBus
+import com.wifiguard.core.data.wifi.ScanStatusState
 import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.security.SecurityAnalyzer
+import com.wifiguard.core.service.WifiForegroundScanService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 /**
@@ -22,14 +30,50 @@ import javax.inject.Inject
 @HiltViewModel
 class AnalysisViewModel @Inject constructor(
     private val wifiRepository: WifiRepository,
-    private val securityAnalyzer: SecurityAnalyzer
+    private val securityAnalyzer: SecurityAnalyzer,
+    private val scanStatusBus: ScanStatusBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalysisUiState())
     val uiState: StateFlow<AnalysisUiState> = _uiState.asStateFlow()
 
     init {
+        observeScanStatus()
         observeAnalysisData()
+    }
+
+    /**
+     * Запросить автоскан (UI может вызывать при входе на экран).
+     * Реальный скан выполняет ForegroundService, а мы отображаем состояние через [ScanStatusBus].
+     */
+    fun requestAutoScan() {
+        scanStatusBus.update(ScanStatusState.Starting())
+    }
+
+    private fun observeScanStatus() {
+        scanStatusBus.state
+            .onEach { status ->
+                // #region agent log
+                try {
+                    val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
+                    val logEntry = org.json.JSONObject().apply {
+                        put("sessionId", "debug-session")
+                        put("runId", "run1")
+                        put("hypothesisId", "F")
+                        put("location", "AnalysisViewModel.kt:observeScanStatus")
+                        put("message", "scanStatus изменен")
+                        put("timestamp", System.currentTimeMillis())
+                        put("data", org.json.JSONObject().apply {
+                            put("status", status.javaClass.simpleName)
+                        })
+                    }
+                    logFile.appendText(logEntry.toString() + "\n")
+                } catch (e: Exception) { /* ignore */ }
+                // #endregion
+                // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
+                _uiState.update { it.copy(scanStatus = status) }
+            }
+            .launchIn(viewModelScope)
     }
 
     /**
@@ -39,54 +83,83 @@ class AnalysisViewModel @Inject constructor(
      * Теперь UI обновляется автоматически при изменении данных в БД
      */
     private fun observeAnalysisData() {
-        // Устанавливаем начальное состояние загрузки
-        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+        // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
+        _uiState.update { it.copy(isLoading = true, error = null) }
         
         wifiRepository.getLatestScans(limit = 100)
-            .onEach { recentScans ->
-                try {
-                    // Запускаем анализ безопасности
-                    val securityReport = securityAnalyzer.analyzeNetworks(recentScans)
-                    
-                    _uiState.value = _uiState.value.copy(
+            // Room может эмитить пачку обновлений при массовой вставке сканов.
+            // Делаем debounce + mapLatest, чтобы пересчитывать отчёт один раз и отменять устаревшие расчёты.
+            // ИСПРАВЛЕНО: Увеличено значение debounce для более стабильной работы на медленных устройствах
+            .debounce(500)
+            .distinctUntilChangedBy { scans ->
+                // Достаточно дешёвого «сигнатурного» ключа: последняя запись + размер.
+                val headTimestamp = scans.firstOrNull()?.timestamp ?: -1L
+                headTimestamp to scans.size
+            }
+            .mapLatest { recentScans ->
+                if (recentScans.isEmpty()) null else securityAnalyzer.analyzeNetworks(recentScans)
+            }
+            .onEach { securityReport ->
+                // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
+                _uiState.update { currentState ->
+                    currentState.copy(
                         isLoading = false,
                         securityReport = securityReport,
                         lastUpdateTime = System.currentTimeMillis(),
-                        error = null
-                    )
-                } catch (e: Exception) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = e.message ?: "Ошибка анализа данных",
-                        lastUpdateTime = System.currentTimeMillis()
+                        error = if (securityReport == null) "Нет данных для анализа" else null
                     )
                 }
             }
             .catch { e ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Ошибка загрузки данных",
-                    lastUpdateTime = System.currentTimeMillis()
-                )
+                // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isLoading = false,
+                        error = e.message ?: "Ошибка загрузки данных",
+                        lastUpdateTime = System.currentTimeMillis()
+                    )
+                }
             }
             .launchIn(viewModelScope)
     }
 
     /**
+     * Единая функция для перезагрузки/обновления данных
+     * Запускает новое сканирование через ForegroundService
+     */
+    fun refreshData(context: Context) {
+        // ИСПРАВЛЕНО: НЕ обновляем lastUpdateTime здесь, чтобы избежать перезапуска LaunchedEffect
+        // lastUpdateTime будет обновлен автоматически при получении новых данных через observeAnalysisData
+        _uiState.update { currentState ->
+            currentState.copy(
+                error = null
+                // УБРАНО: lastUpdateTime = System.currentTimeMillis() - это вызывало цикл перезапуска LaunchedEffect
+            )
+        }
+        // Запускаем новое сканирование
+        WifiForegroundScanService.start(context)
+    }
+
+    /**
      * Обновить анализ вручную (уже не требуется, т.к. автообновление работает)
      * Оставлено для совместимости с UI
+     * @deprecated Используйте refreshData(context) вместо этого
      */
+    @Deprecated("Используйте refreshData(context) вместо этого")
     fun refreshAnalysis() {
         // Теперь обновление происходит автоматически через Flow
-        // Просто сбрасываем ошибку и обновляем timestamp
-        _uiState.value = _uiState.value.copy(
-            error = null,
-            lastUpdateTime = System.currentTimeMillis()
-        )
+        // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
+        _uiState.update { currentState ->
+            currentState.copy(
+                error = null,
+                lastUpdateTime = System.currentTimeMillis()
+            )
+        }
     }
 
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
+        _uiState.update { it.copy(error = null) }
     }
 }
 
@@ -99,5 +172,6 @@ data class AnalysisUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val securityReport: com.wifiguard.core.security.SecurityReport? = null,
-    val lastUpdateTime: Long = 0L
+    val lastUpdateTime: Long = 0L,
+    val scanStatus: ScanStatusState = ScanStatusState.Idle
 )

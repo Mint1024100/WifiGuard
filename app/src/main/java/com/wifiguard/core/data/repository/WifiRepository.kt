@@ -367,6 +367,12 @@ class WifiRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getNetworkStatisticsByBssid(bssid: String): Flow<List<WifiScanResult>> {
+        return wifiScanDao.getScansByBssid(bssid).map { entities ->
+            entities.map { wifiScanEntityToDomainMapper.map(it) }
+        }
+    }
+
     /**
      * Пометить сеть как подозрительную
      */

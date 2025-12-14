@@ -8,14 +8,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import androidx.work.*
+import androidx.work.ExistingPeriodicWorkPolicy
 import com.wifiguard.core.common.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 
 /**
  * Receiver для обработки событий загрузки системы
@@ -56,7 +55,11 @@ class BootReceiver : BroadcastReceiver() {
                 return
             }
 
-            val workManager = WorkManager.getInstance(context)
+            val workManager = WorkManagerSafe.getInstanceOrNull(context)
+            if (workManager == null) {
+                Log.w(TAG, "WorkManager недоступен. Фоновый мониторинг после загрузки пропущен.")
+                return
+            }
             
             // Get the scan interval from DataStore
             val scanIntervalMinutes = getScanIntervalFromDataStore(context)

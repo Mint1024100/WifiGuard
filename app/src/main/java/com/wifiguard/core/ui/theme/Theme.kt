@@ -119,6 +119,8 @@ fun WifiGuardTheme(
 
     val view = LocalView.current
     if (!view.isInEditMode) {
+        // ИСПРАВЛЕНО: SideEffect обновляется при каждом изменении darkTheme
+        // Это гарантирует, что статус-бар обновится немедленно при изменении темы
         SideEffect {
             val window = (view.context as Activity).window
             // statusBarColor устарел в Android 11+, но все еще работает для обратной совместимости

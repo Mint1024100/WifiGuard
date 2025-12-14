@@ -140,6 +140,10 @@ class NotificationHelper @Inject constructor(
             Log.w(TAG, "⚠️ Нет разрешения POST_NOTIFICATIONS (Android 13+)")
             return false
         }
+
+        // На части прошивок канал может быть удалён/сброшен пользователем или системой.
+        // Пытаемся (пере)создать канал перед проверкой и отправкой.
+        createNotificationChannel()
         
         // Проверяем, включены ли уведомления в системе
         if (!areNotificationsEnabled()) {
@@ -387,7 +391,7 @@ class NotificationHelper @Inject constructor(
         // Дополнительная проверка канала для Android O+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && enabled) {
             val systemNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = systemNotificationManager.getNotificationChannel(Constants.NOTIFICATION_CHANNEL_ID)
+            var channel = systemNotificationManager.getNotificationChannel(Constants.NOTIFICATION_CHANNEL_ID)
             
             if (channel != null) {
                 val channelEnabled = channel.importance != NotificationManager.IMPORTANCE_NONE
@@ -395,8 +399,18 @@ class NotificationHelper @Inject constructor(
                         "${if (channelEnabled) "включен" else "отключен"} (importance: ${channel.importance})")
                 return channelEnabled
             } else {
-                Log.w(TAG, "⚠️ Канал уведомлений ${Constants.NOTIFICATION_CHANNEL_ID} не найден")
-                return false
+                Log.w(TAG, "⚠️ Канал уведомлений ${Constants.NOTIFICATION_CHANNEL_ID} не найден. Пытаемся пересоздать.")
+                createNotificationChannel()
+                channel = systemNotificationManager.getNotificationChannel(Constants.NOTIFICATION_CHANNEL_ID)
+                if (channel == null) {
+                    Log.w(TAG, "⚠️ Канал всё ещё отсутствует после пересоздания")
+                    return false
+                }
+
+                val channelEnabled = channel.importance != NotificationManager.IMPORTANCE_NONE
+                Log.d(TAG, "Канал уведомлений восстановлен: " +
+                        "${if (channelEnabled) "включен" else "отключен"} (importance: ${channel.importance})")
+                return channelEnabled
             }
         }
         

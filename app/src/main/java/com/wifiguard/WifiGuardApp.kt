@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -56,22 +57,17 @@ class WifiGuardApp : Application(), Configuration.Provider {
         Log.d(TAG, "🚀 Запуск приложения WifiGuard")
 
         // ВАЖНО: для диагностики падений/пустых сканов пишем NDJSON-лог на устройстве.
-        // runId фиксированный, чтобы логи из одного запуска группировались.
-        val runId = "run1"
+        // runId уникальный на запуск приложения, чтобы проще сравнивать разные прогоны.
+        val runId = DeviceDebugLogger.startNewRun()
         DeviceDebugLogger.logAppStart(this, runId)
         installCrashLogger(runId)
         
         // #region agent log
         // Логирование информации о версии приложения для диагностики проблемы обновления
         try {
-            val packageInfo: PackageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                packageManager.getPackageInfo(packageName, 0)
-            }
+            val packageInfo: PackageInfo = getPackageInfoCompat(flags = 0L)
             val logData = JSONObject().apply {
-                put("versionCode", packageInfo.longVersionCode)
+                put("versionCode", PackageInfoCompat.getLongVersionCode(packageInfo))
                 put("versionName", packageInfo.versionName ?: "unknown")
                 put("packageName", packageName)
                 put("applicationId", BuildConfig.APPLICATION_ID)
@@ -103,18 +99,20 @@ class WifiGuardApp : Application(), Configuration.Provider {
         // #region agent log
         // Логирование информации о подписи APK (гипотеза B: несоответствие подписи)
         try {
-            val signatures = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                val packageInfo: PackageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNATURES.toLong()))
-                } else {
-                    @Suppress("DEPRECATION")
-                    packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
-                }
-                packageInfo.signatures?.map { it.toByteArray().contentHashCode().toString() } ?: emptyList()
+            val signatureHashes = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                // API 28+: используем SigningInfo вместо deprecated signatures/GET_SIGNATURES
+                @Suppress("NewApi")
+                val packageInfo = getPackageInfoCompat(flags = PackageManager.GET_SIGNING_CERTIFICATES.toLong())
+                @Suppress("NewApi")
+                val signers = packageInfo.signingInfo?.apkContentsSigners ?: emptyArray()
+                signers.map { it.toByteArray().contentHashCode().toString() }
             } else {
+                // API < 28: альтернативы нет, используем legacy signatures.
                 @Suppress("DEPRECATION")
-                val packageInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
-                packageInfo.signatures?.map { it.toByteArray().contentHashCode().toString() } ?: emptyList()
+                val packageInfo = getPackageInfoCompat(flags = PackageManager.GET_SIGNATURES.toLong())
+                @Suppress("DEPRECATION")
+                val signers = packageInfo.signatures ?: emptyArray()
+                signers.map { it.toByteArray().contentHashCode().toString() }
             }
             DeviceDebugLogger.log(
                 context = this,
@@ -123,8 +121,8 @@ class WifiGuardApp : Application(), Configuration.Provider {
                 location = "WifiGuardApp.kt:onCreate",
                 message = "Информация о подписи APK (гипотеза B: несоответствие подписи)",
                 data = JSONObject().apply {
-                    put("signatureHashes", signatures.joinToString(","))
-                    put("signatureCount", signatures.size)
+                    put("signatureHashes", signatureHashes.joinToString(","))
+                    put("signatureCount", signatureHashes.size)
                 }
             )
         } catch (e: Exception) {
@@ -158,7 +156,7 @@ class WifiGuardApp : Application(), Configuration.Provider {
                 hypothesisId = "CRASH",
                 location = "WifiGuardApp.kt:installCrashLogger",
                 message = "Необработанное исключение (краш)",
-                data = org.json.JSONObject().apply {
+                data = JSONObject().apply {
                     put("thread", t.name ?: "unknown")
                     put("errorType", e.javaClass.simpleName)
                     put("error", e.message ?: "unknown")
@@ -166,6 +164,15 @@ class WifiGuardApp : Application(), Configuration.Provider {
                 }
             )
             defaultHandler?.uncaughtException(t, e)
+        }
+    }
+
+    private fun getPackageInfoCompat(flags: Long): PackageInfo {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(flags))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, flags.toInt())
         }
     }
 

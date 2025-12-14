@@ -5,6 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Refresh
@@ -13,8 +15,10 @@ import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -24,11 +28,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.wifiguard.core.common.BssidValidator
 import com.wifiguard.core.common.PermissionHandler
 import com.wifiguard.core.common.Result
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.ui.components.NetworkCard
+import com.wifiguard.core.ui.components.NetworkCardDetails
+import com.wifiguard.core.ui.components.NetworkDetailsModal
 import com.wifiguard.core.ui.components.PermissionRationaleDialog
+import com.wifiguard.core.ui.components.SignalAnalyticsUi
 import com.wifiguard.core.ui.components.StatusIndicator
 
 /**
@@ -41,14 +50,31 @@ fun ScannerScreen(
     onNavigateToSettings: () -> Unit,
     viewModel: ScannerViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val permissionState by viewModel.permissionState.collectAsState()
-    val scanResult by viewModel.scanResult.collectAsState()
-    val currentNetwork by viewModel.currentNetwork.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val permissionState by viewModel.permissionState.collectAsStateWithLifecycle()
+    val scanResult by viewModel.scanResult.collectAsStateWithLifecycle()
+    val filteredScanResult by viewModel.filteredScanResult.collectAsStateWithLifecycle()
+    val currentNetwork by viewModel.currentNetwork.collectAsStateWithLifecycle()
+    val detailsViewModel: NetworkDetailsViewModel = hiltViewModel()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var flippedBssid by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val detailsUiState by detailsViewModel.uiState.collectAsStateWithLifecycle()
+    val detailsDbNetwork by detailsViewModel.currentNetwork.collectAsStateWithLifecycle()
+    val detailsHistory by detailsViewModel.networkStatistics.collectAsStateWithLifecycle()
+    val detailsSignalAnalytics by detailsViewModel.signalAnalytics.collectAsStateWithLifecycle()
+    val detailsBssid by detailsViewModel.loadedBssid.collectAsStateWithLifecycle()
+
+    LaunchedEffect(flippedBssid) {
+        val bssid = flippedBssid ?: return@LaunchedEffect
+        // Валидация BSSID перед загрузкой деталей для предотвращения потенциальных проблем
+        if (BssidValidator.isValidForStorage(bssid)) {
+            detailsViewModel.loadNetworkDetails(bssid)
+        }
+    }
     
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -98,8 +124,38 @@ fun ScannerScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     
-    Scaffold(
-        topBar = {
+    // Вычисляем выбранную сеть для модального окна с защитой от race condition
+    val selectedNetwork by remember {
+        derivedStateOf {
+            val bssid = flippedBssid
+            if (bssid == null) {
+                null
+            } else {
+                // Сначала проверяем подключенную сеть
+                val connectedNet = currentNetwork
+                if (connectedNet?.bssid == bssid) {
+                    connectedNet
+                } else {
+                    // Затем ищем в результатах сканирования с null-safe проверкой
+                    when (val result = scanResult) {
+                        is Result.Success -> result.data.find { it.bssid == bssid }
+                        else -> null
+                    }
+                }
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.then(
+                if (selectedNetwork != null) {
+                    Modifier.blur(radius = 16.dp)
+                } else {
+                    Modifier
+                }
+            ),
+            topBar = {
             TopAppBar(
                 title = { 
                     Text("Wi-Fi Сканер")
@@ -282,31 +338,34 @@ fun ScannerScreen(
             // Основной контент
             val currentScanResult = scanResult
             
-            // #region agent log
-            LaunchedEffect(currentScanResult, uiState.isWifiEnabled) {
-                try {
-                    val logJson = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "D")
-                        put("location", "ScannerScreen.kt:render")
-                        put("message", "Состояние UI для отображения")
-                        put("data", org.json.JSONObject().apply {
-                            put("isWifiEnabled", uiState.isWifiEnabled)
-                            put("scanResultType", when (currentScanResult) {
-                                is Result.Loading -> "Loading"
-                                is Result.Success -> "Success"
-                                is Result.Error -> "Error"
-                            })
-                            put("networksCount", if (currentScanResult is Result.Success) currentScanResult.data.size else 0)
-                            put("uiStateNetworksCount", uiState.networks.size)
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
+            // Подготовка данных для модального окна (вынесено выше для доступности)
+            val detailsAnalyticsUi = remember(detailsSignalAnalytics) {
+                detailsSignalAnalytics?.let {
+                    SignalAnalyticsUi(
+                        averageSignal = it.averageSignal,
+                        minSignal = it.minSignal,
+                        maxSignal = it.maxSignal,
+                        scansCount = it.scansCount,
+                        lastScanTime = it.lastScanTime,
+                        signalVariation = it.signalVariation
+                    )
+                }
             }
-            // #endregion
+
+            val activeDetails = remember(
+                detailsUiState,
+                detailsDbNetwork,
+                detailsHistory,
+                detailsAnalyticsUi
+            ) {
+                NetworkCardDetails(
+                    dbNetwork = detailsDbNetwork,
+                    scanHistory = detailsHistory.take(50),
+                    signalAnalytics = detailsAnalyticsUi,
+                    isLoading = detailsUiState.isLoading,
+                    errorMessage = detailsUiState.errorMessage
+                )
+            }
             
             // Если WiFi выключен, показываем EmptyContent с сообщением об отключении
             if (!uiState.isWifiEnabled) {
@@ -320,20 +379,24 @@ fun ScannerScreen(
                         }
                     }
                 )
-            } else if (viewModel.hasWifiPermissions() && !uiState.isLocationEnabled) {
+            } else if (viewModel.hasWifiPermissions() && 
+                       !uiState.isLocationEnabled && 
+                       viewModel.permissionHandler.isLocationRequiredForWifiScan()) {
                 // Отдельный сценарий: геолокация выключена, сканирование/scanResults могут быть недоступны.
+                // На Android 13+ с NEARBY_WIFI_DEVICES это не требуется
                 LocationDisabledContent(
                     onOpenLocationSettings = {
                         viewModel.permissionHandler.openLocationSettings()
                     }
                 )
             } else {
-                when (currentScanResult) {
+                // Используем отфильтрованные результаты из ViewModel для оптимизации
+                when (val result = filteredScanResult) {
                     is Result.Loading -> {
                         ScanningContent()
                     }
                     is Result.Success -> {
-                        if (currentScanResult.data.isEmpty()) {
+                        if (result.data.isEmpty()) {
                             EmptyContent(
                                 isWifiEnabled = uiState.isWifiEnabled,
                                 onStartScan = { 
@@ -345,30 +408,43 @@ fun ScannerScreen(
                                 }
                             )
                         } else {
-                            // Фильтруем результаты сканирования, исключая текущую подключенную сеть если она есть
-                            val filteredNetworks by remember(currentScanResult, currentNetwork) {
-                                derivedStateOf {
-                                    val currentData = currentScanResult.data
-                                    if (currentNetwork != null) {
-                                        currentData.filter { it.bssid != currentNetwork?.bssid }
-                                    } else {
-                                        currentData
+                            NetworksList(
+                                networks = result.data,
+                                onNetworkClick = { network ->
+                                    flippedBssid = network.bssid
+                                },
+                                currentConnectedBssid = currentNetwork?.bssid,
+                                isRefreshing = uiState.isScanning,
+                                onRefresh = {
+                                    // #region agent log
+                                    android.util.Log.d("PullToRefresh", "onRefresh вызван, isScanning=${uiState.isScanning}")
+                                    try {
+                                        val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
+                                        val logEntry = org.json.JSONObject().apply {
+                                            put("sessionId", "debug-session")
+                                            put("runId", "run1")
+                                            put("hypothesisId", "A")
+                                            put("location", "ScannerScreen.kt:onRefresh")
+                                            put("message", "onRefresh вызван")
+                                            put("timestamp", System.currentTimeMillis())
+                                            put("data", org.json.JSONObject().apply {
+                                                put("isScanning", uiState.isScanning)
+                                                put("hasPermissions", viewModel.hasWifiPermissions())
+                                            })
+                                        }
+                                        logFile.appendText(logEntry.toString() + "\n")
+                                    } catch (e: Exception) { /* ignore */ }
+                                    // #endregion
+                                    if (viewModel.hasWifiPermissions()) {
+                                        viewModel.startScan()
                                     }
                                 }
-                            }
-
-                            NetworksList(
-                                networks = filteredNetworks,
-                                onNetworkClick = { network ->
-                                    // TODO: Navigate to network details
-                                },
-                                currentConnectedBssid = currentNetwork?.bssid
                             )
                         }
                     }
                     is Result.Error -> {
                         ErrorContent(
-                            error = currentScanResult.message ?: currentScanResult.exception.message ?: "Неизвестная ошибка",
+                            error = result.message ?: result.exception.message ?: "Неизвестная ошибка",
                             onRetry = { 
                                 if (viewModel.hasWifiPermissions()) {
                                     viewModel.retry()
@@ -380,6 +456,43 @@ fun ScannerScreen(
                     }
                 }
             }
+        }
+        }
+        
+        if (selectedNetwork != null) {
+            val detailsAnalyticsUi = remember(detailsSignalAnalytics) {
+                detailsSignalAnalytics?.let {
+                    SignalAnalyticsUi(
+                        averageSignal = it.averageSignal,
+                        minSignal = it.minSignal,
+                        maxSignal = it.maxSignal,
+                        scansCount = it.scansCount,
+                        lastScanTime = it.lastScanTime,
+                        signalVariation = it.signalVariation
+                    )
+                }
+            }
+
+            val modalDetails = remember(
+                detailsUiState,
+                detailsDbNetwork,
+                detailsHistory,
+                detailsAnalyticsUi
+            ) {
+                NetworkCardDetails(
+                    dbNetwork = detailsDbNetwork,
+                    scanHistory = detailsHistory.take(50),
+                    signalAnalytics = detailsAnalyticsUi,
+                    isLoading = detailsUiState.isLoading,
+                    errorMessage = detailsUiState.errorMessage
+                )
+            }
+            
+            NetworkDetailsModal(
+                network = selectedNetwork,
+                details = modalDetails,
+                onDismiss = { flippedBssid = null }
+            )
         }
     }
 }
@@ -445,6 +558,8 @@ private fun EmptyContent(
     isWifiEnabled: Boolean,
     onStartScan: () -> Unit
 ) {
+    val context = LocalContext.current
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -453,6 +568,15 @@ private fun EmptyContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp)
         ) {
+            Icon(
+                imageVector = if (isWifiEnabled) Icons.Default.WifiOff else Icons.Default.WifiOff,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
             Text(
                 text = if (isWifiEnabled) {
                     "Сети не найдены"
@@ -463,10 +587,33 @@ private fun EmptyContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
+            
+            if (!isWifiEnabled) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Включите Wi-Fi для сканирования сетей",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+            
             Spacer(modifier = Modifier.height(24.dp))
+            
             if (isWifiEnabled) {
                 Button(onClick = onStartScan) {
                     Text("Сканировать")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        // Открываем настройки WiFi
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
+                        intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Включить Wi-Fi")
                 }
             }
         }
@@ -510,22 +657,51 @@ private fun LocationDisabledContent(
 private fun NetworksList(
     networks: List<com.wifiguard.core.domain.model.WifiScanResult>,
     onNetworkClick: (com.wifiguard.core.domain.model.WifiScanResult) -> Unit,
-    currentConnectedBssid: String? = null
+    currentConnectedBssid: String? = null,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {}
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    // #region agent log
+    val context = LocalContext.current
+    LaunchedEffect(isRefreshing) {
+        try {
+            val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
+            val logEntry = org.json.JSONObject().apply {
+                put("sessionId", "debug-session")
+                put("runId", "run1")
+                put("hypothesisId", "B")
+                put("location", "ScannerScreen.kt:NetworksList")
+                put("message", "isRefreshing изменилось")
+                put("timestamp", System.currentTimeMillis())
+                put("data", org.json.JSONObject().apply {
+                    put("isRefreshing", isRefreshing)
+                })
+            }
+            logFile.appendText(logEntry.toString() + "\n")
+        } catch (e: Exception) { /* ignore */ }
+    }
+    // #endregion
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
     ) {
-        items(
-            items = networks,
-            key = { it.bssid }
-        ) { network ->
-            NetworkCard(
-                network = network,
-                onClick = { onNetworkClick(network) },
-                isCurrentNetwork = network.bssid == currentConnectedBssid
-            )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            itemsIndexed(
+                items = networks,
+                key = { index, network -> "${network.bssid}_${network.timestamp}_$index" },
+                contentType = { _, network -> network.isConnected }
+            ) { index, network ->
+                NetworkCard(
+                    network = network,
+                    onClick = { onNetworkClick(network) },
+                    isCurrentNetwork = network.bssid == currentConnectedBssid
+                )
+            }
         }
     }
 }

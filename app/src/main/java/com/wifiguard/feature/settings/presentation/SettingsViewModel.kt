@@ -18,10 +18,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.util.Log
 import com.wifiguard.core.common.Constants
+import com.wifiguard.core.background.WorkManagerSafe
+import com.wifiguard.core.common.loge
+import com.wifiguard.core.common.logw
+import com.wifiguard.feature.settings.domain.model.ThemeMode
 import javax.inject.Inject
 
 /**
@@ -52,92 +58,77 @@ class SettingsViewModel @Inject constructor(
     private val _clearDataResult = MutableStateFlow<ClearDataResult?>(null)
     val clearDataResult: StateFlow<ClearDataResult?> = _clearDataResult.asStateFlow()
 
+    private val _dataRetentionDialogVisible = MutableStateFlow(false)
+    val dataRetentionDialogVisible: StateFlow<Boolean> = _dataRetentionDialogVisible.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     init {
         loadSettings()
     }
 
+    /**
+     * ИСПРАВЛЕНО: Загрузка настроек через вложенные combine() для устранения race conditions
+     * Все Flow объединены в один поток, что гарантирует атомарное обновление состояния
+     * Используются вложенные combine(), так как combine() поддерживает максимум 5 параметров
+     */
     private fun loadSettings() {
         viewModelScope.launch {
             try {
-                settingsRepository.getAutoScanEnabled().collect { autoScan ->
-                    _uiState.value = _uiState.value.copy(autoScanEnabled = autoScan)
+                // ИСПРАВЛЕНО: Используем вложенные combine() для 7 Flow
+                // Сначала объединяем первые 5 Flow в промежуточный Flow
+                val firstFiveFlow = combine(
+                    settingsRepository.getAutoScanEnabled(),
+                    settingsRepository.getNotificationsEnabled(),
+                    settingsRepository.getNotificationSoundEnabled(),
+                    settingsRepository.getNotificationVibrationEnabled(),
+                    settingsRepository.getScanIntervalMinutes()
+                ) { autoScan, notifications, sound, vibration, interval ->
+                    // Возвращаем data class для типобезопасности
+                    SettingsPartialState(
+                        autoScanEnabled = autoScan,
+                        notificationsEnabled = notifications,
+                        notificationSoundEnabled = sound,
+                        notificationVibrationEnabled = vibration,
+                        scanIntervalMinutes = interval
+                    )
                 }
+                
+                // Затем объединяем результат с оставшимися 2 Flow
+                combine(
+                    firstFiveFlow,
+                    settingsRepository.getThemeMode(),
+                    settingsRepository.getDataRetentionDays()
+                ) { partialState, theme, retention ->
+                    SettingsUiState(
+                        autoScanEnabled = partialState.autoScanEnabled,
+                        notificationsEnabled = partialState.notificationsEnabled,
+                        notificationSoundEnabled = partialState.notificationSoundEnabled,
+                        notificationVibrationEnabled = partialState.notificationVibrationEnabled,
+                        scanIntervalMinutes = partialState.scanIntervalMinutes,
+                        themeMode = theme,
+                        dataRetentionDays = retention
+                    )
+                }
+                    .catch { exception ->
+                        if (exception is CancellationException) throw exception
+                        loge("Ошибка при загрузке настроек: ${exception.message}", exception)
+                        _errorMessage.value = "Не удалось загрузить настройки"
+                        // Используем значения по умолчанию при ошибке
+                        emit(SettingsUiState())
+                    }
+                    .collect { newState ->
+                        _uiState.value = newState
+                    }
             } catch (e: CancellationException) {
                 // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при загрузке настройки autoScanEnabled: ${e.message}", e)
-                // Используем значения по умолчанию при ошибке
-            }
-        }
-
-        viewModelScope.launch {
-            try {
-                settingsRepository.getNotificationsEnabled().collect { notifications ->
-                    _uiState.value = _uiState.value.copy(notificationsEnabled = notifications)
-                }
-            } catch (e: CancellationException) {
-                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при загрузке настройки notificationsEnabled: ${e.message}", e)
-                // Используем значения по умолчанию при ошибке
-            }
-        }
-
-        viewModelScope.launch {
-            try {
-                settingsRepository.getNotificationSoundEnabled().collect { sound ->
-                    _uiState.value = _uiState.value.copy(notificationSoundEnabled = sound)
-                }
-            } catch (e: CancellationException) {
-                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при загрузке настройки notificationSoundEnabled: ${e.message}", e)
-                // Используем значения по умолчанию при ошибке
-            }
-        }
-
-        viewModelScope.launch {
-            try {
-                settingsRepository.getNotificationVibrationEnabled().collect { vibration ->
-                    _uiState.value = _uiState.value.copy(notificationVibrationEnabled = vibration)
-                }
-            } catch (e: CancellationException) {
-                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при загрузке настройки notificationVibrationEnabled: ${e.message}", e)
-                // Используем значения по умолчанию при ошибке
-            }
-        }
-
-        viewModelScope.launch {
-            try {
-                settingsRepository.getScanIntervalMinutes().collect { interval ->
-                    _uiState.value = _uiState.value.copy(scanIntervalMinutes = interval)
-                }
-            } catch (e: CancellationException) {
-                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при загрузке настройки scanIntervalMinutes: ${e.message}", e)
-                // Используем значения по умолчанию при ошибке
-            }
-        }
-        
-        viewModelScope.launch {
-            try {
-                settingsRepository.getThemeMode().collect { mode ->
-                    _uiState.value = _uiState.value.copy(themeMode = mode)
-                }
-            } catch (e: CancellationException) {
-                // Пробрасываем CancellationException - это нормальное поведение при очистке ViewModel
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при загрузке настройки themeMode: ${e.message}", e)
-                // Используем значения по умолчанию при ошибке
+                loge("Критическая ошибка при загрузке настроек: ${e.message}", e)
+                _errorMessage.value = "Критическая ошибка при загрузке настроек"
+                // Используем значения по умолчанию при критической ошибке
+                _uiState.value = SettingsUiState()
             }
         }
     }
@@ -151,24 +142,37 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setScanInterval(minutes: Int) {
-        _uiState.value = _uiState.value.copy(scanIntervalMinutes = minutes)
+        // Валидация: WorkManager требует минимум 15 минут для периодических задач
+        val validMinutes = maxOf(Constants.MIN_SCAN_INTERVAL_MINUTES, 
+            minOf(minutes, Constants.MAX_SCAN_INTERVAL_MINUTES))
+        
+        if (validMinutes != minutes) {
+            logw("Интервал сканирования скорректирован: $minutes -> $validMinutes минут")
+        }
+        
+        val oldInterval = _uiState.value.scanIntervalMinutes
+        _uiState.value = _uiState.value.copy(scanIntervalMinutes = validMinutes)
         viewModelScope.launch {
             try {
-                settingsRepository.setScanIntervalMinutes(minutes)
+                settingsRepository.setScanIntervalMinutes(validMinutes)
                 // Trigger rescheduling of the background work
                 rescheduleBackgroundWork()
             } catch (e: Exception) {
-                // Обработка ошибки
+                loge("Ошибка при сохранении интервала сканирования: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить интервал сканирования"
+                // Откатываем изменение при ошибке
+                _uiState.value = _uiState.value.copy(scanIntervalMinutes = oldInterval)
             }
         }
     }
 
+    /**
+     * ИСПРАВЛЕНО: Безопасная перенастройка фоновой работы
+     * Добавлена проверка на null для WorkManager (может быть null на некоторых устройствах)
+     */
     private suspend fun rescheduleBackgroundWork() {
-        // We'll call into a use case or directly into a service that handles work scheduling
-        // This will be implemented to cancel the existing work and schedule new work with the new interval
-        // For now, we'll schedule the work using WorkManager
         try {
-            val workManager = WorkManager.getInstance(context)
+            val workManager = WorkManagerSafe.getInstanceOrNull(context) ?: return
 
             // Cancel existing periodic work
             workManager.cancelUniqueWork(Constants.WORK_NAME_WIFI_MONITORING).await()
@@ -185,7 +189,8 @@ class SettingsViewModel @Inject constructor(
                 newPeriodicWork
             )
         } catch (e: Exception) {
-            // Handle error
+            loge("Ошибка при перенастройке фоновой работы: ${e.message}", e)
+            throw e
         }
     }
 
@@ -195,7 +200,10 @@ class SettingsViewModel @Inject constructor(
             try {
                 settingsRepository.setAutoScanEnabled(enabled)
             } catch (e: Exception) {
-                // Обработка ошибки
+                loge("Ошибка при сохранении настройки автоматического сканирования: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить настройку"
+                // Откатываем изменение при ошибке
+                _uiState.value = _uiState.value.copy(autoScanEnabled = !enabled)
             }
         }
     }
@@ -206,7 +214,10 @@ class SettingsViewModel @Inject constructor(
             try {
                 settingsRepository.setNotificationsEnabled(enabled)
             } catch (e: Exception) {
-                // Обработка ошибки
+                loge("Ошибка при сохранении настройки уведомлений: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить настройку уведомлений"
+                // Откатываем изменение при ошибке
+                _uiState.value = _uiState.value.copy(notificationsEnabled = !enabled)
             }
         }
     }
@@ -217,7 +228,10 @@ class SettingsViewModel @Inject constructor(
             try {
                 settingsRepository.setNotificationSoundEnabled(enabled)
             } catch (e: Exception) {
-                // Обработка ошибки
+                loge("Ошибка при сохранении настройки звука уведомлений: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить настройку звука"
+                // Откатываем изменение при ошибке
+                _uiState.value = _uiState.value.copy(notificationSoundEnabled = !enabled)
             }
         }
     }
@@ -228,18 +242,80 @@ class SettingsViewModel @Inject constructor(
             try {
                 settingsRepository.setNotificationVibrationEnabled(enabled)
             } catch (e: Exception) {
-                // Обработка ошибки
+                loge("Ошибка при сохранении настройки вибрации: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить настройку вибрации"
+                // Откатываем изменение при ошибке
+                _uiState.value = _uiState.value.copy(notificationVibrationEnabled = !enabled)
             }
         }
     }
 
     fun setThemeMode(mode: String) {
+        // Валидация: проверяем, что режим темы валиден
+        if (!ThemeMode.isValid(mode)) {
+            logw("Недопустимый режим темы: $mode, используется системная тема")
+            val validMode = ThemeMode.System.value
+            _uiState.value = _uiState.value.copy(themeMode = validMode)
+            viewModelScope.launch {
+                try {
+                    settingsRepository.setThemeMode(validMode)
+                } catch (e: Exception) {
+                    loge("Ошибка при сохранении режима темы: ${e.message}", e)
+                    _errorMessage.value = "Не удалось сохранить режим темы"
+                }
+            }
+            return
+        }
+        
+        val oldTheme = _uiState.value.themeMode
         _uiState.value = _uiState.value.copy(themeMode = mode)
         viewModelScope.launch {
             try {
                 settingsRepository.setThemeMode(mode)
             } catch (e: Exception) {
-                // Handle error
+                loge("Ошибка при сохранении режима темы: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить режим темы"
+                // Откатываем изменение при ошибке
+                _uiState.value = _uiState.value.copy(themeMode = oldTheme)
+            }
+        }
+    }
+
+    fun showDataRetentionDialog() {
+        _dataRetentionDialogVisible.value = true
+    }
+
+    fun hideDataRetentionDialog() {
+        _dataRetentionDialogVisible.value = false
+    }
+
+    fun setDataRetentionDays(days: Int) {
+        // Валидация: проверяем, что значение входит в список допустимых
+        if (days !in Constants.VALID_DATA_RETENTION_DAYS) {
+            logw("Недопустимое значение периода хранения данных: $days, используется значение по умолчанию")
+            val validDays = Constants.DEFAULT_DATA_RETENTION_DAYS
+            _uiState.value = _uiState.value.copy(dataRetentionDays = validDays)
+            viewModelScope.launch {
+                try {
+                    settingsRepository.setDataRetentionDays(validDays)
+                } catch (e: Exception) {
+                    loge("Ошибка при сохранении периода хранения данных: ${e.message}", e)
+                    _errorMessage.value = "Не удалось сохранить период хранения данных"
+                }
+            }
+            return
+        }
+        
+        val oldDays = _uiState.value.dataRetentionDays
+        _uiState.value = _uiState.value.copy(dataRetentionDays = days)
+        viewModelScope.launch {
+            try {
+                settingsRepository.setDataRetentionDays(days)
+            } catch (e: Exception) {
+                loge("Ошибка при сохранении периода хранения данных: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить период хранения данных"
+                // Откатываем изменение при ошибке
+                _uiState.value = _uiState.value.copy(dataRetentionDays = oldDays)
             }
         }
     }
@@ -288,6 +364,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Сбросить сообщение об ошибке
+     */
+    fun clearErrorMessage() {
+        _errorMessage.value = null
+    }
+
+    /**
      * Очистить все данные из базы данных
      * Выполняется в корутине с Dispatchers.IO для операций БД
      */
@@ -326,6 +409,17 @@ class SettingsViewModel @Inject constructor(
 }
 
 /**
+ * Промежуточное состояние для объединения первых 5 Flow
+ */
+private data class SettingsPartialState(
+    val autoScanEnabled: Boolean,
+    val notificationsEnabled: Boolean,
+    val notificationSoundEnabled: Boolean,
+    val notificationVibrationEnabled: Boolean,
+    val scanIntervalMinutes: Int
+)
+
+/**
  * Состояние UI экрана настроек
  */
 data class SettingsUiState(
@@ -334,7 +428,8 @@ data class SettingsUiState(
     val notificationSoundEnabled: Boolean = true,
     val notificationVibrationEnabled: Boolean = true,
     val scanIntervalMinutes: Int = 15,
-    val themeMode: String = "system"
+    val themeMode: String = "system",
+    val dataRetentionDays: Int = 30
 )
 
 /**

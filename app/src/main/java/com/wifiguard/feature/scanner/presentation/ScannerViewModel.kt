@@ -31,7 +31,12 @@ class ScannerViewModel @Inject constructor(
         private const val KEY_SCAN_RESULT = "scan_result"
         private const val KEY_UI_STATE = "ui_state"
         private const val KEY_LAST_SCAN_TIME = "last_scan_time"
+        private const val SCAN_DEBOUNCE_MS = 2500L // 2.5 секунды debounce для предотвращения rapid scans
+        private const val MAX_NETWORKS_TO_SAVE = 30 // Лимит для SavedStateHandle (~1MB) - предотвращение TransactionTooLargeException
     }
+    
+    // Отслеживание последнего времени запуска сканирования для debounce
+    private var lastScanRequestTime = 0L
     
     private val _permissionState = MutableStateFlow(
         stringToPermissionState(savedStateHandle.get<String>(KEY_PERMISSION_STATE) ?: permissionStateToString(PermissionState.NotChecked))
@@ -68,24 +73,32 @@ class ScannerViewModel @Inject constructor(
     val scanResult: StateFlow<Result<List<WifiScanResult>>> = _scanResult
     val uiState: StateFlow<ScannerUiState> = _uiState.asStateFlow()
     
-    init {
-        // #region agent log
-        try {
-            val logJson = org.json.JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", "E")
-                put("location", "ScannerViewModel.kt:init:entry")
-                put("message", "Инициализация ScannerViewModel")
-                put("data", org.json.JSONObject().apply {
-                    put("hasPermissions", permissionHandler.hasWifiScanPermissions())
-                })
-                put("timestamp", System.currentTimeMillis())
+    /**
+     * Отфильтрованные результаты сканирования (без текущей подключенной сети)
+     * Фильтрация выполняется на уровне ViewModel для оптимизации производительности UI
+     */
+    val filteredScanResult: StateFlow<Result<List<WifiScanResult>>> = combine(
+        _scanResult,
+        _currentNetwork
+    ) { result, connectedNetwork ->
+        when (result) {
+            is Result.Success -> {
+                val filtered = if (connectedNetwork != null) {
+                    result.data.filter { it.bssid != connectedNetwork.bssid }
+                } else {
+                    result.data
+                }
+                Result.Success(filtered)
             }
-            java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-        } catch (e: Exception) {}
-        // #endregion
-        
+            else -> result
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = Result.Loading
+    )
+    
+    init {
         // Начинаем слушать изменения в SavedStateHandle для синхронизации с MutableStateFlow
         viewModelScope.launch {
             savedStateHandle.getStateFlow<String>(
@@ -122,36 +135,7 @@ class ScannerViewModel @Inject constructor(
 
         // Автоматически запускаем сканирование только если есть разрешения
         if (permissionHandler.hasWifiScanPermissions()) {
-            // #region agent log
-            try {
-                val logJson = org.json.JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "E")
-                    put("location", "ScannerViewModel.kt:init:beforeStartScan")
-                    put("message", "Запуск startScan() из init")
-                    put("data", org.json.JSONObject())
-                    put("timestamp", System.currentTimeMillis())
-                }
-                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
             startScan()
-        } else {
-            // #region agent log
-            try {
-                val logJson = org.json.JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "E")
-                    put("location", "ScannerViewModel.kt:init:noPermissions")
-                    put("message", "Нет разрешений, startScan() не вызывается")
-                    put("data", org.json.JSONObject())
-                    put("timestamp", System.currentTimeMillis())
-                }
-                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
         }
     }
     
@@ -190,38 +174,15 @@ class ScannerViewModel @Inject constructor(
     }
     
     fun startScan() {
-        // #region agent log
-        try {
-            val logJson = org.json.JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", "A")
-                put("location", "ScannerViewModel.kt:startScan:entry")
-                put("message", "Старт startScan() в ViewModel")
-                put("data", org.json.JSONObject().apply {
-                    put("hasPermissions", permissionHandler.hasWifiScanPermissions())
-                })
-                put("timestamp", System.currentTimeMillis())
-            }
-            java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-        } catch (e: Exception) {}
-        // #endregion
+        // Debounce: предотвращаем множественные быстрые вызовы сканирования
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastScanRequestTime < SCAN_DEBOUNCE_MS) {
+            Logger.d("Сканирование пропущено из-за debounce (${currentTime - lastScanRequestTime}ms < ${SCAN_DEBOUNCE_MS}ms)")
+            return
+        }
+        lastScanRequestTime = currentTime
         
         if (!permissionHandler.hasWifiScanPermissions()) {
-            // #region agent log
-            try {
-                val logJson = org.json.JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "C")
-                    put("location", "ScannerViewModel.kt:startScan:noPermissions")
-                    put("message", "Нет разрешений, возврат из startScan()")
-                    put("data", org.json.JSONObject())
-                    put("timestamp", System.currentTimeMillis())
-                }
-                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
             updatePermissionState(PermissionState.NotGranted)
             _uiState.value = _uiState.value.copy(error = "Нет разрешения на сканирование Wi-Fi")
             savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(_uiState.value)
@@ -236,8 +197,9 @@ class ScannerViewModel @Inject constructor(
 
         // На части устройств сканирование/scanResults недоступны при выключенной геолокации.
         // Явно блокируем попытку сканирования, чтобы UI показывал правильную причину.
+        // На Android 13+ с NEARBY_WIFI_DEVICES location не требуется
         refreshLocationState()
-        if (!_uiState.value.isLocationEnabled) {
+        if (!_uiState.value.isLocationEnabled && permissionHandler.isLocationRequiredForWifiScan()) {
             val message = "Включите геолокацию для поиска Wi‑Fi сетей"
             _uiState.value = _uiState.value.copy(
                 isScanning = false,
@@ -254,70 +216,62 @@ class ScannerViewModel @Inject constructor(
         }
         
         viewModelScope.launch {
+            // #region agent log
+            try {
+                val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
+                val logEntry = org.json.JSONObject().apply {
+                    put("sessionId", "debug-session")
+                    put("runId", "run1")
+                    put("hypothesisId", "C")
+                    put("location", "ScannerViewModel.kt:startScan")
+                    put("message", "Начало сканирования - isScanning=true")
+                    put("timestamp", System.currentTimeMillis())
+                    put("data", org.json.JSONObject())
+                }
+                logFile.appendText(logEntry.toString() + "\n")
+            } catch (e: Exception) { /* ignore */ }
+            // #endregion
             _uiState.value = _uiState.value.copy(isScanning = true)
             savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(_uiState.value)
             savedStateHandle[KEY_SCAN_RESULT] = Json.encodeToString(SerializableResultWrapper("Loading"))
             
-            // #region agent log
-            try {
-                val logJson = org.json.JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "A")
-                    put("location", "ScannerViewModel.kt:startScan:beforeWifiScanner")
-                    put("message", "Перед вызовом wifiScanner.startScan()")
-                    put("data", org.json.JSONObject())
-                    put("timestamp", System.currentTimeMillis())
-                }
-                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
-            
             try {
                 val result = wifiScanner.startScan()
                 
-                // #region agent log
-                try {
-                    val logJson = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "A")
-                        put("location", "ScannerViewModel.kt:startScan:afterWifiScanner")
-                        put("message", "После вызова wifiScanner.startScan()")
-                        put("data", org.json.JSONObject().apply {
-                            put("isSuccess", result.isSuccess)
-                            put("networksCount", result.getOrNull()?.size ?: 0)
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
-                // #endregion
-                
                 val newResult = if (result.isSuccess) {
-                    val networks = result.getOrNull() ?: emptyList()
+                    val rawNetworks = result.getOrNull() ?: emptyList()
                     
-                    // #region agent log
-                    try {
-                        val logJson = org.json.JSONObject().apply {
-                            put("sessionId", "debug-session")
-                            put("runId", "run1")
-                            put("hypothesisId", "B")
-                            put("location", "ScannerViewModel.kt:startScan:success")
-                            put("message", "Успешное получение результатов сканирования")
-                            put("data", org.json.JSONObject().apply {
-                                put("networksCount", networks.size)
-                            })
-                            put("timestamp", System.currentTimeMillis())
+                    // Дедупликация: для каждого BSSID оставляем только самую свежую запись
+                    val networks = rawNetworks
+                        .groupBy { it.bssid }
+                        .mapValues { (_, networksForBssid) ->
+                            networksForBssid.maxByOrNull { it.timestamp } ?: networksForBssid.first()
                         }
-                        java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                    } catch (e: Exception) {}
-                    // #endregion
+                        .values
+                        .toList()
+                        .sortedByDescending { it.level } // Сортируем по силе сигнала
                     
                     // Получаем метаданные сканирования для fail-safe прозрачности
                     val scanMetadata = wifiScanner.getLastScanMetadata()
                     
                     // Обновляем состояние UI с сетями и метаданными
+                    // #region agent log
+                    try {
+                        val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
+                        val logEntry = org.json.JSONObject().apply {
+                            put("sessionId", "debug-session")
+                            put("runId", "run1")
+                            put("hypothesisId", "C")
+                            put("location", "ScannerViewModel.kt:startScan")
+                            put("message", "Сканирование завершено успешно - isScanning=false")
+                            put("timestamp", System.currentTimeMillis())
+                            put("data", org.json.JSONObject().apply {
+                                put("networksCount", networks.size)
+                            })
+                        }
+                        logFile.appendText(logEntry.toString() + "\n")
+                    } catch (e: Exception) { /* ignore */ }
+                    // #endregion
                     _uiState.value = _uiState.value.copy(
                         isScanning = false,
                         networks = networks,
@@ -330,24 +284,6 @@ class ScannerViewModel @Inject constructor(
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Ошибка сканирования"
                     
-                    // #region agent log
-                    try {
-                        val logJson = org.json.JSONObject().apply {
-                            put("sessionId", "debug-session")
-                            put("runId", "run1")
-                            put("hypothesisId", "D")
-                            put("location", "ScannerViewModel.kt:startScan:error")
-                            put("message", "Ошибка сканирования")
-                            put("data", org.json.JSONObject().apply {
-                                put("errorMessage", errorMessage)
-                                put("exceptionType", result.exceptionOrNull()?.javaClass?.simpleName ?: "unknown")
-                            })
-                            put("timestamp", System.currentTimeMillis())
-                        }
-                        java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                    } catch (e: Exception) {}
-                    // #endregion
-                    
                     _uiState.value = _uiState.value.copy(
                         isScanning = false,
                         error = errorMessage
@@ -358,42 +294,14 @@ class ScannerViewModel @Inject constructor(
                     )
                 }
                 savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(_uiState.value)
-                savedStateHandle[KEY_SCAN_RESULT] = Json.encodeToString(newResult.toSerializableForWifiList())
                 
-                // #region agent log
-                try {
-                    val logJson = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "B")
-                        put("location", "ScannerViewModel.kt:startScan:afterSave")
-                        put("message", "После сохранения результатов в SavedStateHandle")
-                        put("data", org.json.JSONObject().apply {
-                            put("resultType", if (newResult is Result.Success) "Success" else if (newResult is Result.Error) "Error" else "Loading")
-                            put("networksCount", if (newResult is Result.Success) newResult.data.size else 0)
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
-                // #endregion
+                // Ограничиваем количество сетей для SavedStateHandle (предотвращение TransactionTooLargeException)
+                val networksToSave = when (newResult) {
+                    is Result.Success -> Result.Success(newResult.data.take(MAX_NETWORKS_TO_SAVE))
+                    else -> newResult
+                }
+                savedStateHandle[KEY_SCAN_RESULT] = Json.encodeToString(networksToSave.toSerializableForWifiList())
             } catch (e: SecurityException) {
-                // #region agent log
-                try {
-                    val logJson = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "C")
-                        put("location", "ScannerViewModel.kt:startScan:securityException")
-                        put("message", "SecurityException при сканировании")
-                        put("data", org.json.JSONObject().apply {
-                            put("error", e.message ?: "unknown")
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (logEx: Exception) {}
-                // #endregion
                 _uiState.value = _uiState.value.copy(
                     isScanning = false,
                     error = "Нет разрешения на сканирование Wi-Fi"
@@ -402,23 +310,6 @@ class ScannerViewModel @Inject constructor(
                 savedStateHandle[KEY_SCAN_RESULT] = Json.encodeToString(Result.Error(e, "Нет разрешения на сканирование Wi-Fi").toSerializableForWifiList())
                 updatePermissionState(PermissionState.NotGranted)
             } catch (e: Exception) {
-                // #region agent log
-                try {
-                    val logJson = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "D")
-                        put("location", "ScannerViewModel.kt:startScan:exception")
-                        put("message", "Общая ошибка при сканировании")
-                        put("data", org.json.JSONObject().apply {
-                            put("error", e.message ?: "unknown")
-                            put("errorType", e.javaClass.simpleName)
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (logEx: Exception) {}
-                // #endregion
                 _uiState.value = _uiState.value.copy(
                     isScanning = false,
                     error = e.toUserMessage()
@@ -463,6 +354,7 @@ class ScannerViewModel @Inject constructor(
         viewModelScope.launch {
             wifiScanner.observeWifiEnabled()
                 .distinctUntilChanged()
+                .debounce(300) // Debounce для предотвращения множественных вызовов при быстрых переключениях WiFi
                 .collect { isWifiEnabled ->
                     val currentState = _uiState.value
                     val newState = currentState.copy(
