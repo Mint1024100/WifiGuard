@@ -2,12 +2,14 @@ package com.wifiguard.core.data.wifi
 
 import android.app.ActivityManager
 import android.content.Context
+import android.location.LocationManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import com.wifiguard.core.domain.model.Freshness
 import com.wifiguard.core.domain.model.ScanSource
 import com.wifiguard.core.domain.model.WifiScanStatus
 import io.mockk.every
+import io.mockk.invoke
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
@@ -52,6 +54,11 @@ class WifiScannerServiceMetadataTest {
         
         every { context.getSystemService(Context.WIFI_SERVICE) } returns wifiManager
         every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+        // ВАЖНО: сервис использует DeviceDebugLogger.isLocationEnabled(context) → LocationManager.
+        // Без этого startScan() будет возвращать Restricted("Геолокация выключена").
+        val locationManager = mockk<LocationManager>(relaxed = true)
+        every { locationManager.isLocationEnabled } returns true
+        every { context.getSystemService(Context.LOCATION_SERVICE) } returns locationManager
         every { context.packageName } returns "com.wifiguard"
         every { wifiManager.isWifiEnabled } returns true
         
@@ -77,7 +84,7 @@ class WifiScannerServiceMetadataTest {
     fun `getScanResultsWithMetadata should return FRESH for recent scan`() = runTest {
         // Given: Недавнее сканирование (< 5 минут)
         every { wifiManager.scanResults } returns emptyList()
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         
         // Выполняем сканирование
         val scanStatus = wifiScannerService.startScan()
@@ -133,12 +140,13 @@ class WifiScannerServiceMetadataTest {
         // ИСПРАВЛЕНО: используем реальный объект с установкой полей напрямую
         val backgroundProcessInfo = createProcessInfo(
             name = "com.wifiguard",
-            importanceLevel = ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND
+            // Не используем deprecated константу напрямую.
+            importanceLevel = 400
         )
         every { activityManager.runningAppProcesses } returns listOf(backgroundProcessInfo)
         
         // Первое сканирование успешно
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         val firstScan = wifiScannerService.startScan()
         assertTrue(firstScan is WifiScanStatus.Success)
         
@@ -162,7 +170,7 @@ class WifiScannerServiceMetadataTest {
         every { activityManager.runningAppProcesses } returns listOf(foregroundProcessInfo)
         
         // Первое сканирование
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         val firstScan = wifiScannerService.startScan()
         assertTrue(firstScan is WifiScanStatus.Success)
         
@@ -177,7 +185,7 @@ class WifiScannerServiceMetadataTest {
     @Config(sdk = [Build.VERSION_CODES.Q]) // Android 10
     fun `startScan on Android 10+ should return Restricted when startScan returns false`() = runTest {
         // Given: WifiManager.startScan() возвращает false (система ограничила)
-        every { wifiManager.startScan() } returns false
+        every { wifiManager["startScan"]() } returns false
         
         // ИСПРАВЛЕНО: используем реальный объект с установкой полей напрямую
         val foregroundProcessInfo = createProcessInfo(
@@ -198,7 +206,7 @@ class WifiScannerServiceMetadataTest {
     @Config(sdk = [Build.VERSION_CODES.P]) // Android 9
     fun `startScan on Android 9 should not throttle`() = runTest {
         // Given: Android 9 (без throttling)
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         
         // When: Выполняем несколько сканирований подряд
         val firstScan = wifiScannerService.startScan()
@@ -210,7 +218,7 @@ class WifiScannerServiceMetadataTest {
         assertTrue(secondScan is WifiScanStatus.Success)
         assertTrue(thirdScan is WifiScanStatus.Success)
         
-        verify(exactly = 3) { wifiManager.startScan() }
+        verify(exactly = 3) { wifiManager["startScan"]() }
     }
     
     @Test
@@ -264,7 +272,7 @@ class WifiScannerServiceMetadataTest {
     @Test
     fun `metadata should correctly identify ACTIVE_SCAN source`() = runTest {
         // Given: Только что выполненное сканирование
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         every { wifiManager.scanResults } returns emptyList()
         
         val scanStatus = wifiScannerService.startScan()

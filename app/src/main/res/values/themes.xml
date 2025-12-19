@@ -43,8 +43,8 @@
 
         <!-- Navigation bar -->
         <item name="android:navigationBarColor">@color/surface</item>
-        <!-- windowLightNavigationBar requires API 27+, but minSdk is 26 -->
-        <item name="android:windowLightNavigationBar" tools:targetApi="o">false</item>
+        <!-- windowLightNavigationBar requires API 27+ -->
+        <item name="android:windowLightNavigationBar" tools:targetApi="p">false</item>
 
         <!-- Window background -->
         <item name="android:windowBackground">@color/background</item>
@@ -190,7 +190,7 @@
         <item name="android:statusBarColor">@color/primary</item>
         <item name="android:navigationBarColor">@color/primary</item>
         <item name="android:windowLightStatusBar">false</item>
-        <!-- windowLightNavigationBar requires API 27+, but minSdk is 26 -->
-        <item name="android:windowLightNavigationBar" tools:targetApi="o">false</item>
+        <!-- windowLightNavigationBar requires API 27+ -->
+        <item name="android:windowLightNavigationBar" tools:targetApi="p">false</item>
     </style>
 </resources>

@@ -12,7 +12,6 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import com.wifiguard.core.common.Constants
-import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.common.logd
 import com.wifiguard.core.common.loge
 import com.wifiguard.core.common.logw
@@ -21,6 +20,9 @@ import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.domain.model.WifiStandard
 import dagger.hilt.android.qualifiers.ApplicationContext
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +38,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -62,6 +63,10 @@ class WifiScannerImpl @Inject constructor(
     
     private val wifiManager: WifiManager =
         context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+    // Для отслеживания фактического подключения/отключения Wi‑Fi (а не только тумблера Wi‑Fi)
+    private val connectivityManager: ConnectivityManager =
+        context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     
     // ИСПРАВЛЕНО: Mutex для сериализации операций сканирования
     private val scanMutex = Mutex()
@@ -131,6 +136,47 @@ class WifiScannerImpl @Inject constructor(
             }
         }
     }
+
+    /**
+     * Наблюдает за фактом подключения к Wi‑Fi (TRANSPORT_WIFI),
+     * чтобы можно было обновлять "текущую сеть" при реальном коннекте, а не только при включении тумблера.
+     */
+    override fun observeWifiTransportConnected(): Flow<Boolean> = callbackFlow {
+
+        // Отправляем начальное состояние.
+        runCatching {
+            val active = connectivityManager.activeNetwork
+            val caps = connectivityManager.getNetworkCapabilities(active)
+            val isWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            trySend(isWifi)
+        }
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                val caps = connectivityManager.getNetworkCapabilities(network)
+                val isWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                if (isWifi) trySend(true)
+            }
+
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                val isWifi = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                if (isWifi) trySend(true) else trySend(false)
+            }
+
+            override fun onLost(network: Network) {
+                trySend(false)
+            }
+        }
+
+        val request = android.net.NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .build()
+        connectivityManager.registerNetworkCallback(request, callback)
+
+        awaitClose {
+            runCatching { connectivityManager.unregisterNetworkCallback(callback) }
+        }
+    }
     
     /**
      * Запрашивает включение Wi-Fi
@@ -158,40 +204,9 @@ class WifiScannerImpl @Inject constructor(
      */
     override suspend fun startScan(): Result<List<WifiScanResult>> = scanMutex.withLock {
         withContext(Dispatchers.IO) {
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "A")
-                    put("location", "WifiScannerImpl.kt:157")
-                    put("message", "Начало сканирования WiFi")
-                    put("data", JSONObject().apply {
-                        put("isScanInProgress", isScanInProgress.get())
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
-            
             // Проверяем, не выполняется ли уже сканирование
             if (!isScanInProgress.compareAndSet(false, true)) {
                 logw("Сканирование уже выполняется, пропускаем")
-                // #region agent log
-                try {
-                    val logJson = JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "A")
-                        put("location", "WifiScannerImpl.kt:172")
-                        put("message", "Сканирование уже выполняется, пропускаем")
-                        put("data", JSONObject())
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
-                // #endregion
                 return@withContext Result.failure(IllegalStateException("Сканирование уже выполняется"))
             }
             
@@ -199,24 +214,11 @@ class WifiScannerImpl @Inject constructor(
                 _scanState.value = ScanState.Scanning
                 logd("🔍 Starting WiFi scan")
 
+
                 // Проверка разрешений
                 if (!hasLocationPermission()) {
                     loge("❌ Location permission not granted for WiFi scan")
                     _scanState.value = ScanState.Error("Нет разрешения на местоположение")
-                    // #region agent log
-                    try {
-                        val logJson = JSONObject().apply {
-                            put("sessionId", "debug-session")
-                            put("runId", "run1")
-                            put("hypothesisId", "C")
-                            put("location", "WifiScannerImpl.kt:195")
-                            put("message", "Нет разрешений для сканирования WiFi")
-                            put("data", JSONObject())
-                            put("timestamp", System.currentTimeMillis())
-                        }
-                        File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                    } catch (e: Exception) {}
-                    // #endregion
                     return@withContext Result.failure(SecurityException("Требуется разрешение ACCESS_FINE_LOCATION"))
                 }
 
@@ -230,22 +232,8 @@ class WifiScannerImpl @Inject constructor(
                 }
 
                 if (!isWifiEnabled()) {
-                    loge("❌ WiFi is disabled, cannot start scan")
+                    logw("⚠️ Wi-Fi is disabled, cannot start scan")
                     _scanState.value = ScanState.Error("Wi-Fi отключен")
-                    // #region agent log
-                    try {
-                        val logJson = JSONObject().apply {
-                            put("sessionId", "debug-session")
-                            put("runId", "run1")
-                            put("hypothesisId", "A")
-                            put("location", "WifiScannerImpl.kt:211")
-                            put("message", "WiFi отключен, сканирование невозможно")
-                            put("data", JSONObject())
-                            put("timestamp", System.currentTimeMillis())
-                        }
-                        File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                    } catch (e: Exception) {}
-                    // #endregion
                     return@withContext Result.failure(IllegalStateException("Wi-Fi выключен. Включите Wi-Fi для сканирования."))
                 }
 
@@ -298,7 +286,7 @@ class WifiScannerImpl @Inject constructor(
         }
 
         if (!isWifiEnabled()) {
-            loge("WiFi is disabled for scan flow")
+            logw("⚠️ Wi-Fi is disabled for scan flow")
             close(IllegalStateException("Wi-Fi выключен. Включите Wi-Fi для сканирования."))
             return@callbackFlow
         }
@@ -368,42 +356,9 @@ class WifiScannerImpl @Inject constructor(
      * Получает результаты последнего сканирования
      * ВАЖНО: На Android 9+ результаты могут быть кешированными (до 2 минут)
      */
-    @Suppress("DEPRECATION")
     private suspend fun getScanResults(): List<WifiScanResult> = withContext(Dispatchers.IO) {
-        // #region agent log
-        try {
-            val logJson = JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", "B")
-                put("location", "WifiScannerImpl.kt:302")
-                put("message", "Начало получения результатов сканирования")
-                put("data", JSONObject().apply {
-                    put("hasPermission", hasLocationPermission())
-                    put("wifiEnabled", isWifiEnabled())
-                })
-                put("timestamp", System.currentTimeMillis())
-            }
-            File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-        } catch (e: Exception) {}
-        // #endregion
-        
         if (!hasLocationPermission()) {
             logw("No location permission to get scan results")
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "C")
-                    put("location", "WifiScannerImpl.kt:318")
-                    put("message", "Нет разрешений для получения результатов сканирования")
-                    put("data", JSONObject())
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
             return@withContext emptyList()
         }
 
@@ -414,118 +369,34 @@ class WifiScannerImpl @Inject constructor(
 
         return@withContext try {
             logd("Getting scan results from WiFi manager")
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "B")
-                    put("location", "WifiScannerImpl.kt:333")
-                    put("message", "Попытка получить scanResults из WifiManager")
-                    put("data", JSONObject().apply {
-                        put("sdkVersion", Build.VERSION.SDK_INT)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
-            
             val rawResults = wifiManager.scanResults
             
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "B")
-                    put("location", "WifiScannerImpl.kt:348")
-                    put("message", "Получены raw результаты сканирования")
-                    put("data", JSONObject().apply {
-                        put("rawResultsCount", rawResults.size)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
             
             val convertedResults = rawResults.map { result ->
                 convertToWifiScanResult(result)
             }.map { network ->
-                // ИСПРАВЛЕНО: Не фильтруем скрытые сети, а маркируем их как подозрительные
-                // Скрытые сети могут использоваться для атак Evil Twin
+                // ИСПРАВЛЕНО: Скрытые сети помечаем как LOW, так как это частая настройка, а не угроза.
+                // Но мы всё равно выделяем их, так как они требуют внимания (Evil Twin).
                 if (network.ssid.isBlank() || network.ssid == Constants.UNKNOWN_SSID) {
                     network.copy(
                         ssid = Constants.HIDDEN_NETWORK_LABEL,
                         isHidden = true,
-                        threatLevel = ThreatLevel.MEDIUM
+                        threatLevel = ThreatLevel.LOW
                     )
                 } else {
                     network
                 }
             }
             
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "B")
-                    put("location", "WifiScannerImpl.kt:375")
-                    put("message", "Успешно преобразованы результаты сканирования")
-                    put("data", JSONObject().apply {
-                        put("convertedCount", convertedResults.size)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
             
             convertedResults
         } catch (e: SecurityException) {
             // Нет разрешения
             loge("Security exception getting scan results", e)
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "C")
-                    put("location", "WifiScannerImpl.kt:392")
-                    put("message", "SecurityException при получении результатов сканирования")
-                    put("data", JSONObject().apply {
-                        put("error", e.message ?: "unknown")
-                        put("sdkVersion", Build.VERSION.SDK_INT)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (logEx: Exception) {}
-            // #endregion
             emptyList()
         } catch (e: Exception) {
             // Другая ошибка
             loge("Exception getting scan results", e)
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "D")
-                    put("location", "WifiScannerImpl.kt:410")
-                    put("message", "Общая ошибка при получении результатов сканирования")
-                    put("data", JSONObject().apply {
-                        put("error", e.message ?: "unknown")
-                        put("errorType", e.javaClass.simpleName)
-                        put("sdkVersion", Build.VERSION.SDK_INT)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (logEx: Exception) {}
-            // #endregion
             emptyList()
         }
     }
@@ -551,7 +422,26 @@ class WifiScannerImpl @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
     
-    override suspend fun getCurrentNetwork(): WifiScanResult? = withContext(Dispatchers.IO) {
+    override suspend fun getCurrentNetwork(): WifiScanResult? {
+        // Пытаемся получить текущую сеть. Если на Android 10+ activeNetwork ещё не «устоялся»,
+        // делаем одну попытку повтора через 500мс.
+        val firstAttempt = getCurrentNetworkInternal()
+        if (firstAttempt != null) return firstAttempt
+
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetwork
+        val caps = connectivityManager.getNetworkCapabilities(activeNetwork)
+        val isWifiTransport = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+
+        if (isWifiTransport) {
+            delay(500)
+            return getCurrentNetworkInternal()
+        }
+
+        return null
+    }
+
+    private suspend fun getCurrentNetworkInternal(): WifiScanResult? = withContext(Dispatchers.IO) {
         if (!hasLocationPermission()) {
             logw("No location permission to get current network")
             return@withContext null
@@ -584,23 +474,6 @@ class WifiScannerImpl @Inject constructor(
                                 @Suppress("DEPRECATION")
                                 wifiInfo.ssid.removeSurrounding("\"").takeIf { it != "<unknown ssid>" }
                             } catch (e: Exception) {
-                                // #region agent log
-                                try {
-                                    val logJson = JSONObject().apply {
-                                        put("sessionId", "debug-session")
-                                        put("runId", "run1")
-                                        put("hypothesisId", "D")
-                                        put("location", "WifiScannerImpl.kt:387")
-                                        put("message", "Ошибка получения SSID на Android 13+")
-                                        put("data", JSONObject().apply {
-                                            put("sdkVersion", Build.VERSION.SDK_INT)
-                                            put("error", e.message ?: "unknown")
-                                        })
-                                        put("timestamp", System.currentTimeMillis())
-                                    }
-                                    File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                                } catch (logEx: Exception) {}
-                                // #endregion
                                 null // При проблемах доступа возвращаем null
                             }
                         } else {
@@ -608,27 +481,6 @@ class WifiScannerImpl @Inject constructor(
                             @Suppress("DEPRECATION")
                             wifiInfo.ssid.removeSurrounding("\"").takeIf { it != "<unknown ssid>" }
                         }
-                        
-                        // #region agent log
-                        try {
-                            val logJson = JSONObject().apply {
-                                put("sessionId", "debug-session")
-                                put("runId", "run1")
-                                put("hypothesisId", "D")
-                                put("location", "WifiScannerImpl.kt:397")
-                                put("message", "WifiScannerImpl получение информации о подключенной сети")
-                                put("data", JSONObject().apply {
-                                    put("sdkVersion", Build.VERSION.SDK_INT)
-                                    put("connectedBssid", connectedBssid ?: "null")
-                                    put("connectedSsid", connectedSsid ?: "null")
-                                    put("ssidIsBlank", connectedSsid.isNullOrBlank())
-                                    put("bssidIsNull", connectedBssid == null)
-                                })
-                                put("timestamp", System.currentTimeMillis())
-                            }
-                            File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                        } catch (e: Exception) {}
-                        // #endregion
 
                         // Проверяем, что мы действительно подключены к Wi-Fi
                         if (!connectedSsid.isNullOrBlank() && connectedBssid != null) {
@@ -641,12 +493,12 @@ class WifiScannerImpl @Inject constructor(
 
                             if (matchingScanResult != null) {
                                 // Нашли совпадение, возвращаем как подключенную
-                                matchingScanResult.copy(isConnected = true)
+                                return@withContext matchingScanResult.copy(isConnected = true)
                             } else {
                                 // Не нашли в сканировании, но знаем, что подключены к этой сети
                                 // Создаем базовую информацию о подключенной сети
                                 // ОПТИМИЗИРОВАНО: используем инжектированный Singleton
-                                WifiScanResult(
+                                return@withContext WifiScanResult(
                                     ssid = connectedSsid,
                                     bssid = connectedBssid,
                                     capabilities = "",
@@ -684,24 +536,24 @@ class WifiScannerImpl @Inject constructor(
                             val latestScans = getScanResults()
                             if (latestScans.isNotEmpty()) {
                                 // Возвращаем сеть с наилучшим сигналом как потенциально подключенную
-                                latestScans.maxByOrNull { it.level }?.copy(isConnected = true)
+                                return@withContext latestScans.maxByOrNull { it.level }?.copy(isConnected = true)
                             } else {
-                                null
+                                return@withContext null
                             }
                         }
                     } else {
-                        null
+                        return@withContext null
                     }
                 } catch (e: Exception) {
                     loge("Exception getting network info on Android 10+", e)
-                    null
+                    return@withContext null
                 }
             } else {
                 // Android 9 и ниже - можем использовать устаревший, но работающий API
                 @Suppress("DEPRECATION")
                 val connectionInfo = wifiManager.connectionInfo
                 if (connectionInfo.networkId == -1) {
-                    null
+                    return@withContext null
                 } else {
                     // Создаем WifiScanResult из connectionInfo
                     val ssid = connectionInfo.ssid.removeSurrounding("\"")
@@ -719,7 +571,7 @@ class WifiScannerImpl @Inject constructor(
                         it.ssid == ssid && it.bssid == bssid
                     }
 
-                    matchingResult?.copy(isConnected = true) ?: WifiScanResult(
+                    return@withContext matchingResult?.copy(isConnected = true) ?: WifiScanResult(
                         ssid = ssid,
                         bssid = bssid ?: "unknown",
                         capabilities = "",
@@ -738,7 +590,7 @@ class WifiScannerImpl @Inject constructor(
             }
         } catch (e: Exception) {
             loge("Exception getting current network", e)
-            null
+            return@withContext null
         }
     }
     
@@ -761,35 +613,6 @@ class WifiScannerImpl @Inject constructor(
      * ИСПРАВЛЕНО: Добавлено логирование для диагностики проблем с разрешениями
      */
     private fun hasLocationPermission(): Boolean {
-        // #region agent log
-        try {
-            val logJson = JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", "C")
-                put("location", "WifiScannerImpl.kt:565")
-                put("message", "Проверка разрешений для WiFi сканирования")
-                put("data", JSONObject().apply {
-                    put("sdkVersion", Build.VERSION.SDK_INT)
-                    val fineLocation = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                    put("ACCESS_FINE_LOCATION", fineLocation)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        val nearbyWifi = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.NEARBY_WIFI_DEVICES
-                        ) == PackageManager.PERMISSION_GRANTED
-                        put("NEARBY_WIFI_DEVICES", nearbyWifi)
-                    }
-                })
-                put("timestamp", System.currentTimeMillis())
-            }
-            File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-        } catch (e: Exception) {}
-        // #endregion
-        
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+
             val fineLocation = ContextCompat.checkSelfPermission(
@@ -802,26 +625,6 @@ class WifiScannerImpl @Inject constructor(
             ) == PackageManager.PERMISSION_GRANTED
             
             val hasAll = fineLocation && nearbyWifi
-            
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "C")
-                    put("location", "WifiScannerImpl.kt:595")
-                    put("message", "Результат проверки разрешений Android 13+")
-                    put("data", JSONObject().apply {
-                        put("hasAllPermissions", hasAll)
-                        put("fineLocation", fineLocation)
-                        put("nearbyWifi", nearbyWifi)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
-            
             hasAll
         } else {
             // Android 6-12
@@ -845,7 +648,7 @@ class WifiScannerImpl @Inject constructor(
                 lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                     lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
             }
-        }.getOrDefault(DeviceDebugLogger.isLocationEnabled(context))
+        }.getOrDefault(false)
     }
     
     /**

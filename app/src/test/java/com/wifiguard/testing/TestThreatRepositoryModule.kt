@@ -35,6 +35,10 @@ class FakeThreatRepository @javax.inject.Inject constructor() : ThreatRepository
 
     override fun getThreatsByNetworkSsid(ssid: String): Flow<List<SecurityThreat>> = flowOf(emptyList())
 
+    override fun getThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>> = flowOf(emptyList())
+
+    override fun getUnresolvedThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>> = flowOf(emptyList())
+
     override fun getUnresolvedThreats(): Flow<List<SecurityThreat>> = flowOf(emptyList())
 
     override fun getThreatsFromTimestamp(fromTimestamp: Long): Flow<List<SecurityThreat>> = flowOf(emptyList())

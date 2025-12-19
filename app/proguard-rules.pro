@@ -3,7 +3,7 @@
 # ===== ОСНОВНЫЕ ПРАВИЛА =====
 
 # Keep application class
--keep class com.wifiguard.WifiGuardApplication { *; }
+-keep class com.wifiguard.WifiGuardApp { *; }
 
 # Keep all classes with @Inject constructor (Hilt)
 -keepclasseswithmembers class * {
@@ -28,15 +28,17 @@
 
 # ===== JETPACK COMPOSE =====
 
-# Compose Runtime - только необходимые классы
--keep class androidx.compose.runtime.** { *; }
--keepclassmembers class androidx.compose.runtime.** { *; }
+# Compose Runtime - только необходимые классы (уточнено для уменьшения размера)
+-keep class androidx.compose.runtime.Composable { *; }
+-keepclassmembers class androidx.compose.runtime.** {
+    <init>(...);
+}
 -dontwarn androidx.compose.runtime.**
 
-# Compose UI - только базовые классы
--keep class androidx.compose.ui.platform.** { *; }
--keep class androidx.compose.ui.graphics.** { *; }
--keep class androidx.compose.ui.text.** { *; }
+# Compose UI - только базовые классы (уточнено для уменьшения размера)
+-keep class androidx.compose.ui.platform.ViewCompositionStrategy { *; }
+-keep class androidx.compose.ui.graphics.Color { *; }
+-keep class androidx.compose.ui.text.TextStyle { *; }
 -dontwarn androidx.compose.ui.**
 
 # Material3 - только используемые компоненты
@@ -53,12 +55,10 @@
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
 
-# Dagger
+# Dagger (Hilt использует другую структуру, старые классы удалены)
 -dontwarn com.google.errorprone.annotations.**
 -keep class dagger.** { *; }
--keep class * extends dagger.internal.Binding
--keep class * extends dagger.internal.ModuleAdapter
--keep class * extends dagger.internal.StaticInjection
+-dontwarn dagger.internal.**
 
 # Generated Hilt classes
 -keep class **_HiltModules { *; }
@@ -133,11 +133,9 @@
 
 # ===== DATASTORE =====
 
-# DataStore
--keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
-    <fields>;
-}
--keep class androidx.datastore.** { *; }
+# DataStore (Preferences не использует protobuf)
+-keep class androidx.datastore.preferences.** { *; }
+-dontwarn com.google.protobuf.**
 
 # ===== SECURITY - КРИТИЧЕСКИЕ ПРАВИЛА =====
 
@@ -200,16 +198,15 @@
 -dontwarn retrofit2.KotlinExtensions
 -dontwarn retrofit2.KotlinExtensions$*
 
-# OkHttp
+# OkHttp (если используется)
 -dontwarn okhttp3.**
 -dontwarn okio.**
--keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
 
 # ===== NAVIGATION =====
 
-# Navigation Component
--keepnames class androidx.navigation.fragment.NavHostFragment
--keep class * extends androidx.navigation.Navigator
+# Navigation Component (Compose Navigation)
+-keep class androidx.navigation.** { *; }
+-dontwarn androidx.navigation.fragment.**
 
 # ===== VIEWMODEL =====
 
@@ -260,13 +257,13 @@
 
 # Encryption
 -keep class com.wifiguard.core.security.AesEncryption { *; }
--keep class com.wifiguard.core.security.EncryptionManager { *; }
 
 # Wi-Fi Scanner (критично!)
 -keep class com.wifiguard.core.data.wifi.WifiScanner { *; }
 -keep class com.wifiguard.core.data.wifi.WifiScannerImpl { *; }
--keep class com.wifiguard.core.data.wifi.WifiScanResult { *; }
--keep class com.wifiguard.core.data.wifi.SecurityType { *; }
+# Domain models находятся в domain.model, а не data.wifi
+-keep class com.wifiguard.core.domain.model.WifiScanResult { *; }
+-keep class com.wifiguard.core.domain.model.SecurityType { *; }
 
 # Notification
 -keep class com.wifiguard.feature.notifications.** { *; }

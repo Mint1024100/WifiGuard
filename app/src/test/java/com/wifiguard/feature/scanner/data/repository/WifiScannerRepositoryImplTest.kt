@@ -67,3 +67,10 @@ class WifiScannerRepositoryImplTest {
 
 
 
+
+
+
+
+
+
+

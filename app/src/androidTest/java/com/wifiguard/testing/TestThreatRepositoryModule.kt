@@ -58,6 +58,10 @@ class FakeThreatRepository @javax.inject.Inject constructor() : ThreatRepository
 
     override fun getThreatsByNetworkSsid(ssid: String): Flow<List<SecurityThreat>> = flowOf(emptyList())
 
+    override fun getThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>> = flowOf(emptyList())
+
+    override fun getUnresolvedThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>> = flowOf(emptyList())
+
     override fun getUnresolvedThreats(): Flow<List<SecurityThreat>> = flowOf(emptyList())
 
     override fun getThreatsFromTimestamp(fromTimestamp: Long): Flow<List<SecurityThreat>> = flowOf(emptyList())
@@ -283,6 +287,12 @@ class FakeSettingsRepository @javax.inject.Inject constructor() : SettingsReposi
 
     override suspend fun setDataRetentionDays(days: Int) {
         dataRetentionDays = days
+    }
+
+    override fun getAutoDisableWifiOnCritical(): Flow<Boolean> = flowOf(false)
+
+    override suspend fun setAutoDisableWifiOnCritical(enabled: Boolean) {
+        // No-op для тестов
     }
 
     override fun getThemeMode(): Flow<String> = flowOf(themeMode)

@@ -9,6 +9,9 @@ import com.wifiguard.core.data.wifi.WifiScanner
 import com.wifiguard.core.common.Logger
 import com.wifiguard.core.domain.model.WifiScanResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,6 +24,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ScannerViewModel @Inject constructor(
+    @ApplicationContext private val applicationContext: Context,
     private val wifiScanner: WifiScanner,
     val permissionHandler: PermissionHandler,
     private val savedStateHandle: SavedStateHandle
@@ -132,6 +136,7 @@ class ScannerViewModel @Inject constructor(
         
         // Подписываемся на изменения состояния WiFi в реальном времени
         observeWifiStateChanges()
+        observeWifiTransportChanges()
 
         // Автоматически запускаем сканирование только если есть разрешения
         if (permissionHandler.hasWifiScanPermissions()) {
@@ -216,21 +221,6 @@ class ScannerViewModel @Inject constructor(
         }
         
         viewModelScope.launch {
-            // #region agent log
-            try {
-                val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
-                val logEntry = org.json.JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "C")
-                    put("location", "ScannerViewModel.kt:startScan")
-                    put("message", "Начало сканирования - isScanning=true")
-                    put("timestamp", System.currentTimeMillis())
-                    put("data", org.json.JSONObject())
-                }
-                logFile.appendText(logEntry.toString() + "\n")
-            } catch (e: Exception) { /* ignore */ }
-            // #endregion
             _uiState.value = _uiState.value.copy(isScanning = true)
             savedStateHandle[KEY_UI_STATE] = scannerUiStateToString(_uiState.value)
             savedStateHandle[KEY_SCAN_RESULT] = Json.encodeToString(SerializableResultWrapper("Loading"))
@@ -240,6 +230,7 @@ class ScannerViewModel @Inject constructor(
                 
                 val newResult = if (result.isSuccess) {
                     val rawNetworks = result.getOrNull() ?: emptyList()
+                    
                     
                     // Дедупликация: для каждого BSSID оставляем только самую свежую запись
                     val networks = rawNetworks
@@ -251,27 +242,11 @@ class ScannerViewModel @Inject constructor(
                         .toList()
                         .sortedByDescending { it.level } // Сортируем по силе сигнала
                     
+                    
                     // Получаем метаданные сканирования для fail-safe прозрачности
                     val scanMetadata = wifiScanner.getLastScanMetadata()
                     
                     // Обновляем состояние UI с сетями и метаданными
-                    // #region agent log
-                    try {
-                        val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
-                        val logEntry = org.json.JSONObject().apply {
-                            put("sessionId", "debug-session")
-                            put("runId", "run1")
-                            put("hypothesisId", "C")
-                            put("location", "ScannerViewModel.kt:startScan")
-                            put("message", "Сканирование завершено успешно - isScanning=false")
-                            put("timestamp", System.currentTimeMillis())
-                            put("data", org.json.JSONObject().apply {
-                                put("networksCount", networks.size)
-                            })
-                        }
-                        logFile.appendText(logEntry.toString() + "\n")
-                    } catch (e: Exception) { /* ignore */ }
-                    // #endregion
                     _uiState.value = _uiState.value.copy(
                         isScanning = false,
                         networks = networks,
@@ -350,6 +325,7 @@ class ScannerViewModel @Inject constructor(
     /**
      * Наблюдает за изменениями состояния WiFi в реальном времени
      */
+    @OptIn(FlowPreview::class) // debounce() помечен как preview API в kotlinx.coroutines
     private fun observeWifiStateChanges() {
         viewModelScope.launch {
             wifiScanner.observeWifiEnabled()
@@ -370,6 +346,32 @@ class ScannerViewModel @Inject constructor(
                     } else {
                         // Если WiFi включен, загружаем информацию о текущей сети
                         loadCurrentNetwork()
+                    }
+                }
+        }
+    }
+
+    /**
+     * Наблюдает за фактом подключения к Wi‑Fi (TRANSPORT_WIFI).
+     * Это решает кейс: Wi‑Fi был выключен, пользователь включил его при открытом приложении —
+     * подключение появляется позже, и мы должны обновить currentNetwork без перезапуска приложения.
+     */
+    private fun observeWifiTransportChanges() {
+        viewModelScope.launch {
+            wifiScanner.observeWifiTransportConnected()
+                .debounce(300)
+                .collect { isWifiTransportConnected ->
+
+                    if (isWifiTransportConnected) {
+                        // ВАЖНО: не используем distinctUntilChanged() для transport boolean.
+                        // На реальных устройствах (особенно при смене сети/переключении default network)
+                        // onCapabilitiesChanged может приходить несколько раз с isWifi=true, и первый вызов
+                        // getCurrentNetwork() может вернуть null (activeNetwork ещё не Wi‑Fi).
+                        // Нам нужно повторять попытку на каждом событии (с debounce), чтобы синхронизация
+                        // была “идеальной” без перезапуска приложения.
+                        loadCurrentNetwork()
+                    } else {
+                        _currentNetwork.value = null
                     }
                 }
         }
@@ -457,6 +459,7 @@ class ScannerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val currentNetworkResult = wifiScanner.getCurrentNetwork()
+                
                 _currentNetwork.value = currentNetworkResult
             } catch (e: Exception) {
                 // Логируем ошибку, но не показываем пользователю, так как это не критично

@@ -9,6 +9,8 @@ import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.security.SecurityAnalyzer
 import com.wifiguard.core.service.WifiForegroundScanService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AnalysisViewModel @Inject constructor(
+    @ApplicationContext private val applicationContext: Context,
     private val wifiRepository: WifiRepository,
     private val securityAnalyzer: SecurityAnalyzer,
     private val scanStatusBus: ScanStatusBus
@@ -53,23 +56,6 @@ class AnalysisViewModel @Inject constructor(
     private fun observeScanStatus() {
         scanStatusBus.state
             .onEach { status ->
-                // #region agent log
-                try {
-                    val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
-                    val logEntry = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "F")
-                        put("location", "AnalysisViewModel.kt:observeScanStatus")
-                        put("message", "scanStatus изменен")
-                        put("timestamp", System.currentTimeMillis())
-                        put("data", org.json.JSONObject().apply {
-                            put("status", status.javaClass.simpleName)
-                        })
-                    }
-                    logFile.appendText(logEntry.toString() + "\n")
-                } catch (e: Exception) { /* ignore */ }
-                // #endregion
                 // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
                 _uiState.update { it.copy(scanStatus = status) }
             }
@@ -82,6 +68,7 @@ class AnalysisViewModel @Inject constructor(
      * ИСПРАВЛЕНО: Использует .onEach().launchIn() вместо .first()
      * Теперь UI обновляется автоматически при изменении данных в БД
      */
+    @OptIn(FlowPreview::class) // debounce() помечен как preview API в kotlinx.coroutines
     private fun observeAnalysisData() {
         // ИСПРАВЛЕНО: Используем update() для атомарного обновления состояния
         _uiState.update { it.copy(isLoading = true, error = null) }

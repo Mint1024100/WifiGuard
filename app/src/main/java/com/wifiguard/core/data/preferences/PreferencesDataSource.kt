@@ -193,6 +193,47 @@ open class PreferencesDataSource @Inject constructor(
                 preferences[PreferencesKeys.NOTIFICATION_VIBRATION_ENABLED] ?: true
             }
     }
+
+    /**
+     * Получить флаг авто-отключения Wi‑Fi при критической угрозе.
+     *
+     * ВАЖНО: по умолчанию false (требуется явное согласие пользователя).
+     */
+    fun getAutoDisableWifiOnCritical(): Flow<Boolean> {
+        return dataStore.data
+            .catch { exception ->
+                if (exception is CancellationException) throw exception
+                if (exception is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    android.util.Log.e(
+                        "PreferencesDataSource",
+                        "Error reading auto-disable wifi on critical",
+                        exception
+                    )
+                    emit(emptyPreferences())
+                }
+            }
+            .map { preferences ->
+                preferences[PreferencesKeys.AUTO_DISABLE_WIFI_ON_CRITICAL] ?: false
+            }
+    }
+
+    /**
+     * Установить флаг авто-отключения Wi‑Fi при критической угрозе.
+     */
+    suspend fun setAutoDisableWifiOnCritical(enabled: Boolean) {
+        try {
+            dataStore.edit { preferences ->
+                preferences[PreferencesKeys.AUTO_DISABLE_WIFI_ON_CRITICAL] = enabled
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesDataSource", "Error writing auto-disable wifi on critical", e)
+            throw e
+        }
+    }
     
     /**
      * ИСПРАВЛЕНО: Set notification vibration enabled с обработкой ошибок
@@ -279,7 +320,7 @@ open class PreferencesDataSource @Inject constructor(
             throw e
         }
     }
-    
+
     /**
      * ИСПРАВЛЕНО: Get all settings с правильной обработкой ошибок
      */
@@ -304,12 +345,12 @@ open class PreferencesDataSource @Inject constructor(
                     dataRetentionDays = preferences[PreferencesKeys.DATA_RETENTION_DAYS] ?: 30,
                     threatAlertEnabled = preferences[PreferencesKeys.THREAT_ALERT_ENABLED] ?: true,
                     criticalThreatNotifications = preferences[PreferencesKeys.CRITICAL_THREAT_NOTIFICATIONS] ?: true,
+                    autoDisableWifiOnCritical = preferences[PreferencesKeys.AUTO_DISABLE_WIFI_ON_CRITICAL] ?: false,
                     themeMode = preferences[PreferencesKeys.THEME_MODE] ?: "system",
                     language = preferences[PreferencesKeys.LANGUAGE] ?: "ru",
                     firstLaunch = preferences[PreferencesKeys.FIRST_LAUNCH] ?: true,
                     lastScanTimestamp = preferences[PreferencesKeys.LAST_SCAN_TIMESTAMP] ?: 0L,
                     totalScansCount = preferences[PreferencesKeys.TOTAL_SCANS_COUNT] ?: 0,
-                    analyticsEnabled = preferences[PreferencesKeys.ANALYTICS_ENABLED] ?: false,
                     crashReportingEnabled = preferences[PreferencesKeys.CRASH_REPORTING_ENABLED] ?: false
                 )
             }
@@ -329,12 +370,12 @@ open class PreferencesDataSource @Inject constructor(
                 preferences[PreferencesKeys.DATA_RETENTION_DAYS] = settings.dataRetentionDays
                 preferences[PreferencesKeys.THREAT_ALERT_ENABLED] = settings.threatAlertEnabled
                 preferences[PreferencesKeys.CRITICAL_THREAT_NOTIFICATIONS] = settings.criticalThreatNotifications
+                preferences[PreferencesKeys.AUTO_DISABLE_WIFI_ON_CRITICAL] = settings.autoDisableWifiOnCritical
                 preferences[PreferencesKeys.THEME_MODE] = settings.themeMode
                 preferences[PreferencesKeys.LANGUAGE] = settings.language
                 preferences[PreferencesKeys.FIRST_LAUNCH] = settings.firstLaunch
                 preferences[PreferencesKeys.LAST_SCAN_TIMESTAMP] = settings.lastScanTimestamp
                 preferences[PreferencesKeys.TOTAL_SCANS_COUNT] = settings.totalScansCount
-                preferences[PreferencesKeys.ANALYTICS_ENABLED] = settings.analyticsEnabled
                 preferences[PreferencesKeys.CRASH_REPORTING_ENABLED] = settings.crashReportingEnabled
             }
         } catch (e: CancellationException) {
@@ -374,11 +415,11 @@ data class AppSettings(
     val dataRetentionDays: Int = 30,
     val threatAlertEnabled: Boolean = true,
     val criticalThreatNotifications: Boolean = true,
+    val autoDisableWifiOnCritical: Boolean = false,
     val themeMode: String = "system",
     val language: String = "ru",
     val firstLaunch: Boolean = true,
     val lastScanTimestamp: Long = 0L,
     val totalScansCount: Int = 0,
-    val analyticsEnabled: Boolean = false,
     val crashReportingEnabled: Boolean = false
 )

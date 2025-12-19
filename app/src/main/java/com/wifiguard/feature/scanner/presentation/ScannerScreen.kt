@@ -20,7 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wifiguard.core.common.BssidValidator
 import com.wifiguard.core.common.PermissionHandler
@@ -39,6 +40,8 @@ import com.wifiguard.core.ui.components.NetworkDetailsModal
 import com.wifiguard.core.ui.components.PermissionRationaleDialog
 import com.wifiguard.core.ui.components.SignalAnalyticsUi
 import com.wifiguard.core.ui.components.StatusIndicator
+import com.wifiguard.core.ui.testing.UiTestTags
+import com.wifiguard.R
 
 /**
  * Экран сканирования Wi-Fi сетей
@@ -66,6 +69,7 @@ fun ScannerScreen(
     val detailsDbNetwork by detailsViewModel.currentNetwork.collectAsStateWithLifecycle()
     val detailsHistory by detailsViewModel.networkStatistics.collectAsStateWithLifecycle()
     val detailsSignalAnalytics by detailsViewModel.signalAnalytics.collectAsStateWithLifecycle()
+    val detailsActiveThreats by detailsViewModel.activeThreats.collectAsStateWithLifecycle()
     val detailsBssid by detailsViewModel.loadedBssid.collectAsStateWithLifecycle()
 
     LaunchedEffect(flippedBssid) {
@@ -146,7 +150,11 @@ fun ScannerScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag(UiTestTags.SCANNER_SCREEN)
+    ) {
         Scaffold(
             modifier = Modifier.then(
                 if (selectedNetwork != null) {
@@ -157,11 +165,14 @@ fun ScannerScreen(
             ),
             topBar = {
             TopAppBar(
+                modifier = Modifier.testTag(UiTestTags.SCANNER_TOP_APP_BAR),
                 title = { 
-                    Text("Wi-Fi Сканер")
+                    Text(stringResource(R.string.scanner_title))
                 },
                 actions = {
-                    IconButton(onClick = { 
+                    IconButton(
+                        modifier = Modifier.testTag(UiTestTags.SCANNER_ACTION_REFRESH),
+                        onClick = { 
                         // При выключенной геолокации сканирование часто недоступно на OEM-устройствах.
                         if (viewModel.hasWifiPermissions() && !uiState.isLocationEnabled) {
                             viewModel.permissionHandler.openLocationSettings()
@@ -173,19 +184,25 @@ fun ScannerScreen(
                     }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Обновить"
+                            contentDescription = stringResource(R.string.common_refresh)
                         )
                     }
-                    IconButton(onClick = onNavigateToAnalysis) {
+                    IconButton(
+                        modifier = Modifier.testTag(UiTestTags.SCANNER_ACTION_ANALYSIS),
+                        onClick = onNavigateToAnalysis
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Analytics,
-                            contentDescription = "Анализ"
+                            contentDescription = stringResource(R.string.nav_analysis)
                         )
                     }
-                    IconButton(onClick = onNavigateToSettings) {
+                    IconButton(
+                        modifier = Modifier.testTag(UiTestTags.SCANNER_ACTION_SETTINGS),
+                        onClick = onNavigateToSettings
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Настройки"
+                            contentDescription = stringResource(R.string.nav_settings)
                         )
                     }
                 }
@@ -235,7 +252,7 @@ fun ScannerScreen(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Выполнить полное сканирование")
+                    Text(stringResource(R.string.scanner_full_scan))
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -243,14 +260,24 @@ fun ScannerScreen(
             
             // Отображение текущей подключенной сети
             currentNetwork?.let { network ->
+
                 // Показывать только если есть подключенная сеть и WiFi включен
                 if (network.isConnected && uiState.isWifiEnabled) {
+                    val isCritical = network.threatLevel == ThreatLevel.CRITICAL
                     Card(
+                        onClick = {
+                            // Открываем модалку с полной характеристикой и причинами по клику на текущую сеть
+                            flippedBssid = network.bssid
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                            containerColor = if (isCritical) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                MaterialTheme.colorScheme.primaryContainer
+                            }
                         )
                     ) {
                         Column(
@@ -262,10 +289,10 @@ fun ScannerScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Подключенная сеть",
+                                    text = stringResource(R.string.scanner_connected_network),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = if (isCritical) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                                 )
                             }
                             
@@ -279,13 +306,22 @@ fun ScannerScreen(
                                     imageVector = Icons.Default.Wifi,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = if (isCritical) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = network.ssid.ifEmpty { "Скрытая сеть" },
+                                    text = network.ssid.ifEmpty { stringResource(R.string.network_hidden) },
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            if (isCritical) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Критическая небезопасная сеть — нажмите для деталей и причин",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
                                 )
                             }
                             
@@ -297,7 +333,10 @@ fun ScannerScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "Сигнал: ${network.getSignalStrengthDescription()}",
+                                    text = stringResource(
+                                        R.string.scanner_signal_format,
+                                        network.getSignalStrengthDescription()
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -317,14 +356,14 @@ fun ScannerScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "Частота: ${network.frequency} МГц",
+                                    text = stringResource(R.string.network_frequency, network.frequency),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 
                                 if (network.channel > 0) {
                                     Text(
-                                        text = "Канал: ${network.channel}",
+                                        text = stringResource(R.string.network_channel, network.channel),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -356,12 +395,14 @@ fun ScannerScreen(
                 detailsUiState,
                 detailsDbNetwork,
                 detailsHistory,
-                detailsAnalyticsUi
+                detailsAnalyticsUi,
+                detailsActiveThreats
             ) {
                 NetworkCardDetails(
                     dbNetwork = detailsDbNetwork,
                     scanHistory = detailsHistory.take(50),
                     signalAnalytics = detailsAnalyticsUi,
+                    activeThreats = detailsActiveThreats,
                     isLoading = detailsUiState.isLoading,
                     errorMessage = detailsUiState.errorMessage
                 )
@@ -396,6 +437,7 @@ fun ScannerScreen(
                         ScanningContent()
                     }
                     is Result.Success -> {
+                        
                         if (result.data.isEmpty()) {
                             EmptyContent(
                                 isWifiEnabled = uiState.isWifiEnabled,
@@ -416,25 +458,6 @@ fun ScannerScreen(
                                 currentConnectedBssid = currentNetwork?.bssid,
                                 isRefreshing = uiState.isScanning,
                                 onRefresh = {
-                                    // #region agent log
-                                    android.util.Log.d("PullToRefresh", "onRefresh вызван, isScanning=${uiState.isScanning}")
-                                    try {
-                                        val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
-                                        val logEntry = org.json.JSONObject().apply {
-                                            put("sessionId", "debug-session")
-                                            put("runId", "run1")
-                                            put("hypothesisId", "A")
-                                            put("location", "ScannerScreen.kt:onRefresh")
-                                            put("message", "onRefresh вызван")
-                                            put("timestamp", System.currentTimeMillis())
-                                            put("data", org.json.JSONObject().apply {
-                                                put("isScanning", uiState.isScanning)
-                                                put("hasPermissions", viewModel.hasWifiPermissions())
-                                            })
-                                        }
-                                        logFile.appendText(logEntry.toString() + "\n")
-                                    } catch (e: Exception) { /* ignore */ }
-                                    // #endregion
                                     if (viewModel.hasWifiPermissions()) {
                                         viewModel.startScan()
                                     }
@@ -477,12 +500,14 @@ fun ScannerScreen(
                 detailsUiState,
                 detailsDbNetwork,
                 detailsHistory,
-                detailsAnalyticsUi
+                detailsAnalyticsUi,
+                detailsActiveThreats
             ) {
                 NetworkCardDetails(
                     dbNetwork = detailsDbNetwork,
                     scanHistory = detailsHistory.take(50),
                     signalAnalytics = detailsAnalyticsUi,
+                    activeThreats = detailsActiveThreats,
                     isLoading = detailsUiState.isLoading,
                     errorMessage = detailsUiState.errorMessage
                 )
@@ -512,7 +537,7 @@ private fun ScanningContent() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Сканирование...",
+                text = stringResource(R.string.scanner_scanning),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -534,7 +559,7 @@ private fun ErrorContent(
             modifier = Modifier.padding(32.dp)
         ) {
             Text(
-                text = "Ошибка",
+                text = stringResource(R.string.common_error),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.error
             )
@@ -547,7 +572,7 @@ private fun ErrorContent(
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = onRetry) {
-                Text("Повторить")
+                Text(stringResource(R.string.common_retry))
             }
         }
     }
@@ -579,9 +604,9 @@ private fun EmptyContent(
             
             Text(
                 text = if (isWifiEnabled) {
-                    "Сети не найдены"
+                    stringResource(R.string.scanner_no_networks)
                 } else {
-                    "Wi-Fi отключен"
+                    stringResource(R.string.scanner_wifi_disabled)
                 },
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -591,7 +616,7 @@ private fun EmptyContent(
             if (!isWifiEnabled) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Включите Wi-Fi для сканирования сетей",
+                    text = stringResource(R.string.scanner_enable_wifi_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -602,7 +627,7 @@ private fun EmptyContent(
             
             if (isWifiEnabled) {
                 Button(onClick = onStartScan) {
-                    Text("Сканировать")
+                    Text(stringResource(R.string.scanner_scan_button))
                 }
             } else {
                 Button(
@@ -613,7 +638,7 @@ private fun EmptyContent(
                         context.startActivity(intent)
                     }
                 ) {
-                    Text("Включить Wi-Fi")
+                    Text(stringResource(R.string.scanner_enable_wifi_button))
                 }
             }
         }
@@ -633,21 +658,21 @@ private fun LocationDisabledContent(
             modifier = Modifier.padding(32.dp)
         ) {
             Text(
-                text = "Включите геолокацию",
+                text = stringResource(R.string.scanner_enable_location_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "На некоторых устройствах поиск Wi‑Fi сетей не работает при выключенной геолокации.",
+                text = stringResource(R.string.scanner_location_required_oem_message),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = onOpenLocationSettings) {
-                Text("Открыть настройки геолокации")
+                Text(stringResource(R.string.scanner_open_location_settings))
             }
         }
     }
@@ -661,33 +686,15 @@ private fun NetworksList(
     isRefreshing: Boolean = false,
     onRefresh: () -> Unit = {}
 ) {
-    // #region agent log
-    val context = LocalContext.current
-    LaunchedEffect(isRefreshing) {
-        try {
-            val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
-            val logEntry = org.json.JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", "B")
-                put("location", "ScannerScreen.kt:NetworksList")
-                put("message", "isRefreshing изменилось")
-                put("timestamp", System.currentTimeMillis())
-                put("data", org.json.JSONObject().apply {
-                    put("isRefreshing", isRefreshing)
-                })
-            }
-            logFile.appendText(logEntry.toString() + "\n")
-        } catch (e: Exception) { /* ignore */ }
-    }
-    // #endregion
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(UiTestTags.SCANNER_NETWORKS_LIST),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -699,7 +706,8 @@ private fun NetworksList(
                 NetworkCard(
                     network = network,
                     onClick = { onNetworkClick(network) },
-                    isCurrentNetwork = network.bssid == currentConnectedBssid
+                    isCurrentNetwork = network.bssid == currentConnectedBssid,
+                    modifier = Modifier.testTag(UiTestTags.networkCard(network.bssid))
                 )
             }
         }

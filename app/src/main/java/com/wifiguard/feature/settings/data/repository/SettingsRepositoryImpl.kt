@@ -62,6 +62,14 @@ class SettingsRepositoryImpl @Inject constructor(
         settingsDataSource.setDataRetentionDays(days)
     }
 
+    override fun getAutoDisableWifiOnCritical(): Flow<Boolean> {
+        return settingsDataSource.getAutoDisableWifiOnCritical()
+    }
+
+    override suspend fun setAutoDisableWifiOnCritical(enabled: Boolean) {
+        settingsDataSource.setAutoDisableWifiOnCritical(enabled)
+    }
+
     override fun getThemeMode(): Flow<String> {
         return settingsDataSource.getThemeMode()
     }

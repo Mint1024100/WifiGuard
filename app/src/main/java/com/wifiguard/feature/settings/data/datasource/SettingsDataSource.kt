@@ -29,6 +29,14 @@ interface SettingsDataSource {
     
     fun getThreatSensitivity(): Flow<Int>
     suspend fun setThreatSensitivity(sensitivity: Int)
+
+    /**
+     * Разрешение пользователя: авто-отключение Wi‑Fi при критической угрозе.
+     *
+     * ВАЖНО: по умолчанию выключено (false).
+     */
+    fun getAutoDisableWifiOnCritical(): Flow<Boolean>
+    suspend fun setAutoDisableWifiOnCritical(enabled: Boolean)
     
     fun getDataRetentionDays(): Flow<Int>
     suspend fun setDataRetentionDays(days: Int)

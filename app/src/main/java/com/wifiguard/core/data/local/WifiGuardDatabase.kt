@@ -76,28 +76,28 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * ВАЖНО: Используется ALTER TABLE для сохранения существующих данных
          */
         val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 1 -> 2")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // Добавление поля vendor (может быть NULL)
-                    database.execSQL(
+                    db.execSQL(
                         "ALTER TABLE wifi_networks ADD COLUMN vendor TEXT"
                     )
                     
                     // Добавление поля channel с значением по умолчанию
-                    database.execSQL(
+                    db.execSQL(
                         "ALTER TABLE wifi_networks ADD COLUMN channel INTEGER NOT NULL DEFAULT 0"
                     )
                     
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 1 -> 2 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 1 -> 2: ${e.message}", e)
                     throw e // Пробрасываем исключение для корректной обработки Room
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -107,23 +107,23 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * Добавление поля resolved_timestamp в таблицу threats
          */
         val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 2 -> 3")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // Добавление поля resolved_timestamp (может быть NULL)
-                    database.execSQL(
+                    db.execSQL(
                         "ALTER TABLE threats ADD COLUMN resolved_timestamp INTEGER"
                     )
                     
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 2 -> 3 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 2 -> 3: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -134,18 +134,18 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * Создание таблицы settings с индексом
          */
         val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 3 -> 4")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // Добавление поля isNotified в таблицу threats
-                    database.execSQL(
+                    db.execSQL(
                         "ALTER TABLE threats ADD COLUMN isNotified INTEGER NOT NULL DEFAULT 0"
                     )
                     
                     // Создание таблицы settings с индексом
-                    database.execSQL(
+                    db.execSQL(
                         """
                         CREATE TABLE IF NOT EXISTS settings (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,17 +157,17 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     )
                     
                     // Создание индекса для быстрого поиска по ключу
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)"
                     )
                     
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 3 -> 4 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 3 -> 4: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -178,13 +178,13 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * Добавление полей для метаданных сканирования
          */
         val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 4 -> 5")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // Добавление составного индекса для частых запросов по is_suspicious и threat_level
-                    database.execSQL(
+                    db.execSQL(
                         """
                         CREATE INDEX IF NOT EXISTS idx_wifi_networks_suspicious_threat 
                         ON wifi_networks(is_suspicious, threat_level)
@@ -192,25 +192,25 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     )
                     
                     // Добавление индекса на timestamp для threats
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS idx_threats_timestamp ON threats(timestamp)"
                     )
                     
                     // Добавление индекса на severity для threats
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS idx_threats_severity ON threats(severity)"
                     )
                     
                     // Валидация целостности данных после миграции
-                    validateDataIntegrity(database)
+                    validateDataIntegrity(db)
                     
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 4 -> 5 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 4 -> 5: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
             
@@ -253,16 +253,16 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * ИСПРАВЛЕНИЕ: Пересоздание таблицы threats с правильной схемой (description NOT NULL)
          */
         val MIGRATION_5_6 = object : Migration(5, 6) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 5 -> 6")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Пересоздаём таблицу threats с правильной схемой
                     Log.d(TAG, "🔧 Исправление схемы таблицы threats...")
                     
                     // Шаг 1: Проверяем и обрабатываем NULL значения в description
-                    val nullCheckCursor = database.query(
+                    val nullCheckCursor = db.query(
                         "SELECT COUNT(*) FROM threats WHERE description IS NULL"
                     )
                     var nullCount = 0
@@ -274,14 +274,14 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     
                     if (nullCount > 0) {
                         Log.w(TAG, "⚠️ Обнаружено $nullCount записей с NULL в description")
-                        database.execSQL(
+                        db.execSQL(
                             "UPDATE threats SET description = 'Описание недоступно' WHERE description IS NULL"
                         )
                         Log.i(TAG, "✅ NULL значения заменены")
                     }
                     
                     // Шаг 2: Пересоздаём таблицу threats с правильной схемой
-                    database.execSQL(
+                    db.execSQL(
                         """
                         CREATE TABLE threats_new (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -302,7 +302,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     )
                     
                     // Шаг 3: Копируем данные
-                    database.execSQL(
+                    db.execSQL(
                         """
                         INSERT INTO threats_new (
                             id, scanId, threatType, severity, description,
@@ -319,47 +319,47 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     )
                     
                     // Шаг 4: Удаляем старую таблицу
-                    database.execSQL("DROP TABLE threats")
+                    db.execSQL("DROP TABLE threats")
                     
                     // Шаг 5: Переименовываем новую таблицу
-                    database.execSQL("ALTER TABLE threats_new RENAME TO threats")
+                    db.execSQL("ALTER TABLE threats_new RENAME TO threats")
                     
                     // Шаг 6: Создаём индексы для таблицы threats
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)"
                     )
                     
                     // Валидация целостности данных после миграции
-                    validateDataIntegrity(database)
+                    validateDataIntegrity(db)
                     
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 5 -> 6 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 5 -> 6: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
             
@@ -409,19 +409,25 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * ✅ Сохраняем все индексы
          */
         val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 6 -> 7: исправление схемы таблицы threats")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // Шаг 0: Проверяем реальную схему таблицы threats
                     Log.d(TAG, "🔍 Проверка реальной схемы таблицы threats...")
                     var needsRecreation = false
-                    val pragmaCursor = database.query("PRAGMA table_info(threats)")
+                    val pragmaCursor = db.query("PRAGMA table_info(threats)")
                     pragmaCursor.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex("name")
+                        val notNullIndex = cursor.getColumnIndex("notnull")
+                        if (nameIndex < 0 || notNullIndex < 0) {
+                            Log.e(TAG, "❌ Не найдены колонки в PRAGMA table_info")
+                            return@use
+                        }
                         while (cursor.moveToNext()) {
-                            val columnName = cursor.getString(cursor.getColumnIndex("name"))
-                            val notNull = cursor.getInt(cursor.getColumnIndex("notnull")) == 1
+                            val columnName = cursor.getString(nameIndex)
+                            val notNull = cursor.getInt(notNullIndex) == 1
                             
                             if (columnName == "description") {
                                 if (!notNull) {
@@ -440,21 +446,21 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         Log.i(TAG, "✅ Схема таблицы threats корректна. Пропускаем пересоздание.")
                         
                         // Просто убеждаемся что все индексы на месте
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)")
                         
-                        database.setTransactionSuccessful()
+                        db.setTransactionSuccessful()
                         Log.i(TAG, "✅ Миграция 6 -> 7 успешно завершена (без изменений)")
                     } else {
                         // Шаг 1: Проверяем наличие NULL значений в колонке description
                         Log.d(TAG, "🔍 Проверка NULL значений в колонке description...")
-                        val nullCheckCursor = database.query(
+                        val nullCheckCursor = db.query(
                             "SELECT COUNT(*) FROM threats WHERE description IS NULL"
                         )
                         var nullCount = 0
@@ -467,7 +473,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         if (nullCount > 0) {
                             Log.w(TAG, "⚠️ Обнаружено $nullCount записей с NULL в description")
                             // Обновляем NULL значения на значение по умолчанию
-                            database.execSQL(
+                            db.execSQL(
                                 """
                                 UPDATE threats 
                                 SET description = 'Описание недоступно' 
@@ -481,7 +487,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         
                         // Шаг 2: Создаём новую таблицу с правильной схемой
                         Log.d(TAG, "📦 Создание новой таблицы threats_new с правильной схемой...")
-                        database.execSQL(
+                        db.execSQL(
                             """
                             CREATE TABLE threats_new (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -503,7 +509,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         
                         // Шаг 3: Копируем данные из старой таблицы в новую
                         Log.d(TAG, "📋 Копирование данных из старой таблицы в новую...")
-                        database.execSQL(
+                        db.execSQL(
                             """
                             INSERT INTO threats_new (
                                 id, scanId, threatType, severity, description,
@@ -521,62 +527,62 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         
                         // Шаг 4: Удаляем старую таблицу
                         Log.d(TAG, "🗑️ Удаление старой таблицы threats...")
-                        database.execSQL("DROP TABLE threats")
+                        db.execSQL("DROP TABLE threats")
                         
                         // Шаг 5: Переименовываем новую таблицу
                         Log.d(TAG, "✏️ Переименование threats_new -> threats...")
-                        database.execSQL("ALTER TABLE threats_new RENAME TO threats")
+                        db.execSQL("ALTER TABLE threats_new RENAME TO threats")
                         
                         // Шаг 6: Восстанавливаем все индексы
                         Log.d(TAG, "🔗 Восстановление индексов...")
                         
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)"
                         )
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)"
                         )
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)"
                         )
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)"
                         )
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)"
                         )
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)"
                         )
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)"
                         )
-                        database.execSQL(
+                        db.execSQL(
                             "CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)"
                         )
                         
                         // Шаг 7: Валидация целостности данных
-                        validateDataIntegrity(database)
+                        validateDataIntegrity(db)
                         
-                        database.setTransactionSuccessful()
+                        db.setTransactionSuccessful()
                         Log.i(TAG, "✅ Миграция 6 -> 7 успешно завершена")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 6 -> 7: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
             
             /**
              * Валидация целостности данных после миграции
              */
-            private fun validateDataIntegrity(database: SupportSQLiteDatabase) {
+            private fun validateDataIntegrity(db: SupportSQLiteDatabase) {
                 Log.d(TAG, "🔍 Проверка целостности данных после миграции 6 -> 7...")
                 
                 // Проверяем количество записей в таблице threats
-                val cursor = database.query("SELECT COUNT(*) FROM threats")
+                val cursor = db.query("SELECT COUNT(*) FROM threats")
                 cursor.use {
                     if (it.moveToFirst()) {
                         val count = it.getInt(0)
@@ -585,7 +591,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                 }
                 
                 // Проверяем, что нет NULL значений в description
-                val nullCheckCursor = database.query(
+                val nullCheckCursor = db.query(
                     "SELECT COUNT(*) FROM threats WHERE description IS NULL"
                 )
                 nullCheckCursor.use {
@@ -601,7 +607,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                 }
                 
                 // Проверяем наличие всех индексов
-                val indexCursor = database.query(
+                val indexCursor = db.query(
                     """
                     SELECT name FROM sqlite_master 
                     WHERE type = 'index' AND tbl_name = 'threats'
@@ -628,19 +634,25 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * РЕШЕНИЕ: Проверяем реальную схему и исправляем при необходимости
          */
         val MIGRATION_7_8 = object : Migration(7, 8) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 7 -> 8: финальная проверка и исправление схемы threats")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // Проверяем реальную схему таблицы threats
                     Log.d(TAG, "🔍 Проверка реальной схемы таблицы threats...")
                     var needsRecreation = false
-                    val pragmaCursor = database.query("PRAGMA table_info(threats)")
+                    val pragmaCursor = db.query("PRAGMA table_info(threats)")
                     pragmaCursor.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex("name")
+                        val notNullIndex = cursor.getColumnIndex("notnull")
+                        if (nameIndex < 0 || notNullIndex < 0) {
+                            Log.e(TAG, "❌ Не найдены колонки в PRAGMA table_info")
+                            return@use
+                        }
                         while (cursor.moveToNext()) {
-                            val columnName = cursor.getString(cursor.getColumnIndex("name"))
-                            val notNull = cursor.getInt(cursor.getColumnIndex("notnull")) == 1
+                            val columnName = cursor.getString(nameIndex)
+                            val notNull = cursor.getInt(notNullIndex) == 1
                             
                             if (columnName == "description") {
                                 if (!notNull) {
@@ -657,11 +669,11 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     // Если схема правильная - ничего не делаем
                     if (!needsRecreation) {
                         Log.i(TAG, "✅ Схема таблицы threats корректна. Миграция 7 -> 8 завершена без изменений.")
-                        database.setTransactionSuccessful()
+                        db.setTransactionSuccessful()
                     } else {
                         // Исправляем схему: обрабатываем NULL значения
                         Log.d(TAG, "🔧 Исправление схемы: обработка NULL значений...")
-                        val nullCheckCursor = database.query(
+                        val nullCheckCursor = db.query(
                             "SELECT COUNT(*) FROM threats WHERE description IS NULL"
                         )
                         var nullCount = 0
@@ -673,7 +685,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         
                         if (nullCount > 0) {
                             Log.w(TAG, "⚠️ Обнаружено $nullCount записей с NULL в description")
-                            database.execSQL(
+                            db.execSQL(
                                 "UPDATE threats SET description = 'Описание недоступно' WHERE description IS NULL"
                             )
                             Log.i(TAG, "✅ NULL значения заменены")
@@ -681,7 +693,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         
                         // Пересоздаём таблицу с правильной схемой
                         Log.d(TAG, "📦 Пересоздание таблицы threats...")
-                        database.execSQL(
+                        db.execSQL(
                             """
                             CREATE TABLE threats_new (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -702,7 +714,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         )
                         
                         // Копируем данные
-                        database.execSQL(
+                        db.execSQL(
                             """
                             INSERT INTO threats_new (
                                 id, scanId, threatType, severity, description,
@@ -718,26 +730,32 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                             """.trimIndent()
                         )
                         
-                        database.execSQL("DROP TABLE threats")
-                        database.execSQL("ALTER TABLE threats_new RENAME TO threats")
+                        db.execSQL("DROP TABLE threats")
+                        db.execSQL("ALTER TABLE threats_new RENAME TO threats")
                         
                         // Восстанавливаем индексы
                         Log.d(TAG, "🔗 Восстановление индексов...")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)")
-                        database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)")
                         
                         // Валидация
-                        val validateCursor = database.query("PRAGMA table_info(threats)")
+                        val validateCursor = db.query("PRAGMA table_info(threats)")
                         validateCursor.use { cursor ->
+                            val nameIndex = cursor.getColumnIndex("name")
+                            val notNullIndex = cursor.getColumnIndex("notnull")
+                            if (nameIndex < 0 || notNullIndex < 0) {
+                                Log.e(TAG, "❌ Не найдены колонки в PRAGMA table_info")
+                                return@use
+                            }
                             while (cursor.moveToNext()) {
-                                val columnName = cursor.getString(cursor.getColumnIndex("name"))
-                                val notNull = cursor.getInt(cursor.getColumnIndex("notnull")) == 1
+                                val columnName = cursor.getString(nameIndex)
+                                val notNull = cursor.getInt(notNullIndex) == 1
                                 
                                 if (columnName == "description") {
                                     if (!notNull) {
@@ -750,14 +768,14 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                             }
                         }
                         
-                        database.setTransactionSuccessful()
+                        db.setTransactionSuccessful()
                         Log.i(TAG, "✅ Миграция 7 -> 8 успешно завершена")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 7 -> 8: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -768,20 +786,20 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * Эта миграция ВСЕГДА пересоздаёт таблицу независимо от текущей схемы
          */
         val MIGRATION_8_9 = object : Migration(8, 9) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 8 -> 9: ГАРАНТИРОВАННОЕ исправление схемы threats")
                 try {
-                    database.beginTransaction()
+                    db.beginTransaction()
                     
                     // Обновляем NULL значения БЕЗ ПРОВЕРКИ
                     Log.d(TAG, "🔧 Обработка NULL значений...")
-                    database.execSQL(
+                    db.execSQL(
                         "UPDATE threats SET description = 'Описание недоступно' WHERE description IS NULL OR description = ''"
                     )
                     
                     // ВСЕГДА пересоздаём таблицу для гарантии правильной схемы
                     Log.d(TAG, "📦 Пересоздание таблицы threats...")
-                    database.execSQL("""
+                    db.execSQL("""
                         CREATE TABLE threats_v9 (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             scanId INTEGER NOT NULL,
@@ -800,7 +818,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     """.trimIndent())
                     
                     // Копируем данные с гарантией NOT NULL
-                    database.execSQL("""
+                    db.execSQL("""
                         INSERT INTO threats_v9 (
                             id, scanId, threatType, severity, description,
                             networkSsid, networkBssid, additionalInfo, timestamp,
@@ -814,26 +832,32 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         FROM threats
                     """.trimIndent())
                     
-                    database.execSQL("DROP TABLE threats")
-                    database.execSQL("ALTER TABLE threats_v9 RENAME TO threats")
+                    db.execSQL("DROP TABLE threats")
+                    db.execSQL("ALTER TABLE threats_v9 RENAME TO threats")
                     
                     // Восстанавливаем индексы
                     Log.d(TAG, "🔗 Восстановление индексов...")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_timestamp ON threats(timestamp)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity ON threats(severity)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isResolved ON threats(isResolved)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_scanId ON threats(scanId)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_severity_isResolved ON threats(severity, isResolved)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_isNotified ON threats(isNotified)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_networkBssid ON threats(networkBssid)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_threats_threatType ON threats(threatType)")
                     
                     // Проверяем результат
-                    val cursor = database.query("PRAGMA table_info(threats)")
+                    val cursor = db.query("PRAGMA table_info(threats)")
                     cursor.use {
+                        val nameIndex = it.getColumnIndex("name")
+                        val notNullIndex = it.getColumnIndex("notnull")
+                        if (nameIndex < 0 || notNullIndex < 0) {
+                            Log.e(TAG, "❌ Не найдены колонки в PRAGMA table_info")
+                            return@use
+                        }
                         while (it.moveToNext()) {
-                            val columnName = it.getString(it.getColumnIndex("name"))
-                            val notNull = it.getInt(it.getColumnIndex("notnull")) == 1
+                            val columnName = it.getString(nameIndex)
+                            val notNull = it.getInt(notNullIndex) == 1
                             
                             if (columnName == "description") {
                                 if (!notNull) {
@@ -845,13 +869,13 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                         }
                     }
                     
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 8 -> 9 успешно завершена! Схема ГАРАНТИРОВАННО исправлена!")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 8 -> 9: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -886,9 +910,15 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     var needsFix = false
                     val cursor = db.query("PRAGMA table_info(threats)")
                     cursor.use {
+                        val nameIndex = it.getColumnIndex("name")
+                        val notNullIndex = it.getColumnIndex("notnull")
+                        if (nameIndex < 0 || notNullIndex < 0) {
+                            Log.e(TAG, "❌ Не найдены колонки в PRAGMA table_info")
+                            return@use
+                        }
                         while (it.moveToNext()) {
-                            val columnName = it.getString(it.getColumnIndex("name"))
-                            val notNull = it.getInt(it.getColumnIndex("notnull")) == 1
+                            val columnName = it.getString(nameIndex)
+                            val notNull = it.getInt(notNullIndex) == 1
                             
                             if (columnName == "description" && !notNull) {
                                 Log.w(TAG, "🚨 КРИТИЧЕСКАЯ ПРОБЛЕМА: description имеет NULLABLE схему!")
@@ -979,13 +1009,13 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * Использует точный синтаксис Room для создания таблицы
          */
         val MIGRATION_9_10 = object : Migration(9, 10) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 9 -> 10: Синхронизация схемы threats")
                 
-                database.beginTransaction()
+                db.beginTransaction()
                 try {
                     // Создаем временную таблицу с ТОЧНОЙ схемой (обратные кавычки, NOT NULL где нужно)
-                    database.execSQL("""
+                    db.execSQL("""
                         CREATE TABLE IF NOT EXISTS `threats_v10` (
                             `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                             `scanId` INTEGER NOT NULL,
@@ -1004,7 +1034,7 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     """)
 
                     // Копируем данные
-                    database.execSQL("""
+                    db.execSQL("""
                         INSERT INTO `threats_v10` (
                             `id`, `scanId`, `threatType`, `severity`, `description`,
                             `networkSsid`, `networkBssid`, `additionalInfo`, `timestamp`,
@@ -1018,28 +1048,28 @@ abstract class WifiGuardDatabase : RoomDatabase() {
                     """)
 
                     // Удаляем старую таблицу
-                    database.execSQL("DROP TABLE `threats`")
+                    db.execSQL("DROP TABLE `threats`")
 
                     // Переименовываем новую
-                    database.execSQL("ALTER TABLE `threats_v10` RENAME TO `threats`")
+                    db.execSQL("ALTER TABLE `threats_v10` RENAME TO `threats`")
 
                     // Создаем индексы
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_timestamp` ON `threats` (`timestamp`)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_severity` ON `threats` (`severity`)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_isResolved` ON `threats` (`isResolved`)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_scanId` ON `threats` (`scanId`)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_severity_isResolved` ON `threats` (`severity`, `isResolved`)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_isNotified` ON `threats` (`isNotified`)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_networkBssid` ON `threats` (`networkBssid`)")
-                    database.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_threatType` ON `threats` (`threatType`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_timestamp` ON `threats` (`timestamp`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_severity` ON `threats` (`severity`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_isResolved` ON `threats` (`isResolved`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_scanId` ON `threats` (`scanId`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_severity_isResolved` ON `threats` (`severity`, `isResolved`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_isNotified` ON `threats` (`isNotified`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_networkBssid` ON `threats` (`networkBssid`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_threats_threatType` ON `threats` (`threatType`)")
 
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 9 -> 10 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 9 -> 10: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -1054,39 +1084,39 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * - фильтры по threatLevel/securityType/isConnected
          */
         val MIGRATION_10_11 = object : Migration(10, 11) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 10 -> 11: индексы wifi_scans")
-                database.beginTransaction()
+                db.beginTransaction()
                 try {
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS `index_wifi_scans_timestamp` ON `wifi_scans`(`timestamp`)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS `index_wifi_scans_bssid` ON `wifi_scans`(`bssid`)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS `index_wifi_scans_ssid` ON `wifi_scans`(`ssid`)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS `index_wifi_scans_scanSessionId` ON `wifi_scans`(`scanSessionId`)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS `index_wifi_scans_threatLevel` ON `wifi_scans`(`threatLevel`)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS `index_wifi_scans_securityType` ON `wifi_scans`(`securityType`)"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "CREATE INDEX IF NOT EXISTS `index_wifi_scans_isConnected` ON `wifi_scans`(`isConnected`)"
                     )
 
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 10 -> 11 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 10 -> 11: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -1106,32 +1136,32 @@ abstract class WifiGuardDatabase : RoomDatabase() {
          * - нормализуем wifi_networks.first_seen/last_seen, если они некорректны
          */
         val MIGRATION_11_12 = object : Migration(11, 12) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "🔄 Начало миграции 11 -> 12: нормализация timestamp для статистики")
-                database.beginTransaction()
+                db.beginTransaction()
                 try {
                     // Всё, что раньше 2000-01-01, считаем некорректным (uptime).
                     val minValidEpochMillis = 946684800000L
 
                     // Удаляем некорректную историю сканов
-                    database.execSQL("DELETE FROM `wifi_scans` WHERE `timestamp` < $minValidEpochMillis")
+                    db.execSQL("DELETE FROM `wifi_scans` WHERE `timestamp` < $minValidEpochMillis")
 
                     // Нормализуем времена в wifi_networks (для сортировки/экранов)
                     val nowMillis = System.currentTimeMillis()
-                    database.execSQL(
+                    db.execSQL(
                         "UPDATE `wifi_networks` SET `first_seen` = $nowMillis WHERE `first_seen` < $minValidEpochMillis"
                     )
-                    database.execSQL(
+                    db.execSQL(
                         "UPDATE `wifi_networks` SET `last_seen` = $nowMillis WHERE `last_seen` < $minValidEpochMillis"
                     )
 
-                    database.setTransactionSuccessful()
+                    db.setTransactionSuccessful()
                     Log.i(TAG, "✅ Миграция 11 -> 12 успешно завершена")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Ошибка миграции 11 -> 12: ${e.message}", e)
                     throw e
                 } finally {
-                    database.endTransaction()
+                    db.endTransaction()
                 }
             }
         }
@@ -1184,7 +1214,10 @@ abstract class WifiGuardDatabase : RoomDatabase() {
         /**
          * Закрыть базу данных и освободить ресурсы
          * Вызывается при завершении приложения для корректной очистки
+         * 
+         * @Suppress("unused") - функция может использоваться в будущем для явного закрытия БД
          */
+        @Suppress("unused")
         fun closeDatabase() {
             synchronized(this) {
                 INSTANCE?.close()

@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -65,48 +66,44 @@ class NotificationHelper @Inject constructor(
      * Создать канал уведомлений с полными настройками для критических угроз
      */
     override fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            val audioAttributes = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                .build()
+        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .build()
 
-            val channel = NotificationChannel(
-                Constants.NOTIFICATION_CHANNEL_ID,
-                "Уведомления об угрозах безопасности",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Критические уведомления о небезопасных Wi-Fi сетях и обнаруженных угрозах"
-                
-                // Включаем LED индикатор (красный цвет для угроз)
-                enableLights(true)
-                lightColor = Color.RED
-                
-                // Включаем вибрацию
-                enableVibration(true)
-                vibrationPattern = longArrayOf(0, 250, 250, 250)
-                
-                // Устанавливаем звук
-                setSound(soundUri, audioAttributes)
-                
-                // Показывать на экране блокировки
-                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
-                
-                // Может прерывать режим "Не беспокоить" (для критических угроз)
-                setBypassDnd(false)
-                
-                // Показывать значок на ярлыке приложения
-                setShowBadge(true)
-            }
-
-            val systemNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            systemNotificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            Constants.NOTIFICATION_CHANNEL_ID,
+            "Уведомления об угрозах безопасности",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Критические уведомления о небезопасных Wi-Fi сетях и обнаруженных угрозах"
             
-            Log.d(TAG, "✅ Канал уведомлений создан: ${channel.id} (Importance: ${channel.importance})")
-        } else {
-            Log.d(TAG, "Android < O, каналы уведомлений не требуются")
+            // Включаем LED индикатор (красный цвет для угроз)
+            enableLights(true)
+            lightColor = Color.RED
+            
+            // Включаем вибрацию
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 250, 250, 250)
+            
+            // Устанавливаем звук
+            setSound(soundUri, audioAttributes)
+            
+            // Показывать на экране блокировки
+            lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+            
+            // Может прерывать режим "Не беспокоить" (для критических угроз)
+            setBypassDnd(false)
+            
+            // Показывать значок на ярлыке приложения
+            setShowBadge(true)
         }
+
+        val systemNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        systemNotificationManager.createNotificationChannel(channel)
+        
+        Log.d(TAG, "✅ Канал уведомлений создан: ${channel.id} (Importance: ${channel.importance})")
     }
 
     /**
@@ -159,6 +156,18 @@ class NotificationHelper @Inject constructor(
             Log.d(TAG, "🔧 Настройки: вибрация=$vibrationEnabled, звук=$soundEnabled")
             
             val pendingIntent = createPendingIntent()
+
+            val enrichedContent = if (threatLevel == ThreatLevel.CRITICAL) {
+                buildString {
+                    append(content)
+                    append("\n\n")
+                    append("Рекомендация: немедленно отключитесь от сети.\n")
+                    append("Если Wi‑Fi не отключился автоматически, отключите его вручную ")
+                    append("или включите авто-отключение в Настройки → Безопасность.")
+                }
+            } else {
+                content
+            }
             
             // Определяем приоритет и категорию на основе уровня угрозы
             val (priority, category) = getPriorityAndCategory(threatLevel)
@@ -166,14 +175,23 @@ class NotificationHelper @Inject constructor(
             val notificationBuilder = NotificationCompat.Builder(context, Constants.NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notifications)
                 .setContentTitle(title)
-                .setContentText(content)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(content))
+                .setContentText(enrichedContent)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(enrichedContent))
                 .setPriority(priority)
                 .setCategory(category)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
                 .setDefaults(0) // Убираем стандартные настройки для ручного контроля
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+            // Для критических угроз добавляем быстрый переход в системные настройки Wi‑Fi
+            if (threatLevel == ThreatLevel.CRITICAL) {
+                notificationBuilder.addAction(
+                    R.drawable.ic_notifications,
+                    "Открыть Wi‑Fi",
+                    createWifiSettingsPendingIntent()
+                )
+            }
 
             // Установить вибрацию если включена
             if (vibrationEnabled) {
@@ -351,6 +369,29 @@ class NotificationHelper @Inject constructor(
     }
 
     /**
+     * PendingIntent для открытия системной панели/настроек Wi‑Fi.
+     *
+     * ВАЖНО: это безопасный способ “помочь пользователю” на Android 10+,
+     * где программное выключение Wi‑Fi часто ограничено политиками ОС.
+     */
+    private fun createWifiSettingsPendingIntent(): PendingIntent {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Intent(Settings.Panel.ACTION_WIFI)
+        } else {
+            Intent(Settings.ACTION_WIFI_SETTINGS)
+        }.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+
+        return PendingIntent.getActivity(
+            context,
+            1,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    /**
      * Отменить уведомление
      */
     override fun cancelNotification() {
@@ -389,7 +430,7 @@ class NotificationHelper @Inject constructor(
         Log.d(TAG, "Уведомления ${if (enabled) "включены" else "отключены"} в системе")
         
         // Дополнительная проверка канала для Android O+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && enabled) {
+        if (enabled) {
             val systemNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             var channel = systemNotificationManager.getNotificationChannel(Constants.NOTIFICATION_CHANNEL_ID)
             
@@ -459,17 +500,15 @@ class NotificationHelper @Inject constructor(
             appendLine("Уведомления включены: ${if (enabled) "✅ Да" else "❌ Нет"}")
             appendLine("ID канала: ${Constants.NOTIFICATION_CHANNEL_ID}")
             
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val systemNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                val channel = systemNotificationManager.getNotificationChannel(Constants.NOTIFICATION_CHANNEL_ID)
-                if (channel != null) {
-                    appendLine("Важность канала: ${channel.importance}")
-                    appendLine("Звук: ${if (channel.sound != null) "✅" else "❌"}")
-                    appendLine("Вибрация: ${if (channel.shouldVibrate()) "✅" else "❌"}")
-                    appendLine("LED: ${if (channel.shouldShowLights()) "✅" else "❌"}")
-                } else {
-                    appendLine("⚠️ Канал не найден")
-                }
+            val systemNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = systemNotificationManager.getNotificationChannel(Constants.NOTIFICATION_CHANNEL_ID)
+            if (channel != null) {
+                appendLine("Важность канала: ${channel.importance}")
+                appendLine("Звук: ${if (channel.sound != null) "✅" else "❌"}")
+                appendLine("Вибрация: ${if (channel.shouldVibrate()) "✅" else "❌"}")
+                appendLine("LED: ${if (channel.shouldShowLights()) "✅" else "❌"}")
+            } else {
+                appendLine("⚠️ Канал не найден")
             }
         }
     }

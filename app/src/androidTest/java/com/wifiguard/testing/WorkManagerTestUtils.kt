@@ -34,20 +34,25 @@ object WorkManagerTestUtils {
         while (System.currentTimeMillis() - startTime < timeoutMs) {
             val workInfo = workManager.getWorkInfoById(workId).get()
             
-            if (workInfo.state == expectedState) {
-                return workInfo
-            }
-            
-            if (workInfo.state == WorkInfo.State.FAILED || workInfo.state == WorkInfo.State.CANCELLED) {
-                return workInfo
+            if (workInfo != null) {
+                if (workInfo.state == expectedState) {
+                    return workInfo
+                }
+                
+                if (workInfo.state == WorkInfo.State.FAILED || workInfo.state == WorkInfo.State.CANCELLED) {
+                    return workInfo
+                }
             }
             
             delay(pollIntervalMs)
         }
         
+        val finalWorkInfo = workManager.getWorkInfoById(workId).get()
+        val finalState = finalWorkInfo?.state?.toString() ?: "NOT_FOUND"
+        
         throw TimeoutException(
             "Work with ID $workId did not reach state $expectedState within ${timeoutMs}ms. " +
-            "Final state: ${workManager.getWorkInfoById(workId).get().state}"
+            "Final state: $finalState"
         )
     }
     

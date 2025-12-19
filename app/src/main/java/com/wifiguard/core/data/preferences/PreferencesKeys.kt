@@ -25,6 +25,7 @@ object PreferencesKeys {
     // Security settings
     val THREAT_ALERT_ENABLED = booleanPreferencesKey("threat_alert_enabled")
     val CRITICAL_THREAT_NOTIFICATIONS = booleanPreferencesKey("critical_threat_notifications")
+    val AUTO_DISABLE_WIFI_ON_CRITICAL = booleanPreferencesKey("auto_disable_wifi_on_critical")
     
     // UI settings
     val THEME_MODE = stringPreferencesKey("theme_mode") // "light", "dark", "system"
@@ -36,6 +37,5 @@ object PreferencesKeys {
     val TOTAL_SCANS_COUNT = intPreferencesKey("total_scans_count")
     
     // Privacy settings
-    val ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled")
     val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
 }

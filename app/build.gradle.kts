@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import org.gradle.api.GradleException
 
 plugins {
     alias(libs.plugins.android.application)
@@ -7,8 +8,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     id("kotlin-parcelize")
-    alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     // Baseline Profile: ускорение старта/переходов без изменения функционала
     alias(libs.plugins.androidx.baselineprofile)
 }
@@ -20,6 +21,13 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// Форсируем версию androidx.tracing для всех конфигураций (решает конфликт 1.0.0 vs 1.3.0)
+configurations.all {
+    resolutionStrategy {
+        force("androidx.tracing:tracing:1.3.0")
+    }
+}
+
 android {
     namespace = findProperty("APP_PACKAGE_NAME") as String? ?: "com.wifiguard" // Safe fallback if property not found
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -27,7 +35,7 @@ android {
     defaultConfig {
         applicationId = findProperty("APP_PACKAGE_NAME") as String? ?: "com.wifiguard" // Safe fallback if property not found
         minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()  // ДОЛЖНО БЫТЬ 34 минимум для новых приложений
+        targetSdk = libs.versions.targetSdk.get().toInt()  // Текущая версия: 36 (синхронизировано с libs.versions.toml)
         // ИСПРАВЛЕНО: Синхронизировано с gradle.properties для предотвращения проблем с обновлением
         val versionCodeValue = findProperty("APP_VERSION_CODE")?.toString()?.toInt() ?: 5
         val versionNameValue = findProperty("APP_VERSION_NAME") as String? ?: "1.0.3"
@@ -75,6 +83,11 @@ android {
         }
     }
 
+    // Проверка, запрошена ли release-сборка (вынесено за пределы блока конфигурации buildTypes)
+    val isReleaseArtifactRequested = gradle.startParameter.taskNames.any { 
+        it.contains("release", ignoreCase = true) 
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -102,15 +115,34 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Использовать release signing, если keystore доступен
+            // КРИТИЧЕСКИ ВАЖНО ДЛЯ GOOGLE PLAY:
+            // release-сборка НЕ должна тихо подписываться debug-ключом, иначе обновления через Play будут невозможны.
             val keystoreFileValue = keystoreProperties["storeFile"] as? String
-            if (keystorePropertiesFile.exists() && keystoreFileValue != null && file(keystoreFileValue).exists()) {
+            val storePasswordValue = keystoreProperties["storePassword"] as? String
+            val keyAliasValue = keystoreProperties["keyAlias"] as? String
+            val keyPasswordValue = keystoreProperties["keyPassword"] as? String
+
+            val releaseSigningAvailable =
+                keystorePropertiesFile.exists() &&
+                    !keystoreFileValue.isNullOrBlank() &&
+                    file(keystoreFileValue).exists() &&
+                    !storePasswordValue.isNullOrBlank() &&
+                    !keyAliasValue.isNullOrBlank() &&
+                    !keyPasswordValue.isNullOrBlank()
+
+            if (releaseSigningAvailable) {
                 signingConfig = signingConfigs.getByName("release")
                 println("INFO: Release build будет подписан release keystore: $keystoreFileValue")
+            } else if (isReleaseArtifactRequested) {
+                throw GradleException(
+                    "ОШИБКА: Release keystore не настроен. " +
+                        "Для публикации в Google Play необходимо создать keystore.properties (см. keystore.properties.template) " +
+                        "и указать существующий storeFile/пароли. " +
+                        "Текущий storeFile=${keystoreFileValue ?: "<не задан>"}"
+                )
             } else {
-                println("WARNING: Release signing configuration not available, using debug signing for release build")
-                println("WARNING: Это может вызвать проблемы при обновлении, если предыдущая версия была подписана release ключом")
-                signingConfig = signingConfigs.findByName("debug")
+                // Не блокируем debug/unitTest задачи, где release-вариант не собирается.
+                println("INFO: Release keystore не настроен (release артефакт не запрошен).")
             }
         }
     }
@@ -119,19 +151,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     
     buildFeatures {
         compose = true
         buildConfig = true
     }
     
-    composeOptions {
-        // For Kotlin 2.0+, the compiler extension is integrated into the Kotlin compiler
-    }
+    // Для Kotlin 2.0+ с плагином kotlin-compose блок composeOptions не требуется
+    // Компилятор Compose интегрирован в Kotlin компилятор
     
     testOptions {
         unitTests {
@@ -167,6 +194,13 @@ android {
         arg("ksp.incremental", "false")
         arg("ksp.incremental.log", "true")
         arg("ksp.allow.all.target.source.sets", "true")
+    }
+}
+
+// Обновленный синтаксис для jvmTarget (вместо deprecated kotlinOptions)
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -208,21 +242,26 @@ dependencies {
     // Baseline Profile installer: устанавливает профили в рантайме (ускоряет запуск)
     implementation(libs.androidx.profileinstaller)
 
+    // Google Play In-App Updates (опционально, безопасно деградирует вне Play Store)
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
+
     // Подключаем baseline profile, сгенерированный модулем :baselineprofile
     baselineProfile(project(":baselineprofile"))
 
     // Testing
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
     testImplementation(libs.hilt.android.testing)
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    testImplementation("io.mockk:mockk:1.13.13")
-    testImplementation("org.mockito:mockito-core:5.14.2")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
-    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.robolectric)
     kspTest(libs.hilt.compiler)
     
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.hilt.android.testing)
@@ -237,4 +276,10 @@ dependencies {
 
     // WorkManager Testing
     androidTestImplementation(libs.androidx.work.testing)
+
+    // Tracing for AndroidX Test (решает NoSuchMethodError forceEnableAppTracing)
+    // Явно форсируем версию 1.3.0 для всех транзитивных зависимостей
+    androidTestImplementation("androidx.tracing:tracing:1.3.0") {
+        because("AndroidX Test требует forceEnableAppTracing из 1.3.0+")
+    }
 }

@@ -18,6 +18,7 @@ import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.notification.INotificationHelper
 import com.wifiguard.core.security.ThreatType
+import com.wifiguard.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +27,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import org.json.JSONObject
 import javax.inject.Inject
 
 /**
@@ -46,6 +45,9 @@ class WifiConnectionReceiver : BroadcastReceiver() {
     @Inject
     lateinit var database: WifiGuardDatabase
 
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
     private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
@@ -54,24 +56,6 @@ class WifiConnectionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "Получено событие: ${intent.action}")
-        
-        // #region agent log
-        try {
-            val logJson = JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", "B")
-                put("location", "WifiConnectionReceiver.kt:53")
-                put("message", "BroadcastReceiver получил событие")
-                put("data", JSONObject().apply {
-                    put("action", intent.action ?: "null")
-                    put("sdkVersion", Build.VERSION.SDK_INT)
-                })
-                put("timestamp", System.currentTimeMillis())
-            }
-            File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-        } catch (e: Exception) {}
-        // #endregion
 
         // Проверяем разрешения
         if (!checkPermissions(context)) {
@@ -80,10 +64,6 @@ class WifiConnectionReceiver : BroadcastReceiver() {
         }
 
         when (intent.action) {
-            // CONNECTIVITY_ACTION deprecated в Android 8.0+, используем только NETWORK_STATE_CHANGED_ACTION
-            // Для Android 8.0+ рекомендуется использовать NetworkCallback вместо BroadcastReceiver
-            @Suppress("DEPRECATION")
-            ConnectivityManager.CONNECTIVITY_ACTION,
             WifiManager.NETWORK_STATE_CHANGED_ACTION -> {
                 handleWifiConnectionChange(context)
             }
@@ -138,9 +118,17 @@ class WifiConnectionReceiver : BroadcastReceiver() {
 
         try {
             // Шаг 1: Запускаем сканирование для получения актуальной информации
+            // Примечание: проверка isConnectedToWifi() уже выполнена в handleWifiConnectionChange(),
+            // поэтому здесь мы уверены, что WiFi подключен
             Log.d(TAG, "Запуск сканирования WiFi сетей")
             val scanStatus = wifiScannerService.startScan()
             Log.d(TAG, "Статус запуска сканирования: $scanStatus")
+            
+            // Если сканирование не удалось, продолжаем анализ с доступной информацией
+            // (не прерываем обработку, так как у нас уже есть информация о сети из networkInfo)
+            if (scanStatus is com.wifiguard.core.domain.model.WifiScanStatus.Failed) {
+                Log.w(TAG, "Сканирование не удалось: ${scanStatus.error}, продолжаем анализ с доступной информацией")
+            }
 
             // Даем время на завершение сканирования
             kotlinx.coroutines.delay(2000)
@@ -182,6 +170,14 @@ class WifiConnectionReceiver : BroadcastReceiver() {
                     securityType = securityType
                 )
 
+                // Авто-действие для критических угроз (только при согласии пользователя)
+                handleCriticalThreatIfNeeded(
+                    context = context,
+                    networkInfo = networkInfo,
+                    threatLevel = maxThreatLevel,
+                    reasonHint = "Известные угрозы: ${unresolvedThreats.size}"
+                )
+
                 // Отправляем уведомление о известных угрозах
                 notificationHelper.showThreatNotification(
                     networkBssid = networkInfo.bssid,
@@ -214,6 +210,18 @@ class WifiConnectionReceiver : BroadcastReceiver() {
                 // Определяем уровень угрозы на основе типа безопасности
                 val threatLevel = ThreatLevel.fromSecurityType(securityType)
 
+                // Авто-действие для критических угроз (только при согласии пользователя)
+                handleCriticalThreatIfNeeded(
+                    context = context,
+                    networkInfo = networkInfo,
+                    threatLevel = threatLevel,
+                    reasonHint = when (securityType) {
+                        SecurityType.OPEN -> "Открытая сеть без шифрования"
+                        SecurityType.WEP -> "Устаревшее шифрование WEP"
+                        else -> "Небезопасный тип безопасности"
+                    }
+                )
+
                 notificationHelper.showThreatNotification(
                     networkBssid = networkInfo.bssid,
                     threatLevel = threatLevel,
@@ -236,44 +244,70 @@ class WifiConnectionReceiver : BroadcastReceiver() {
     }
 
     /**
+     * При критическом уровне угрозы выполняет защитное действие (best-effort),
+     * но только если пользователь явно разрешил это в настройках.
+     */
+    private suspend fun handleCriticalThreatIfNeeded(
+        context: Context,
+        networkInfo: NetworkInfo,
+        threatLevel: ThreatLevel,
+        reasonHint: String
+    ) {
+        val autoDisableEnabled = runCatching {
+            settingsRepository.getAutoDisableWifiOnCritical().first()
+        }.getOrElse { e ->
+            Log.w(TAG, "Не удалось прочитать настройку авто-отключения Wi‑Fi: ${e.message}", e)
+            false
+        }
+
+        if (!CriticalWifiProtection.shouldAttemptAutoDisable(threatLevel, autoDisableEnabled)) {
+            Log.d(TAG, "Авто-отключение Wi‑Fi выключено пользователем — действия не выполняем")
+            return
+        }
+
+        try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+            // 1) Всегда пробуем разорвать текущее соединение (best-effort)
+            runCatching {
+                @Suppress("DEPRECATION") // disconnect() deprecated, но альтернативы нет для Android < 10
+                val disconnected = wifiManager.disconnect()
+                Log.d(TAG, "Попытка разорвать Wi‑Fi соединение: $disconnected")
+            }.onFailure { e ->
+                Log.w(TAG, "Не удалось разорвать Wi‑Fi соединение: ${e.message}", e)
+            }
+
+            // 2) Пытаемся выключить Wi‑Fi (на Android 10+ ОС может запретить)
+            if (CriticalWifiProtection.canDisableWifiBySdk(Build.VERSION.SDK_INT)) {
+                runCatching {
+                    @Suppress("DEPRECATION") // До Android 10 разрешено приложению с CHANGE_WIFI_STATE
+                    val disabled = wifiManager.setWifiEnabled(false)
+                    Log.d(TAG, "Попытка выключить Wi‑Fi: $disabled")
+                }.onFailure { e ->
+                    Log.w(TAG, "Не удалось выключить Wi‑Fi: ${e.message}", e)
+                }
+            } else {
+                Log.w(TAG, "Android 10+: полное выключение Wi‑Fi ограничено ОС. Выполнен только disconnect().")
+            }
+        } catch (se: SecurityException) {
+            Log.e(TAG, "Нет прав для управления Wi‑Fi (CHANGE_WIFI_STATE): ${se.message}", se)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при защитном действии для критической сети: ${e.message}", e)
+        } finally {
+            // Для диагностики фиксируем причину в логах
+            Log.d(TAG, "Критическая сеть: ssid=${networkInfo.ssid}, bssid=${networkInfo.bssid}, reason=$reasonHint")
+        }
+    }
+
+    /**
      * Проверяет, подключены ли мы к WiFi сети
      */
     private fun isConnectedToWifi(context: Context): Boolean {
         return try {
             val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val network = connectivityManager.activeNetwork
-                val capabilities = connectivityManager.getNetworkCapabilities(network)
-                
-                // #region agent log
-                try {
-                    val logJson = JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "C")
-                        put("location", "WifiConnectionReceiver.kt:221")
-                        put("message", "Проверка WiFi подключения")
-                        put("data", JSONObject().apply {
-                            put("sdkVersion", Build.VERSION.SDK_INT)
-                            put("networkIsNull", network == null)
-                            put("capabilitiesIsNull", capabilities == null)
-                            put("hasWifiTransport", capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ?: false)
-                            put("result", capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true)
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
-                // #endregion
-                
-                capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-            } else {
-                @Suppress("DEPRECATION")
-                val networkInfo = connectivityManager.activeNetworkInfo
-                @Suppress("DEPRECATION")
-                networkInfo?.type == ConnectivityManager.TYPE_WIFI && networkInfo.isConnected
-            }
+            val network = connectivityManager.activeNetwork
+            val capabilities = connectivityManager.getNetworkCapabilities(network)
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при проверке WiFi подключения: ${e.message}", e)
             false
@@ -298,53 +332,8 @@ class WifiConnectionReceiver : BroadcastReceiver() {
                 val network = connectivityManager.activeNetwork
                 val capabilities = connectivityManager.getNetworkCapabilities(network)
 
-                // #region agent log
-                try {
-                    val logJson = JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "A")
-                        put("location", "WifiConnectionReceiver.kt:253")
-                        put("message", "Получение WiFi информации через NetworkCapabilities")
-                        put("data", JSONObject().apply {
-                            put("sdkVersion", Build.VERSION.SDK_INT)
-                            put("networkIsNull", network == null)
-                            put("capabilitiesIsNull", capabilities == null)
-                            put("hasWifiTransport", capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ?: false)
-                            put("transportInfoIsNull", capabilities?.transportInfo == null)
-                            put("transportInfoType", capabilities?.transportInfo?.javaClass?.simpleName ?: "null")
-                            put("wifiInfoIsNull", (capabilities?.transportInfo as? WifiInfo) == null)
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
-                // #endregion
-
                 if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
                     val wifiInfo = capabilities.transportInfo as? WifiInfo
-
-                    // #region agent log
-                    try {
-                        val logJson = JSONObject().apply {
-                            put("sessionId", "debug-session")
-                            put("runId", "run1")
-                            put("hypothesisId", "A")
-                            put("location", "WifiConnectionReceiver.kt:260")
-                            put("message", "WifiInfo из transportInfo")
-                            put("data", JSONObject().apply {
-                                put("wifiInfoIsNull", wifiInfo == null)
-                                if (wifiInfo != null) {
-                                    put("ssid", wifiInfo.ssid ?: "null")
-                                    put("bssid", wifiInfo.bssid ?: "null")
-                                    put("rssi", wifiInfo.rssi)
-                                }
-                            })
-                            put("timestamp", System.currentTimeMillis())
-                        }
-                        File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                    } catch (e: Exception) {}
-                    // #endregion
 
                     if (wifiInfo != null) {
                         val ssid = wifiInfo.ssid?.removeSurrounding("\"") ?: ""
@@ -364,32 +353,8 @@ class WifiConnectionReceiver : BroadcastReceiver() {
                     }
                 }
             } else {
-                // Android 11 и ниже - используем устаревший API
-                @Suppress("DEPRECATION")
-                val connectionInfo = wifiManager.connectionInfo
-
-                // #region agent log
-                try {
-                    val logJson = JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "D")
-                        put("location", "WifiConnectionReceiver.kt:280")
-                        put("message", "Получение WiFi информации через connectionInfo")
-                        put("data", JSONObject().apply {
-                            put("sdkVersion", Build.VERSION.SDK_INT)
-                            put("connectionInfoIsNull", connectionInfo == null)
-                            if (connectionInfo != null) {
-                                put("networkId", connectionInfo.networkId)
-                                put("ssid", connectionInfo.ssid ?: "null")
-                                put("bssid", connectionInfo.bssid ?: "null")
-                            }
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
-                // #endregion
+                // Android 11 и ниже: используем connectionInfo через reflection (без warning'ов компилятора).
+                val connectionInfo = getConnectionInfoCompat(wifiManager) ?: return null
 
                 if (connectionInfo.networkId != -1) {
                     val ssid = connectionInfo.ssid?.removeSurrounding("\"") ?: ""
@@ -421,6 +386,13 @@ class WifiConnectionReceiver : BroadcastReceiver() {
         }
     }
 
+    private fun getConnectionInfoCompat(wifiManager: WifiManager): WifiInfo? {
+        return runCatching {
+            val method = wifiManager.javaClass.getMethod("getConnectionInfo")
+            method.invoke(wifiManager) as? WifiInfo
+        }.getOrNull()
+    }
+
     /**
      * Проверяет наличие необходимых разрешений
      */
@@ -438,31 +410,6 @@ class WifiConnectionReceiver : BroadcastReceiver() {
         val missingPermissions = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
-
-        // #region agent log
-        try {
-            val nearbyWifiGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
-            val logJson = JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", "E")
-                put("location", "WifiConnectionReceiver.kt:317")
-                put("message", "Проверка разрешений")
-                put("data", JSONObject().apply {
-                    put("sdkVersion", Build.VERSION.SDK_INT)
-                    put("missingPermissions", missingPermissions.joinToString(","))
-                    put("nearbyWifiDevicesGranted", nearbyWifiGranted)
-                    put("allPermissionsGranted", missingPermissions.isEmpty() && (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || nearbyWifiGranted))
-                })
-                put("timestamp", System.currentTimeMillis())
-            }
-            File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-        } catch (e: Exception) {}
-        // #endregion
 
         if (missingPermissions.isNotEmpty()) {
             Log.w(TAG, "Отсутствуют разрешения: ${missingPermissions.joinToString(", ")}")

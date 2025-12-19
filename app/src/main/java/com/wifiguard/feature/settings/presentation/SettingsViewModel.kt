@@ -94,21 +94,31 @@ class SettingsViewModel @Inject constructor(
                         scanIntervalMinutes = interval
                     )
                 }
-                
-                // Затем объединяем результат с оставшимися 2 Flow
-                combine(
-                    firstFiveFlow,
+
+                // Затем объединяем оставшиеся настройки в отдельный Flow (3 значения)
+                val secondFlow = combine(
                     settingsRepository.getThemeMode(),
-                    settingsRepository.getDataRetentionDays()
-                ) { partialState, theme, retention ->
+                    settingsRepository.getDataRetentionDays(),
+                    settingsRepository.getAutoDisableWifiOnCritical()
+                ) { theme, retention, autoDisableWifiOnCritical ->
+                    SettingsPartialState2(
+                        themeMode = theme,
+                        dataRetentionDays = retention,
+                        autoDisableWifiOnCritical = autoDisableWifiOnCritical
+                    )
+                }
+
+                // Финальный combine из двух Flow
+                combine(firstFiveFlow, secondFlow) { partialState, partial2 ->
                     SettingsUiState(
                         autoScanEnabled = partialState.autoScanEnabled,
                         notificationsEnabled = partialState.notificationsEnabled,
                         notificationSoundEnabled = partialState.notificationSoundEnabled,
                         notificationVibrationEnabled = partialState.notificationVibrationEnabled,
                         scanIntervalMinutes = partialState.scanIntervalMinutes,
-                        themeMode = theme,
-                        dataRetentionDays = retention
+                        themeMode = partial2.themeMode,
+                        dataRetentionDays = partial2.dataRetentionDays,
+                        autoDisableWifiOnCritical = partial2.autoDisableWifiOnCritical
                     )
                 }
                     .catch { exception ->
@@ -281,6 +291,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+
     fun showDataRetentionDialog() {
         _dataRetentionDialogVisible.value = true
     }
@@ -316,6 +327,20 @@ class SettingsViewModel @Inject constructor(
                 _errorMessage.value = "Не удалось сохранить период хранения данных"
                 // Откатываем изменение при ошибке
                 _uiState.value = _uiState.value.copy(dataRetentionDays = oldDays)
+            }
+        }
+    }
+
+    fun setAutoDisableWifiOnCritical(enabled: Boolean) {
+        val oldValue = _uiState.value.autoDisableWifiOnCritical
+        _uiState.value = _uiState.value.copy(autoDisableWifiOnCritical = enabled)
+        viewModelScope.launch {
+            try {
+                settingsRepository.setAutoDisableWifiOnCritical(enabled)
+            } catch (e: Exception) {
+                loge("Ошибка при сохранении авто-отключения Wi‑Fi: ${e.message}", e)
+                _errorMessage.value = "Не удалось сохранить настройку авто-отключения Wi‑Fi"
+                _uiState.value = _uiState.value.copy(autoDisableWifiOnCritical = oldValue)
             }
         }
     }
@@ -419,6 +444,12 @@ private data class SettingsPartialState(
     val scanIntervalMinutes: Int
 )
 
+private data class SettingsPartialState2(
+    val themeMode: String,
+    val dataRetentionDays: Int,
+    val autoDisableWifiOnCritical: Boolean
+)
+
 /**
  * Состояние UI экрана настроек
  */
@@ -429,7 +460,8 @@ data class SettingsUiState(
     val notificationVibrationEnabled: Boolean = true,
     val scanIntervalMinutes: Int = 15,
     val themeMode: String = "system",
-    val dataRetentionDays: Int = 30
+    val dataRetentionDays: Int = 30,
+    val autoDisableWifiOnCritical: Boolean = false
 )
 
 /**

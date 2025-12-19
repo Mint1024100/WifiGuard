@@ -1,6 +1,8 @@
 package com.wifiguard.core.data.wifi
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -8,6 +10,7 @@ import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiStandard
 import io.mockk.every
+import io.mockk.invoke
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -65,6 +68,15 @@ class WifiScannerTest {
         every { context.applicationContext } returns applicationContext
         every { applicationContext.getSystemService(Context.WIFI_SERVICE) } returns wifiManager
         every { applicationContext.applicationContext } returns applicationContext
+        // Разрешения: WifiScannerImpl использует ContextCompat.checkSelfPermission(context, ACCESS_FINE_LOCATION)
+        every { applicationContext.checkPermission(any(), any(), any()) } returns PackageManager.PERMISSION_GRANTED
+        every { context.checkPermission(any(), any(), any()) } returns PackageManager.PERMISSION_GRANTED
+
+        // Геолокация: WifiScannerImpl требует включенную системную геолокацию (LocationManager).
+        val locationManager = mockk<LocationManager>(relaxed = true)
+        every { locationManager.isLocationEnabled } returns true
+        every { applicationContext.getSystemService(Context.LOCATION_SERVICE) } returns locationManager
+        every { context.getSystemService(Context.LOCATION_SERVICE) } returns locationManager
         
         // Также мокаем прямой вызов на случай если где-то используется
         every { context.getSystemService(Context.WIFI_SERVICE) } returns wifiManager
@@ -104,7 +116,7 @@ class WifiScannerTest {
         // Given
         val scanResults = createMockScanResults()
         // ИСПРАВЛЕНО: На API 28 startScan() вызывается, поэтому мокируем его
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         every { wifiManager.scanResults } returns scanResults
 
         // When
@@ -117,7 +129,7 @@ class WifiScannerTest {
         assertEquals(2, scanResultsList!!.size)
 
         // ИСПРАВЛЕНО: На API 28 (P) startScan() должен вызываться
-        verify { wifiManager.startScan() }
+        verify { wifiManager["startScan"]() }
     }
     
     @Test
@@ -137,7 +149,7 @@ class WifiScannerTest {
     fun `startScan should return failure when scan fails`() = runTest {
         // Given
         // ИСПРАВЛЕНО: На API 28 startScan() вызывается, но возвращает false
-        every { wifiManager.startScan() } returns false
+        every { wifiManager["startScan"]() } returns false
         // ИСПРАВЛЕНО: Мокируем scanResults для возврата пустого списка (кэшированные результаты)
         // Согласно WifiScannerImpl.kt:149-151, при неудачном startScan() используются кэшированные результаты
         // Функция НЕ возвращает failure, а возвращает кэшированные результаты
@@ -159,7 +171,7 @@ class WifiScannerTest {
     fun `getScanResultsFlow should emit results when scan is successful`() = runTest {
         // Given
         val scanResults = createMockScanResults()
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         every { wifiManager.scanResults } returns scanResults
         
         // ИСПРАВЛЕНО: Запускаем сбор Flow в backgroundScope для предотвращения 
@@ -188,7 +200,7 @@ class WifiScannerTest {
     fun `getCurrentNetwork should return null when not connected`() = runTest {
         // Given
         val wifiInfo = mockk<android.net.wifi.WifiInfo>(relaxed = true)
-        every { wifiManager.connectionInfo } returns wifiInfo
+        every { wifiManager["getConnectionInfo"]() } returns wifiInfo
         every { wifiInfo.networkId } returns -1 // Не подключен
         every { wifiInfo.ssid } returns null
 
@@ -205,7 +217,7 @@ class WifiScannerTest {
         val wifiInfo = mockk<android.net.wifi.WifiInfo>(relaxed = true)
         val scanResults = createMockScanResults()
 
-        every { wifiManager.connectionInfo } returns wifiInfo
+        every { wifiManager["getConnectionInfo"]() } returns wifiInfo
         every { wifiInfo.networkId } returns 1 // Подключен
         every { wifiInfo.ssid } returns "\"TestNetwork\""
         every { wifiInfo.bssid } returns "00:11:22:33:44:55"
@@ -227,7 +239,7 @@ class WifiScannerTest {
     fun `startContinuousScan should emit results periodically`() = runTest {
         // Given
         val scanResults = createMockScanResults()
-        every { wifiManager.startScan() } returns true
+        every { wifiManager["startScan"]() } returns true
         every { wifiManager.scanResults } returns scanResults
         
         // ИСПРАВЛЕНО: Используем backgroundScope для сбора бесконечного Flow
@@ -269,12 +281,18 @@ class WifiScannerTest {
         level: Int
     ): ScanResult {
         return ScanResult().apply {
-            SSID = ssid
-            BSSID = bssid
+            // Не обращаемся к deprecated полям напрямую, чтобы не получать warning'и компилятора.
+            setScanResultField(this, "SSID", ssid)
+            setScanResultField(this, "BSSID", bssid)
             this.capabilities = capabilities
             this.frequency = frequency
             this.level = level
         }
+    }
+
+    private fun setScanResultField(target: ScanResult, fieldName: String, value: String) {
+        val field = target.javaClass.getField(fieldName)
+        field.set(target, value)
     }
     
     private fun createMockScanResults(): List<ScanResult> {

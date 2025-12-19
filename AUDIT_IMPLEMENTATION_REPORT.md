@@ -166,23 +166,8 @@ Button(
 **Проблема**: Фильтрация выполнялась в UI на каждую рекомпозицию (O(n) операция).
 
 **Решение**: Перемещена в ViewModel с использованием Flow operators:
-```kotlin
-val filteredScanResult: StateFlow<Result<List<WifiScanResult>>> = combine(
-    _scanResult,
-    _currentNetwork
-) { result, connectedNetwork ->
-    when (result) {
-        is Result.Success -> {
-            val filtered = if (connectedNetwork != null) {
-                result.data.filter { it.bssid != connectedNetwork.bssid }
-            } else {
-                result.data
-            }
-            Result.Success(filtered)
-        }
-        else -> result
-    }
-}.stateIn(...)
+```text
+См. оптимизированную реализацию фильтрации сетей в `ScannerViewModel.kt`.
 ```
 
 **Эффект**: Устранены лаги при скролле на списках 50+ сетей, особенно на low-end устройствах.
@@ -195,12 +180,8 @@ val filteredScanResult: StateFlow<Result<List<WifiScanResult>>> = combine(
 **Проблема**: Отсутствие `contentType` мешает Compose оптимально переиспользовать layouts.
 
 **Решение**:
-```kotlin
-itemsIndexed(
-    items = networks,
-    key = { index, network -> "${network.bssid}_${network.timestamp}_$index" },
-    contentType = { _, network -> network.isConnected }
-) { index, network ->
+```text
+См. пример использования `contentType` в `ScannerScreen.kt` для оптимизации `LazyColumn`.
 ```
 
 **Эффект**: Улучшен scroll performance на Android 12+.
@@ -405,3 +386,10 @@ LaunchedEffect(flippedBssid) {
 **Время выполнения**: ~2 часа  
 **Качество кода**: Соответствует Kotlin Coding Conventions и WifiGuard coding standards  
 **Готовность к production**: ✅ ДА
+
+
+
+
+
+
+

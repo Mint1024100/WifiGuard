@@ -32,6 +32,16 @@ interface ThreatRepository {
      * Получить угрозы по SSID сети
      */
     fun getThreatsByNetworkSsid(ssid: String): Flow<List<SecurityThreat>>
+
+    /**
+     * Получить угрозы по BSSID сети.
+     */
+    fun getThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>>
+
+    /**
+     * Получить только активные (неразрешенные) угрозы по BSSID сети.
+     */
+    fun getUnresolvedThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>>
     
     /**
      * Получить неразрешенные угрозы

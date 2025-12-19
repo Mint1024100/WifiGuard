@@ -2,7 +2,6 @@ package com.wifiguard.feature.privacypolicy.presentation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,6 +18,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.wifiguard.R
+import com.wifiguard.core.ui.components.AnnotatedLinkText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -264,18 +264,11 @@ fun PrivacyPolicyContent(onLinkClick: (String) -> Unit) {
             pop()
         }
 
-        ClickableText(
+        AnnotatedLinkText(
             text = contactAnnotatedString,
+            tag = LINK_TAG,
             style = MaterialTheme.typography.bodyLarge,
-            onClick = { offset ->
-                contactAnnotatedString.getStringAnnotations(
-                    tag = LINK_TAG,
-                    start = offset,
-                    end = offset
-                ).firstOrNull()?.let { annotation ->
-                    onLinkClick(annotation.item)
-                }
-            }
+            onLinkClick = onLinkClick,
         )
 
         Spacer(modifier = Modifier.height(24.dp))

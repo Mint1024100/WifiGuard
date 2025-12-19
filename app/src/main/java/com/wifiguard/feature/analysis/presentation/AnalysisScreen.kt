@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,11 +52,14 @@ import android.os.Build
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.wifiguard.core.ui.theme.calculateLuminance
 import com.wifiguard.core.data.wifi.ScanStatusState
 import com.wifiguard.core.domain.model.WifiScanStatus
 import com.wifiguard.core.service.WifiForegroundScanService
+import com.wifiguard.core.ui.testing.UiTestTags
+import com.wifiguard.R
 
 /**
  * Экран анализа безопасности
@@ -127,21 +131,25 @@ fun AnalysisScreen(
     }
 
     Scaffold(
+        modifier = Modifier.testTag(UiTestTags.ANALYSIS_SCREEN),
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "Анализ безопасности",
+                        stringResource(R.string.analysis_title),
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 20.sp,
                         fontWeight = FontWeight(600)
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        modifier = Modifier.testTag(UiTestTags.ANALYSIS_NAV_BACK),
+                        onClick = onNavigateBack
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -158,7 +166,7 @@ fun AnalysisScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Обновить сканирование",
+                            contentDescription = stringResource(R.string.common_refresh),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -259,48 +267,9 @@ fun AnalysisScreen(
                         }
                     }.value
                     
-                    // #region agent log
-                    LaunchedEffect(isRefreshing, uiState.scanStatus) {
-                        try {
-                            val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
-                            val logEntry = org.json.JSONObject().apply {
-                                put("sessionId", "debug-session")
-                                put("runId", "run1")
-                                put("hypothesisId", "D")
-                                put("location", "AnalysisScreen.kt:PullToRefreshBox")
-                                put("message", "isRefreshing или scanStatus изменилось")
-                                put("timestamp", System.currentTimeMillis())
-                                put("data", org.json.JSONObject().apply {
-                                    put("isRefreshing", isRefreshing)
-                                    put("scanStatus", uiState.scanStatus.javaClass.simpleName)
-                                })
-                            }
-                            logFile.appendText(logEntry.toString() + "\n")
-                        } catch (e: Exception) { /* ignore */ }
-                    }
-                    // #endregion
-                    
                     PullToRefreshBox(
                         isRefreshing = isRefreshing,
                         onRefresh = {
-                            // #region agent log
-                            try {
-                                val logFile = java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log")
-                                val logEntry = org.json.JSONObject().apply {
-                                    put("sessionId", "debug-session")
-                                    put("runId", "run1")
-                                    put("hypothesisId", "E")
-                                    put("location", "AnalysisScreen.kt:onRefresh")
-                                    put("message", "onRefresh вызван")
-                                    put("timestamp", System.currentTimeMillis())
-                                    put("data", org.json.JSONObject().apply {
-                                        put("isRefreshing", isRefreshing)
-                                        put("scanStatus", uiState.scanStatus.javaClass.simpleName)
-                                    })
-                                }
-                                logFile.appendText(logEntry.toString() + "\n")
-                            } catch (e: Exception) { /* ignore */ }
-                            // #endregion
                             try {
                                 viewModel.refreshData(context)
                             } catch (e: Exception) {
@@ -308,7 +277,7 @@ fun AnalysisScreen(
                                 Log.e("AnalysisScreen", "Ошибка при обновлении данных", e)
                             }
                         },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.weight(1f) // ИСПРАВЛЕНО: Используем weight(1f) в Column
                     ) {
                         SecurityReportContent(
                             report = securityReport,
@@ -528,114 +497,197 @@ fun SecurityReportContent(
     report: SecurityReport,
     onNavigateToFullReport: () -> Unit = {}
 ) {
-    // ИСПРАВЛЕНО: Получаем конфигурацию один раз и кэшируем вычисленные значения
-    val configuration = LocalConfiguration.current
-    val screenWidthDp = remember(configuration.screenWidthDp) { configuration.screenWidthDp }
-    val isSmallScreen = remember(screenWidthDp) { screenWidthDp < 600 } // Маленькие экраны (телефоны)
-    val isMediumScreen = remember(screenWidthDp) { screenWidthDp in 600..840 } // Средние экраны (планшеты)
-    
-    // ИСПРАВЛЕНО: Валидация данных SecurityReport перед использованием
-    val validatedReport = remember(
-        report.totalNetworks,
-        report.safeNetworks,
-        report.lowRiskNetworks,
-        report.mediumRiskNetworks,
-        report.highRiskNetworks,
-        report.criticalRiskNetworks,
-        report.threats.size,
-        report.recommendations.size,
-        report.overallRiskLevel,
-        report.timestamp
-    ) {
-        // Валидируем и нормализуем данные отчета
-        val totalNetworks = report.totalNetworks.coerceAtLeast(0)
-        report.copy(
-            totalNetworks = totalNetworks,
-            safeNetworks = report.safeNetworks.coerceIn(0, totalNetworks),
-            lowRiskNetworks = report.lowRiskNetworks.coerceIn(0, totalNetworks),
-            mediumRiskNetworks = report.mediumRiskNetworks.coerceIn(0, totalNetworks),
-            highRiskNetworks = report.highRiskNetworks.coerceIn(0, totalNetworks),
-            criticalRiskNetworks = report.criticalRiskNetworks.coerceIn(0, totalNetworks),
-            threats = report.threats.filterNotNull().filter { it.id >= 0 },
-            recommendations = report.recommendations.filterNotNull().filter { it.isNotBlank() },
-            networkAnalysis = report.networkAnalysis.filterNotNull()
-        )
-    }
-    
-    // ИСПРАВЛЕНО: Валидация securityScore (диапазон 0-100)
-    val rawSecurityScore = validatedReport.getOverallSecurityScoreDetailed()
-    val securityScore = rawSecurityScore.coerceIn(0, 100)
-    var animatedScore by remember { mutableFloatStateOf(0f) }
-    
-    LaunchedEffect(securityScore) {
-        animatedScore = securityScore.toFloat()
-    }
-
-    var threatsExpanded by remember { mutableStateOf(true) }
-    var recommendationsExpanded by remember { mutableStateOf(true) }
-
-    // ИСПРАВЛЕНО: Адаптивный размер колонок в зависимости от размера экрана
-    // Добавлены дополнительные breakpoints для лучшей адаптивности
-    val gridMinSize = remember(screenWidthDp) {
-        when {
-            screenWidthDp < 360 -> 260.dp // Очень маленькие экраны
-            screenWidthDp < 600 -> 280.dp // Маленькие экраны (телефоны)
-            screenWidthDp < 840 -> 320.dp // Средние экраны (планшеты)
-            screenWidthDp < 1200 -> 340.dp // Большие планшеты
-            else -> 400.dp // Очень большие экраны
-        }
-    }
-
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = gridMinSize),
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Hero Section with Animated Security Score
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            SecurityScoreHeroSection(
-                securityScore = animatedScore,
-                overallRiskLevel = validatedReport.overallRiskLevel
+    // ИСПРАВЛЕНО: Используем BoxWithConstraints для получения точных размеров контейнера
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val containerWidth = maxWidth
+        val isSmallScreen = containerWidth < 600.dp
+        val isMediumScreen = containerWidth in 600.dp..840.dp
+        
+        // ИСПРАВЛЕНО: Валидация данных SecurityReport перед использованием
+        val validatedReport = remember(
+            report.totalNetworks,
+            report.safeNetworks,
+            report.lowRiskNetworks,
+            report.mediumRiskNetworks,
+            report.highRiskNetworks,
+            report.criticalRiskNetworks,
+            report.threats.size,
+            report.recommendations.size,
+            report.overallRiskLevel,
+            report.timestamp
+        ) {
+            // Валидируем и нормализуем данные отчета
+            val totalNetworks = report.totalNetworks.coerceAtLeast(0)
+            report.copy(
+                totalNetworks = totalNetworks,
+                safeNetworks = report.safeNetworks.coerceIn(0, totalNetworks),
+                lowRiskNetworks = report.lowRiskNetworks.coerceIn(0, totalNetworks),
+                mediumRiskNetworks = report.mediumRiskNetworks.coerceIn(0, totalNetworks),
+                highRiskNetworks = report.highRiskNetworks.coerceIn(0, totalNetworks),
+                criticalRiskNetworks = report.criticalRiskNetworks.coerceIn(0, totalNetworks),
+                threats = report.threats.filterNotNull().filter { it.id >= 0 },
+                recommendations = report.recommendations.filterNotNull().filter { it.isNotBlank() },
+                networkAnalysis = report.networkAnalysis.filterNotNull()
             )
         }
-
-        // Stats Cards Grid
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            StatsCardsGrid(
-                report = validatedReport
-            )
+        
+        // ИСПРАВЛЕНО: Валидация securityScore (диапазон 0-100)
+        val rawSecurityScore = validatedReport.getOverallSecurityScoreDetailed()
+        val securityScore = rawSecurityScore.coerceIn(0, 100)
+        var animatedScore by remember { mutableFloatStateOf(0f) }
+        
+        LaunchedEffect(securityScore) {
+            animatedScore = securityScore.toFloat()
         }
 
-        // Threats Section
-        if (validatedReport.threats.isNotEmpty()) {
+        var threatsExpanded by remember { mutableStateOf(true) }
+        var recommendationsExpanded by remember { mutableStateOf(true) }
+
+        // Подключённая сеть (если есть) — для отображения критического баннера.
+        val connectedNetworkAnalysis = remember(validatedReport.networkAnalysis) {
+            validatedReport.networkAnalysis.firstOrNull { it.network.isConnected }
+        }
+        val connectedCritical = remember(connectedNetworkAnalysis) {
+            connectedNetworkAnalysis?.takeIf { it.threatLevel == ThreatLevel.CRITICAL }
+        }
+
+        // ИСПРАВЛЕНО: Адаптивный размер колонок в зависимости от размера контейнера
+        val gridMinSize = when {
+            containerWidth < 360.dp -> 260.dp
+            containerWidth < 600.dp -> 280.dp
+            containerWidth < 840.dp -> 320.dp
+            containerWidth < 1200.dp -> 340.dp
+            else -> 400.dp
+        }
+
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = gridMinSize),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Hero Section with Animated Security Score
             item(span = { GridItemSpan(maxLineSpan) }) {
-                ThreatsSection(
-                    title = "Обнаруженные угрозы",
-                    icon = Icons.Rounded.Warning,
-                    threats = validatedReport.threats,
-                    expanded = threatsExpanded,
-                    onToggle = { threatsExpanded = !threatsExpanded },
-                    onNavigateToFullReport = onNavigateToFullReport
+                SecurityScoreHeroSection(
+                    securityScore = animatedScore,
+                    overallRiskLevel = validatedReport.overallRiskLevel
                 )
             }
-        }
 
-        // Recommendations Section
-        if (validatedReport.recommendations.isNotEmpty()) {
+            // Критическая подключённая сеть (если прямо сейчас подключены к CRITICAL)
+            if (connectedCritical != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Подключение к критически небезопасной сети",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = connectedCritical.network.ssid.ifBlank { "Скрытая сеть" },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "BSSID: ${connectedCritical.network.bssid}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = "Безопасность: ${connectedCritical.network.securityType}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Причины подозрений",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val reasons = buildList {
+                                if (connectedCritical.network.securityType == com.wifiguard.core.domain.model.SecurityType.OPEN) {
+                                    add("Открытая сеть без шифрования (данные могут быть перехвачены)")
+                                }
+                                connectedCritical.threats.forEach { t ->
+                                    val extra = t.additionalInfo?.takeIf { it.isNotBlank() }
+                                    if (extra != null) add("${t.description} (${extra})") else add(t.description)
+                                }
+                            }
+
+                            if (reasons.isEmpty()) {
+                                Text(
+                                    text = "Причины не определены. Рекомендуется отключиться от сети.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            } else {
+                                reasons.take(8).forEach { reason ->
+                                    Text(
+                                        text = "• $reason",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Stats Cards Grid
             item(span = { GridItemSpan(maxLineSpan) }) {
-                RecommendationsSection(
-                    title = "Рекомендации",
-                    icon = Icons.Rounded.Lightbulb,
-                    recommendations = validatedReport.recommendations,
-                    expanded = recommendationsExpanded,
-                    onToggle = { recommendationsExpanded = !recommendationsExpanded }
+                StatsCardsGrid(
+                    report = validatedReport
                 )
             }
-        }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Spacer(modifier = Modifier.height(16.dp)) // Bottom padding
+            // Threats Section
+            if (validatedReport.threats.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    ThreatsSection(
+                        title = "Обнаруженные угрозы",
+                        icon = Icons.Rounded.Warning,
+                        threats = validatedReport.threats,
+                        expanded = threatsExpanded,
+                        onToggle = { threatsExpanded = !threatsExpanded },
+                        onNavigateToFullReport = onNavigateToFullReport
+                    )
+                }
+            }
+
+            // Recommendations Section
+            if (validatedReport.recommendations.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    RecommendationsSection(
+                        title = "Рекомендации",
+                        icon = Icons.Rounded.Lightbulb,
+                        recommendations = validatedReport.recommendations,
+                        expanded = recommendationsExpanded,
+                        onToggle = { recommendationsExpanded = !recommendationsExpanded }
+                    )
+                }
+            }
+
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Spacer(modifier = Modifier.height(16.dp)) // Bottom padding
+            }
         }
     }
 }
@@ -680,151 +732,147 @@ fun SecurityScoreHeroSection(
     securityScore: Float,
     overallRiskLevel: ThreatLevel
 ) {
-    // ИСПРАВЛЕНО: Получаем конфигурацию один раз и кэшируем вычисленные значения
-    val configuration = LocalConfiguration.current
-    val screenWidthDp = remember(configuration.screenWidthDp) { configuration.screenWidthDp }
-    val isSmallScreen = remember(screenWidthDp) { screenWidthDp < 600 }
-    
-    // Адаптивные размеры для кругового индикатора
-    val circleSize = if (isSmallScreen) 160.dp else 200.dp
-    val scoreFontSize = if (isSmallScreen) 28.sp else 36.sp
-    val labelFontSize = if (isSmallScreen) 12.sp else 14.sp
-    val statusFontSize = if (isSmallScreen) 14.sp else 16.sp
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), // 8dp elevation
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        ),
-        shape = RoundedCornerShape(16.dp) // Consistent card corner radius: 16dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(if (isSmallScreen) 16.dp else 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    // ИСПРАВЛЕНО: Используем BoxWithConstraints для получения адаптивных размеров
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        val containerWidth = maxWidth
+        val isSmallScreen = containerWidth < 600.dp
+        
+        // Адаптивные размеры для кругового индикатора
+        val circleSize = if (isSmallScreen) 160.dp else 200.dp
+        val scoreFontSize = if (isSmallScreen) 28.sp else 36.sp
+        val labelFontSize = if (isSmallScreen) 12.sp else 14.sp
+        val statusFontSize = if (isSmallScreen) 14.sp else 16.sp
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Text(
-                text = "Общая оценка",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val animatedProgress by animateFloatAsState(
-                targetValue = securityScore / 100f,
-                animationSpec = tween(durationMillis = 1000),
-                label = "ProgressAnimation"
-            )
-
-            val primaryColor = when {
-                securityScore >= 90 -> Color(0xFF4CAF50) // Safe Green
-                securityScore >= 70 -> Color(0xFF8BC34A) // Low Risk Green
-                securityScore >= 50 -> Color(0xFFFFC107) // Medium Amber
-                securityScore >= 30 -> Color(0xFFFF9800) // High Orange
-                else -> Color(0xFFF44336) // Critical Red
-            }
-            val trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-
-            Box(
-                contentAlignment = Alignment.Center,
+            Column(
                 modifier = Modifier
-                    .size(circleSize)
-                    .padding(8.dp)
+                    .fillMaxWidth()
+                    .padding(if (isSmallScreen) 16.dp else 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    // Draw Track
-                    drawArc(
-                        color = trackColor,
-                        startAngle = 0f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        style = Stroke(width = 16f)
-                    )
-
-                    // Draw Progress
-                    drawArc(
-                        color = primaryColor,
-                        startAngle = -90f,
-                        sweepAngle = 360 * animatedProgress,
-                        useCenter = false,
-                        style = Stroke(width = 16f, cap = StrokeCap.Round)
-                    )
-                }
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "${securityScore.toInt()}/100",
-                        fontSize = scoreFontSize,  // ИСПРАВЛЕНО: Адаптивный размер шрифта
-                        fontWeight = FontWeight(700),  // fontWeight=700
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,  // Prevent wrapping
-                        overflow = TextOverflow.Visible, // Prevent cutting off (ellipsize="none" equivalent)
-                        modifier = Modifier.align(Alignment.CenterHorizontally) // Center horizontally in parent
-                    )
-                    Text(
-                        text = when (overallRiskLevel) {
-                            ThreatLevel.SAFE, ThreatLevel.LOW -> "БЕЗОПАСНО"
-                            ThreatLevel.MEDIUM -> "СРЕДНИЙ РИСК"
-                            ThreatLevel.HIGH -> "ВЫСОКИЙ РИСК"
-                            ThreatLevel.CRITICAL -> "КРИТИЧЕСКИЙ"
-                            else -> "АНАЛИЗ"
-                        },
-                        fontSize = labelFontSize,  // ИСПРАВЛЕНО: Адаптивный размер шрифта
-                        fontWeight = FontWeight(500),  // fontWeight=500
-                        color = primaryColor,
-                        maxLines = 1  // Prevent wrapping
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val statusText = when (overallRiskLevel) {
-                ThreatLevel.SAFE, ThreatLevel.LOW -> "Система в безопасности"
-                ThreatLevel.MEDIUM -> "Требуется внимание"
-                ThreatLevel.HIGH, ThreatLevel.CRITICAL -> "Нужны действия"
-                else -> "Анализ"
-            }
-
-            val statusIcon = when (overallRiskLevel) {
-                ThreatLevel.SAFE, ThreatLevel.LOW -> Icons.Rounded.Shield
-                ThreatLevel.MEDIUM -> Icons.Rounded.Warning
-                ThreatLevel.HIGH, ThreatLevel.CRITICAL -> Icons.Rounded.Report
-                else -> Icons.Rounded.Info
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                val statusColor = when (overallRiskLevel) {
-                    ThreatLevel.SAFE, ThreatLevel.LOW -> Color(0xFF4CAF50)
-                    ThreatLevel.MEDIUM -> Color(0xFFFFC107) // Yellow for medium
-                    ThreatLevel.HIGH, ThreatLevel.CRITICAL -> Color(0xFFF44336) // Red for high/critical
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = statusText,
-                    tint = statusColor
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = statusText,
-                    fontSize = statusFontSize,  // ИСПРАВЛЕНО: Адаптивный размер шрифта
-                    fontWeight = FontWeight(500),  // fontWeight=500
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "Общая оценка",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val animatedProgress by animateFloatAsState(
+                    targetValue = securityScore / 100f,
+                    animationSpec = tween(durationMillis = 1000),
+                    label = "ProgressAnimation"
+                )
+
+                val primaryColor = when {
+                    securityScore >= 90 -> Color(0xFF4CAF50)
+                    securityScore >= 70 -> Color(0xFF8BC34A)
+                    securityScore >= 50 -> Color(0xFFFFC107)
+                    securityScore >= 30 -> Color(0xFFFF9800)
+                    else -> Color(0xFFF44336)
+                }
+                val trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(circleSize)
+                        .padding(8.dp)
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawArc(
+                            color = trackColor,
+                            startAngle = 0f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            style = Stroke(width = 16f)
+                        )
+
+                        drawArc(
+                            color = primaryColor,
+                            startAngle = -90f,
+                            sweepAngle = 360 * animatedProgress,
+                            useCenter = false,
+                            style = Stroke(width = 16f, cap = StrokeCap.Round)
+                        )
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "${securityScore.toInt()}/100",
+                            fontSize = scoreFontSize,
+                            fontWeight = FontWeight(700),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Visible
+                        )
+                        Text(
+                            text = when (overallRiskLevel) {
+                                ThreatLevel.SAFE, ThreatLevel.LOW -> "БЕЗОПАСНО"
+                                ThreatLevel.MEDIUM -> "СРЕДНИЙ РИСК"
+                                ThreatLevel.HIGH -> "ВЫСОКИЙ РИСК"
+                                ThreatLevel.CRITICAL -> "КРИТИЧЕСКИЙ"
+                                else -> "АНАЛИЗ"
+                            },
+                            fontSize = labelFontSize,
+                            fontWeight = FontWeight(500),
+                            color = primaryColor,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val statusText = when (overallRiskLevel) {
+                    ThreatLevel.SAFE, ThreatLevel.LOW -> "Система в безопасности"
+                    ThreatLevel.MEDIUM -> "Требуется внимание"
+                    ThreatLevel.HIGH, ThreatLevel.CRITICAL -> "Требуются действия"
+                    else -> "Анализ"
+                }
+
+                val statusIcon = when (overallRiskLevel) {
+                    ThreatLevel.SAFE, ThreatLevel.LOW -> Icons.Rounded.Shield
+                    ThreatLevel.MEDIUM -> Icons.Rounded.Warning
+                    ThreatLevel.HIGH, ThreatLevel.CRITICAL -> Icons.Rounded.Report
+                    else -> Icons.Rounded.Info
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    val statusColor = when (overallRiskLevel) {
+                        ThreatLevel.SAFE, ThreatLevel.LOW -> Color(0xFF4CAF50)
+                        ThreatLevel.MEDIUM -> Color(0xFFFFC107)
+                        ThreatLevel.HIGH, ThreatLevel.CRITICAL -> Color(0xFFF44336)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = statusText,
+                        tint = statusColor
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = statusText,
+                        fontSize = statusFontSize,
+                        fontWeight = FontWeight(500),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
@@ -977,118 +1025,106 @@ fun ThreatsSection(
     onToggle: () -> Unit,
     onNavigateToFullReport: () -> Unit = {}
 ) {
-    // ИСПРАВЛЕНО: Получаем конфигурацию один раз и кэшируем вычисленные значения
+    // ИСПРАВЛЕНО: Используем LocalConfiguration вместо BoxWithConstraints для получения размеров экрана
+    // Это предотвращает краш при бесконечных измерениях в LazyVerticalGrid
     val configuration = LocalConfiguration.current
-    val screenHeightDp = remember(configuration.screenHeightDp) { configuration.screenHeightDp }
-    val isSmallScreen = remember(screenHeightDp) { screenHeightDp < 800 }
+    val screenHeightDp = configuration.screenHeightDp.dp
+    val isSmallScreen = configuration.screenHeightDp < 800
     
     // ИСПРАВЛЕНО: Состояние для разворачивания всех угроз
     var showAllThreats by remember { mutableStateOf(false) }
     
     // ИСПРАВЛЕНО: Обработка пустого списка угроз
-    if (threats.isEmpty()) {
-        return
-    }
-    
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    if (threats.isNotEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         ) {
-            // Заголовок секции
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onToggle() }
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Свернуть" else "Развернуть",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Список угроз (прозрачные элементы внутри секции)
-            if (expanded) {
-                // ИСПРАВЛЕНО: Оптимизированная сортировка с более стабильным ключом
-                // Используем хеш-код списка на основе первых ID и размера для стабильности remember
-                val threatsHash = threats.map { it.id }.take(10).hashCode() to threats.size
-                val sortedThreats = remember(threatsHash) {
-                    threats.sortedWith(
-                        compareByDescending<com.wifiguard.core.domain.model.SecurityThreat> { it.severity.getNumericValue() }
-                            .thenByDescending { it.timestamp }
-                            .thenBy { it.id }
-                    )
-                }
-                val previewLimit = 20
-                val displayThreats = if (showAllThreats) sortedThreats else {
-                    if (sortedThreats.size > previewLimit) sortedThreats.take(previewLimit) else sortedThreats
-                }
-
-
-                // ИСПРАВЛЕНО: Адаптивная высота на основе размера экрана
-                // Используем процент от высоты экрана вместо фиксированных значений
-                val maxHeight = if (showAllThreats) {
-                    // Когда показываем все угрозы, используем большую часть экрана
-                    (screenHeightDp * 0.7).dp.coerceAtMost(2000.dp)
-                } else {
-                    // Для предпросмотра используем адаптивную высоту
-                    if (isSmallScreen) 300.dp else 420.dp
-                }
-                
-                LazyColumn(
+                // Заголовок секции
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = maxHeight),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                        .clickable { onToggle() }
                 ) {
-                    itemsIndexed(
-                        items = displayThreats,
-                        key = { index, threat ->
-                            // ИСПРАВЛЕНО: Генерируем уникальный ключ для каждого элемента
-                            // Используем комбинацию всех уникальных полей + индекс для гарантии уникальности
-                            if (threat.id != 0L) {
-                                threat.id
-                            } else {
-                                // Создаем стабильный уникальный ключ на основе всех полей угрозы
-                                "${threat.networkBssid}|${threat.networkSsid}|${threat.type.name}|${threat.timestamp}|${threat.severity.name}|$index"
-                            }
-                        }
-                    ) { index, threat ->
-                        ThreatItem(threat = threat)
-                    }
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (expanded) "Свернуть" else "Развернуть",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                // ИСПРАВЛЕНО: Кнопка разворачивает список, а не перенаправляет
-                if (sortedThreats.size > previewLimit) {
-                    TextButton(
-                        onClick = { showAllThreats = !showAllThreats },
-                        modifier = Modifier.align(Alignment.End)
+                // Список угроз
+                if (expanded) {
+                    val threatsHash = threats.map { it.id }.take(10).hashCode() to threats.size
+                    val sortedThreats = remember(threatsHash) {
+                        threats.sortedWith(
+                            compareByDescending<com.wifiguard.core.domain.model.SecurityThreat> { it.severity.getNumericValue() }
+                                .thenByDescending { it.timestamp }
+                                .thenBy { it.id }
+                        )
+                    }
+                    val previewLimit = 20
+                    val displayThreats = if (showAllThreats) sortedThreats else {
+                        if (sortedThreats.size > previewLimit) sortedThreats.take(previewLimit) else sortedThreats
+                    }
+
+                    val maxHeightValue = if (showAllThreats) {
+                        screenHeightDp * 0.7f
+                    } else {
+                        if (isSmallScreen) 300.dp else 420.dp
+                    }
+                    
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = maxHeightValue),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        Text(if (showAllThreats) "Свернуть" else "Показать все (${sortedThreats.size})")
+                        itemsIndexed(
+                            items = displayThreats,
+                            key = { index, threat ->
+                                if (threat.id != 0L) {
+                                    threat.id
+                                } else {
+                                    "${threat.networkBssid}|${threat.networkSsid}|${threat.type.name}|${threat.timestamp}|${threat.severity.name}|$index"
+                                }
+                            }
+                        ) { _, threat ->
+                            ThreatItem(threat = threat)
+                        }
+                    }
+
+                    if (sortedThreats.size > previewLimit) {
+                        TextButton(
+                            onClick = { showAllThreats = !showAllThreats },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text(if (showAllThreats) "Свернуть" else "Показать все (${sortedThreats.size})")
+                        }
                     }
                 }
             }

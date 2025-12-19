@@ -9,10 +9,10 @@ import com.wifiguard.core.security.SecurityAnalyzer
 import com.wifiguard.core.security.SecurityReport
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,7 +71,7 @@ class AnalysisViewModelTest {
 
         // When
         viewModel = AnalysisViewModel(wifiRepository, securityAnalyzer, ScanStatusBus())
-        testDispatcher.scheduler.advanceTimeBy(400) // debounce(350)
+        testDispatcher.scheduler.advanceTimeBy(600) // debounce(500)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
@@ -112,7 +112,6 @@ class AnalysisViewModelTest {
     fun `empty scan list should result in null report`() = runTest {
         // Given
         every { wifiRepository.getLatestScans(any()) } returns flowOf(emptyList())
-        coEvery { securityAnalyzer.analyzeNetworks(emptyList()) } returns null
 
         // When
         viewModel = AnalysisViewModel(wifiRepository, securityAnalyzer, ScanStatusBus())
@@ -131,7 +130,6 @@ class AnalysisViewModelTest {
         // Given
         val scanStatusBus = ScanStatusBus()
         every { wifiRepository.getLatestScans(any()) } returns flowOf(emptyList())
-        coEvery { securityAnalyzer.analyzeNetworks(any()) } returns null
 
         // When
         viewModel = AnalysisViewModel(wifiRepository, securityAnalyzer, scanStatusBus)
@@ -183,7 +181,6 @@ class AnalysisViewModelTest {
         // Given
         val scanStatusBus = ScanStatusBus()
         every { wifiRepository.getLatestScans(any()) } returns flowOf(emptyList())
-        coEvery { securityAnalyzer.analyzeNetworks(any()) } returns null
 
         // When
         viewModel = AnalysisViewModel(wifiRepository, securityAnalyzer, scanStatusBus)
@@ -291,7 +288,7 @@ class AnalysisViewModelTest {
 
         // Then - должен быть только один вызов analyzeNetworks после debounce
         // (точное количество зависит от реализации, но должно быть меньше чем количество обновлений)
-        verify(atLeast = 1, atMost = 3) { 
+        coVerify(atLeast = 1, atMost = 3) {
             securityAnalyzer.analyzeNetworks(any()) 
         }
     }

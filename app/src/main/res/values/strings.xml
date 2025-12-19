@@ -12,7 +12,7 @@
     <!-- Scanner Screen -->
     <string name="scanner_title">Wi-Fi Сканер</string>
     <string name="scanner_scan_button">Сканировать</string>
-    <string name="scanner_scanning">Сканирование...</string>
+    <string name="scanner_scanning">Сканирование…</string>
     <string name="scanner_no_networks">Сети не найдены</string>
     <string name="scanner_wifi_disabled">Wi-Fi отключен</string>
     <string name="scanner_permission_required">Требуется разрешение на геолокацию</string>
@@ -108,6 +108,9 @@
     <!-- <string name="settings_import_data_summary">Загрузить историю сканирований</string> -->
     <string name="settings_clear_data">Очистить данные</string>
     <string name="settings_clear_data_summary">Удалить всю историю сканирований</string>
+
+    <string name="settings_auto_disable_wifi_on_critical_title">Авто-отключение Wi‑Fi при критической угрозе</string>
+    <string name="settings_auto_disable_wifi_on_critical_summary">При подключении к критически небезопасной сети приложение попытается отключить Wi‑Fi или разорвать соединение</string>
     
     <string name="settings_about_version">Версия: %s</string>
     <string name="settings_about_build">Сборка: %d</string>
@@ -139,7 +142,7 @@
     <string name="common_cancel">Отмена</string>
     <string name="common_retry">Повторить</string>
     <string name="common_refresh">Обновить</string>
-    <string name="common_loading">Загрузка...</string>
+    <string name="common_loading">Загрузка…</string>
     <string name="common_error">Ошибка</string>
     <string name="common_success">Успешно</string>
     <string name="common_warning">Предупреждение</string>
@@ -153,6 +156,7 @@
     <string name="common_copy">Копировать</string>
     <string name="common_close">Закрыть</string>
     <string name="common_back">Назад</string>
+    <string name="common_open_settings">Открыть настройки</string>
     <string name="common_next">Далее</string>
     <string name="common_previous">Предыдущий</string>
     <string name="common_done">Готово</string>
@@ -165,6 +169,30 @@
     <string name="permission_location_message">Для сканирования Wi-Fi сетей требуется разрешение на геолокацию</string>
     <string name="permission_notification_title">Разрешение на уведомления</string>
     <string name="permission_notification_message">Для получения уведомлений об угрозах требуется разрешение на уведомления</string>
+    <string name="permission_checking">Проверка разрешений…</string>
+    <string name="permission_required_title">Требуются разрешения</string>
+    <string name="permission_blocked_title">Разрешения заблокированы</string>
+    <string name="permission_request_button">Предоставить разрешения</string>
+    <string name="permission_request_message">Для защиты от небезопасных WiFi сетей\nтребуются разрешения:\n\n📍 Местоположение - для сканирования WiFi\n🔔 Уведомления - для мгновенных предупреждений об угрозах\n\nПриложение НЕ отслеживает ваше местоположение</string>
+    <string name="permission_permanently_denied_message">Разрешения были заблокированы.\n\nОткройте настройки приложения и предоставьте:\n📍 Местоположение\n🔔 Уведомления</string>
+
+    <!-- Scanner additional -->
+    <string name="scanner_full_scan">Выполнить полное сканирование</string>
+    <string name="scanner_connected_network">Подключенная сеть</string>
+    <string name="scanner_signal_format">Сигнал: %s</string>
+    <string name="scanner_enable_wifi_hint">Включите Wi‑Fi для сканирования сетей</string>
+    <string name="scanner_enable_wifi_button">Включить Wi‑Fi</string>
+    <string name="scanner_enable_location_title">Включите геолокацию</string>
+    <string name="scanner_location_required_oem_message">На некоторых устройствах поиск Wi‑Fi сетей не работает при выключенной геолокации.</string>
+    <string name="scanner_open_location_settings">Открыть настройки геолокации</string>
+
+    <!-- Settings additional -->
+    <string name="settings_theme">Тема оформления</string>
+    <string name="theme_system">Системная</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Темная</string>
+    <string name="settings_all_data_deleted">Все данные удалены</string>
+    <string name="settings_error_prefix">Ошибка: %s</string>
     
     <!-- Errors -->
     <string name="error_network_unavailable">Сеть недоступна</string>
@@ -183,4 +211,40 @@
     <string name="recommendation_disable_wps">Отключите WPS в настройках роутера</string>
     <string name="recommendation_use_vpn">Используйте VPN при подключении к общественным сетям</string>
     <string name="recommendation_keep_updated">Регулярно обновляйте прошивку роутера</string>
+    
+    <!-- Network Details Screen -->
+    <string name="network_details_title">Сетевые параметры</string>
+    <string name="network_details_frequency">Частота</string>
+    <string name="network_details_frequency_mhz">%d МГц</string>
+    <string name="network_details_channel">Канал</string>
+    <string name="network_details_security_type">Тип безопасности</string>
+    <string name="network_details_standard">Стандарт</string>
+    <string name="network_details_hidden">Скрытая</string>
+    <string name="network_details_not_hidden">Не скрытая</string>
+    <string name="network_details_connected">Подключено</string>
+    <string name="network_details_not_connected">Не подключено</string>
+    <string name="network_details_last_scan">Последнее сканирование</string>
+    <string name="network_details_scan_type">Тип сканирования</string>
+    <string name="network_details_suspicion_reasons">Причины подозрений</string>
+    <string name="network_details_no_reasons">Явные причины не найдены. Уровень угрозы рассчитан по общим факторам.</string>
+    <string name="network_details_statistics">Статистика по сети</string>
+    <string name="network_details_loading_statistics">Загрузка статистики…</string>
+    <string name="network_details_no_network_in_db">Сеть не найдена в базе данных. Статистика будет доступна после нескольких сканирований.</string>
+    <string name="network_details_reason">Причина</string>
+    <string name="network_details_history_statistics">История и статистика</string>
+    <string name="network_details_no_history">История сканирований отсутствует.</string>
+    <string name="network_details_scans_count">Сканирований</string>
+    <string name="network_details_avg_rssi">Средний RSSI</string>
+    <string name="network_details_min_max">Мин/Макс</string>
+    <string name="network_details_variation">Вариация</string>
+    <string name="network_details_last_scan_time">Последнее сканирование</string>
+    <string name="network_details_history_note">История обновляется автоматически при каждом сканировании.</string>
+    <string name="network_details_yes">Да</string>
+    <string name="network_details_no">Нет</string>
+    <string name="network_details_first_seen">Первое обнаружение</string>
+    <string name="network_details_last_seen">Последнее обнаружение</string>
+    <string name="network_details_known">Известная</string>
+    <string name="network_details_suspicious">Подозрительная</string>
+    <string name="network_details_trust">Доверие</string>
+    <string name="network_details_detections">Обнаружений</string>
 </resources>

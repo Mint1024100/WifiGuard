@@ -1,7 +1,6 @@
 package com.wifiguard.core.ui.components
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
@@ -27,14 +26,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wifiguard.core.domain.model.SecurityType
+import com.wifiguard.core.domain.model.SecurityThreat
 import com.wifiguard.core.domain.model.ThreatLevel
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.ui.testing.UiTestTags
 import com.wifiguard.core.ui.theme.*
+import com.wifiguard.R
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,16 +65,18 @@ fun NetworkCard(
         ThreatLevel.UNKNOWN -> SecurityUnknown
     }
 
-    val containerColor = if (isCurrentNetwork) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-    } else {
-        MaterialTheme.colorScheme.surface
+    val isCurrentCritical = isCurrentNetwork && network.threatLevel == ThreatLevel.CRITICAL
+
+    val containerColor = when {
+        isCurrentCritical -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+        isCurrentNetwork -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+        else -> MaterialTheme.colorScheme.surface
     }
 
-    val borderColor = if (isCurrentNetwork) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val borderColor = when {
+        isCurrentCritical -> MaterialTheme.colorScheme.error
+        isCurrentNetwork -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
 
     Card(
@@ -125,13 +131,17 @@ fun NetworkCard(
                         Icon(
                             imageVector = if (network.isConnected) Icons.Default.Wifi else Icons.Default.SignalWifi4Bar,
                             contentDescription = null,
-                            tint = if (isCurrentNetwork) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = when {
+                                isCurrentNetwork && network.threatLevel == ThreatLevel.CRITICAL -> MaterialTheme.colorScheme.error
+                                isCurrentNetwork -> MaterialTheme.colorScheme.secondary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = network.ssid.ifEmpty { "Скрытая сеть" },
+                                text = network.ssid.ifEmpty { stringResource(R.string.network_hidden) },
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold, // Bolder for better hierarchy
                                 maxLines = 1,
@@ -140,7 +150,7 @@ fun NetworkCard(
                             )
                             if (isCurrentNetwork) {
                                 Text(
-                                    text = "Подключено",
+                                    text = stringResource(R.string.network_connected),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
@@ -168,7 +178,7 @@ fun NetworkCard(
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (network.frequency > 0) {
                                 Text(
-                                    text = ".freq: ${network.frequency} МГц",
+                                    text = "freq: ${network.frequency} MHz",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Medium
@@ -176,7 +186,7 @@ fun NetworkCard(
                             }
                             if (network.channel > 0) {
                                 Text(
-                                    text = "· channel: ${network.channel}",
+                                    text = "channel: ${network.channel}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Medium
@@ -220,20 +230,21 @@ fun NetworkCard(
 }
 
 /**
- * Дополнительные данные для обратной стороны карточки (БД + история).
+ * ?????????????? ?????? ??? ???????? ??????? ???????? (?? + ???????).
  *
- * ВАЖНО: типы только из core domain, чтобы не зависеть от feature-модулей.
+ * ?????: ???? ?????? ?? core domain, ????? ?? ???????? ?? feature-???????.
  */
 data class NetworkCardDetails(
     val dbNetwork: WifiNetwork? = null,
     val scanHistory: List<WifiScanResult> = emptyList(),
     val signalAnalytics: SignalAnalyticsUi? = null,
+    val activeThreats: List<SecurityThreat> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
 
 /**
- * UI-модель аналитики сигнала (без зависимости от feature).
+ * UI-?????? ????????? ??????? (??? ??????????? ?? feature).
  */
 data class SignalAnalyticsUi(
     val averageSignal: Int,
@@ -245,10 +256,10 @@ data class SignalAnalyticsUi(
 )
 
 /**
- * Карточка Wi‑Fi сети с 3D‑переворотом: front → back.
+ * ???????? Wi?Fi ???? ? 3D????????????: front ? back.
  *
- * Front: текущий компактный вид.\n
- * Back: расширенные данные (скан + БД + история/аналитика).
+ * Front: ??????? ?????????? ???.\n
+ * Back: ??????????? ?????? (???? + ?? + ???????/?????????).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -269,23 +280,59 @@ fun FlippableNetworkCard(
         ThreatLevel.UNKNOWN -> SecurityUnknown
     }
 
-    val containerColor = if (isCurrentNetwork) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-    } else {
-        MaterialTheme.colorScheme.surface
+    val isCurrentCritical = isCurrentNetwork && network.threatLevel == ThreatLevel.CRITICAL
+
+    val containerColor = when {
+        isCurrentCritical -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+        isCurrentNetwork -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+        else -> MaterialTheme.colorScheme.surface
     }
 
-    val borderColor = if (isCurrentNetwork) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val borderColor = when {
+        isCurrentCritical -> MaterialTheme.colorScheme.error
+        isCurrentNetwork -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
 
+    // Плавная анимация поворота с использованием spring для естественного движения
     val rotationY by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
-        animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
+        animationSpec = spring(
+            dampingRatio = 0.75f, // Более мягкое затухание для плавности
+            stiffness = 300f // Умеренная жесткость для естественного движения
+        ),
         label = "networkCardFlip"
     )
+    
+    // Плавное изменение прозрачности для более естественного перехода
+    val frontAlpha by animateFloatAsState(
+        targetValue = if (isFlipped) 0f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 400f
+        ),
+        label = "frontAlpha"
+    )
+    
+    val backAlpha by animateFloatAsState(
+        targetValue = if (isFlipped) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 400f
+        ),
+        label = "backAlpha"
+    )
+    
+    // Легкое изменение масштаба для эффекта глубины
+    val scale by animateFloatAsState(
+        targetValue = if (rotationY in 80f..100f) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.7f,
+            stiffness = 500f
+        ),
+        label = "cardScale"
+    )
+    
     val showBack = rotationY > 90f
 
     Card(
@@ -312,21 +359,31 @@ fun FlippableNetworkCard(
         Box(
             modifier = Modifier.graphicsLayer {
                 this.rotationY = rotationY
-                // Чем больше, тем “дальше камера” и тем меньше искажение.
-                cameraDistance = 12f * density
+                this.scaleX = scale
+                this.scaleY = scale
+                // Увеличенное расстояние камеры для более реалистичного 3D эффекта
+                cameraDistance = 14f * density
             }
         ) {
             if (!showBack) {
-                NetworkCardFrontContent(
-                    network = network,
-                    statusColor = statusColor,
-                    isCurrentNetwork = isCurrentNetwork
-                )
+                Box(
+                    modifier = Modifier.alpha(frontAlpha)
+                ) {
+                    NetworkCardFrontContent(
+                        network = network,
+                        statusColor = statusColor,
+                        isCurrentNetwork = isCurrentNetwork
+                    )
+                }
             } else {
-                // Компенсация зеркальности на обратной стороне.
-                Box(modifier = Modifier.graphicsLayer {
-                    this.rotationY = 180f
-                }) {
+                // Обратная сторона с компенсацией поворота для правильного отображения
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            this.rotationY = 180f
+                        }
+                        .alpha(backAlpha)
+                ) {
                     NetworkCardBackContent(
                         network = network,
                         statusColor = statusColor,
@@ -373,13 +430,17 @@ private fun NetworkCardFrontContent(
                     Icon(
                         imageVector = if (network.isConnected) Icons.Default.Wifi else Icons.Default.SignalWifi4Bar,
                         contentDescription = null,
-                        tint = if (isCurrentNetwork) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = when {
+                            isCurrentNetwork && network.threatLevel == ThreatLevel.CRITICAL -> MaterialTheme.colorScheme.error
+                            isCurrentNetwork -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = network.ssid.ifEmpty { "Скрытая сеть" },
+                            text = network.ssid.ifEmpty { stringResource(R.string.network_hidden) },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -388,7 +449,7 @@ private fun NetworkCardFrontContent(
                         )
                         if (isCurrentNetwork) {
                             Text(
-                                text = "Подключено",
+                                text = stringResource(R.string.network_connected),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.secondary
                             )
@@ -409,7 +470,7 @@ private fun NetworkCardFrontContent(
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (network.frequency > 0) {
                             Text(
-                                text = ".freq: ${network.frequency} МГц",
+                                text = "freq: ${network.frequency} MHz",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
@@ -417,7 +478,7 @@ private fun NetworkCardFrontContent(
                         }
                         if (network.channel > 0) {
                             Text(
-                                text = "· channel: ${network.channel}",
+                                text = "channel: ${network.channel}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
@@ -480,7 +541,7 @@ private fun NetworkCardBackContent(
                 }
             )
     ) {
-        // Верхняя “полоса статуса”
+        // ??????? �?????? ???????�
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -504,7 +565,7 @@ private fun NetworkCardBackContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = network.ssid.ifEmpty { "Скрытая сеть" },
+                        text = network.ssid.ifEmpty { stringResource(R.string.network_hidden) },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
@@ -518,7 +579,7 @@ private fun NetworkCardBackContent(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Данные сканирования",
+                    text = stringResource(R.string.network_details_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -526,23 +587,67 @@ private fun NetworkCardBackContent(
 
                 DetailItem("BSSID", network.bssid)
                 DetailItem("RSSI", "${network.level} dBm (${network.getSignalStrengthDescription()})")
-                DetailItem("Частота", "${network.frequency} МГц")
-                if (network.channel > 0) DetailItem("Канал", network.channel.toString())
-                DetailItem("Безопасность", getSecurityTypeText(network.securityType))
-                DetailItem("Capabilities", network.capabilities.ifEmpty { "—" })
-                DetailItem("Стандарт", network.standard.name)
-                DetailItem("Скрытая", if (network.isHidden) "Да" else "Нет")
-                DetailItem("Подключена", if (network.isConnected) "Да" else "Нет")
-                if (!network.vendor.isNullOrEmpty()) DetailItem("Vendor", network.vendor ?: "—")
-                DetailItem("Время скана", dateTimeFormatter.format(Date(network.timestamp)))
-                DetailItem("Тип скана", network.scanType.name)
+                DetailItem(stringResource(R.string.network_details_frequency), stringResource(R.string.network_details_frequency_mhz, network.frequency))
+                if (network.channel > 0) DetailItem(stringResource(R.string.network_details_channel), network.channel.toString())
+                DetailItem(stringResource(R.string.network_details_security_type), getSecurityTypeText(network.securityType))
+                DetailItem("Capabilities", network.capabilities.ifEmpty { "-" })
+                DetailItem(stringResource(R.string.network_details_standard), network.standard.name)
+                DetailItem(stringResource(R.string.network_details_hidden), if (network.isHidden) stringResource(R.string.network_details_yes) else stringResource(R.string.network_details_no))
+                DetailItem(stringResource(R.string.network_connected), if (network.isConnected) stringResource(R.string.network_details_yes) else stringResource(R.string.network_details_no))
+                if (!network.vendor.isNullOrEmpty()) DetailItem("Vendor", network.vendor ?: "-")
+                DetailItem(stringResource(R.string.network_details_last_scan), dateTimeFormatter.format(Date(network.timestamp)))
+                DetailItem(stringResource(R.string.network_details_scan_type), network.scanType.name)
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Divider()
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Данные из базы",
+                    text = "Причины подозрений",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val reasons = buildList {
+                    if (network.securityType == SecurityType.OPEN) {
+                        add("Открытая сеть без шифрования (данные могут быть перехвачены)")
+                    }
+
+                    val threats = details?.activeThreats.orEmpty()
+                    threats.forEach { t ->
+                        val extra = t.additionalInfo?.takeIf { it.isNotBlank() }
+                        if (extra != null) {
+                            add("${t.description} (${extra})")
+                        } else {
+                            add(t.description)
+                        }
+                    }
+                }
+
+                if (reasons.isEmpty()) {
+                    Text(
+                        text = "Явные причины не найдены. Уровень угрозы рассчитан по общим факторам.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    reasons.take(10).forEach { reason ->
+                        Text(
+                            text = "• $reason",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = stringResource(R.string.network_details_statistics),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -554,13 +659,13 @@ private fun NetworkCardBackContent(
                             CircularProgressIndicator(modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Загрузка деталей…",
+                                text = stringResource(R.string.network_details_loading_statistics),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    // Показываем ошибку только если это реальная ошибка (не просто отсутствие сети в БД)
+                    // Показываем ошибку только если она не пустая и не связана с отсутствием сети в БД
                     !details?.errorMessage.isNullOrEmpty() && 
                     !details?.errorMessage?.contains("не найдена", ignoreCase = true)!! -> {
                         Text(
@@ -571,32 +676,32 @@ private fun NetworkCardBackContent(
                     }
                     details?.dbNetwork == null -> {
                         Text(
-                            text = "Сеть ещё не сохранена в базе данных. Данные появятся после нескольких сканирований.",
+                            text = stringResource(R.string.network_details_no_network_in_db),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     else -> {
                         val db = details.dbNetwork
-                        DetailItem("First seen", dateTimeFormatter.format(Date(db.firstSeen)))
-                        DetailItem("Last seen", dateTimeFormatter.format(Date(db.lastSeen)))
-                        DetailItem("Known", if (db.isKnown) "Да" else "Нет")
-                        DetailItem("Suspicious", if (db.isSuspicious) "Да" else "Нет")
+                        DetailItem(stringResource(R.string.network_details_first_seen), dateTimeFormatter.format(Date(db.firstSeen)))
+                        DetailItem(stringResource(R.string.network_details_last_seen), dateTimeFormatter.format(Date(db.lastSeen)))
+                        DetailItem(stringResource(R.string.network_details_known), if (db.isKnown) stringResource(R.string.network_details_yes) else stringResource(R.string.network_details_no))
+                        DetailItem(stringResource(R.string.network_details_suspicious), if (db.isSuspicious) stringResource(R.string.network_details_yes) else stringResource(R.string.network_details_no))
                         if (!db.suspiciousReason.isNullOrEmpty()) {
-                            DetailItem("Причина", db.suspiciousReason ?: "—")
+                            DetailItem(stringResource(R.string.network_details_reason), db.suspiciousReason ?: "-")
                         }
-                        DetailItem("Trust", db.trustLevel.name)
-                        DetailItem("Detections", db.connectionCount.toString())
+                        DetailItem(stringResource(R.string.network_details_trust), db.trustLevel.name)
+                        DetailItem(stringResource(R.string.network_details_detections), db.connectionCount.toString())
                     }
 
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Divider()
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "История и аналитика",
+                    text = stringResource(R.string.network_details_history_statistics),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -605,23 +710,23 @@ private fun NetworkCardBackContent(
                 val history = details?.scanHistory.orEmpty()
                 if (history.isEmpty()) {
                     Text(
-                        text = "История сканов пока отсутствует.",
+                        text = stringResource(R.string.network_details_no_history),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    DetailItem("Сканов", history.size.toString())
+                    DetailItem(stringResource(R.string.network_details_scans_count), history.size.toString())
                     details?.signalAnalytics?.let { a ->
-                        DetailItem("Средний RSSI", "${a.averageSignal} dBm")
-                        DetailItem("Мин/Макс", "${a.minSignal} / ${a.maxSignal} dBm")
-                        DetailItem("Вариация", String.format(Locale.getDefault(), "%.2f", a.signalVariation))
-                        DetailItem("Последний", dateTimeFormatter.format(Date(a.lastScanTime)))
+                        DetailItem(stringResource(R.string.network_details_avg_rssi), "${a.averageSignal} dBm")
+                        DetailItem(stringResource(R.string.network_details_min_max), "${a.minSignal} / ${a.maxSignal} dBm")
+                        DetailItem(stringResource(R.string.network_details_variation), String.format(Locale.getDefault(), "%.2f", a.signalVariation))
+                        DetailItem(stringResource(R.string.network_details_last_scan_time), dateTimeFormatter.format(Date(a.lastScanTime)))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Нажмите ещё раз, чтобы закрыть детали.",
+                    text = stringResource(R.string.network_details_history_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -649,14 +754,15 @@ private fun DetailItem(label: String, value: String) {
 
 @Composable
 private fun ThreatBadge(threatLevel: ThreatLevel) {
-    val (color, text) = when (threatLevel) {
-        ThreatLevel.SAFE -> SecuritySafe to "Безопасно"
-        ThreatLevel.LOW -> SecurityLow to "Низкий"
-        ThreatLevel.MEDIUM -> SecurityMedium to "Средний"
-        ThreatLevel.HIGH -> SecurityHigh to "Высокий"
-        ThreatLevel.CRITICAL -> SecurityCritical to "Критический"
-        ThreatLevel.UNKNOWN -> SecurityUnknown to "Неизвестно"
+    val (color, textRes) = when (threatLevel) {
+        ThreatLevel.SAFE -> SecuritySafe to R.string.threat_safe
+        ThreatLevel.LOW -> SecurityLow to R.string.threat_low
+        ThreatLevel.MEDIUM -> SecurityMedium to R.string.threat_medium
+        ThreatLevel.HIGH -> SecurityHigh to R.string.threat_high
+        ThreatLevel.CRITICAL -> SecurityCritical to R.string.threat_critical
+        ThreatLevel.UNKNOWN -> SecurityUnknown to R.string.threat_unknown
     }
+    val text = stringResource(textRes)
 
     Surface(
         color = color.copy(alpha = 0.12f),
@@ -673,22 +779,23 @@ private fun ThreatBadge(threatLevel: ThreatLevel) {
     }
 }
 
+@Composable
 private fun getSecurityTypeText(securityType: SecurityType): String {
     return when (securityType) {
-        SecurityType.OPEN -> "Открытая"
-        SecurityType.WEP -> "WEP"
-        SecurityType.WPA -> "WPA"
-        SecurityType.WPA2 -> "WPA2"
-        SecurityType.WPA3 -> "WPA3"
-        SecurityType.WPA2_WPA3 -> "WPA2/3"
-        SecurityType.EAP -> "EAP"
-        SecurityType.UNKNOWN -> "Неизвестно"
+        SecurityType.OPEN -> stringResource(R.string.security_open)
+        SecurityType.WEP -> stringResource(R.string.security_wep)
+        SecurityType.WPA -> stringResource(R.string.security_wpa)
+        SecurityType.WPA2 -> stringResource(R.string.security_wpa2)
+        SecurityType.WPA3 -> stringResource(R.string.security_wpa3)
+        SecurityType.WPA2_WPA3 -> stringResource(R.string.security_wpa2_wpa3)
+        SecurityType.EAP -> stringResource(R.string.security_eap)
+        SecurityType.UNKNOWN -> stringResource(R.string.security_unknown)
     }
 }
 
 /**
- * Модальная карточка с деталями сети Wi‑Fi.
- * Появляется поверх списка с размытием фона и 3D-анимацией переворота.
+ * ????????? ???????? ? ???????? ???? Wi?Fi.
+ * ?????????? ?????? ?????? ? ????????? ???? ? 3D-????????? ??????????.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -709,14 +816,14 @@ fun NetworkDetailsModal(
         ThreatLevel.UNKNOWN -> SecurityUnknown
     }
 
-    // Анимация появления (alpha)
+    // ???????? ????????? (alpha)
     val alpha by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(durationMillis = 400),
         label = "modalAlpha"
     )
     
-    // 3D вращение при появлении
+    // 3D ???????? ??? ?????????
     val rotationY = remember { androidx.compose.animation.core.Animatable(90f) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         rotationY.animateTo(
@@ -732,8 +839,9 @@ fun NetworkDetailsModal(
         modifier = modifier
             .fillMaxSize()
             .zIndex(1000f)
+            .testTag(UiTestTags.NETWORK_DETAILS_MODAL)
             .clickable(onClick = onDismiss)
-            .background(Color.Black.copy(alpha = 0.6f * alpha)) // Затемнение фона
+            .background(Color.Black.copy(alpha = 0.6f * alpha)) // ?????????? ????
     ) {
         Card(
             modifier = Modifier
@@ -743,14 +851,14 @@ fun NetworkDetailsModal(
                 .graphicsLayer {
                     this.rotationY = rotationY.value
                     this.alpha = alpha
-                    this.cameraDistance = 16f * density // Эффект 3D перспективы
+                    this.cameraDistance = 16f * density // ?????? 3D ???????????
                     
-                    // Небольшой наклон для усиления 3D эффекта
+                    // ????????? ?????? ??? ???????? 3D ???????
                     if (rotationY.value > 0) {
                         this.rotationZ = rotationY.value / 10f
                     }
                 }
-                .clickable(enabled = false) { /* Предотвращаем закрытие при клике на карточку */ },
+                .clickable(enabled = false) { /* ????????????? ???????? ??? ????? ?? ???????? */ },
             shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
@@ -764,7 +872,7 @@ fun NetworkDetailsModal(
                     .fillMaxSize()
                     .padding(0.dp)
             ) {
-                // Заголовок с кнопкой закрытия
+                // ????????? ? ??????? ????????
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -775,7 +883,7 @@ fun NetworkDetailsModal(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = network.ssid.ifEmpty { "Скрытая сеть" },
+                            text = network.ssid.ifEmpty { stringResource(R.string.network_hidden) },
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -784,16 +892,19 @@ fun NetworkDetailsModal(
                         Spacer(modifier = Modifier.height(4.dp))
                         ThreatBadge(threatLevel = network.threatLevel)
                     }
-                    IconButton(onClick = onDismiss) {
+                    IconButton(
+                        modifier = Modifier.testTag(UiTestTags.NETWORK_DETAILS_MODAL_CLOSE),
+                        onClick = onDismiss
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Закрыть",
+                            contentDescription = stringResource(R.string.common_close),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                // Контент с прокруткой
+                // ??????? ? ??????????
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier

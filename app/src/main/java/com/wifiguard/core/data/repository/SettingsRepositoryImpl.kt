@@ -62,6 +62,14 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setDataRetentionDays(days: Int) {
         preferencesDataSource.setDataRetentionDays(days)
     }
+
+    override fun getAutoDisableWifiOnCritical(): Flow<Boolean> {
+        return preferencesDataSource.getAutoDisableWifiOnCritical()
+    }
+
+    override suspend fun setAutoDisableWifiOnCritical(enabled: Boolean) {
+        preferencesDataSource.setAutoDisableWifiOnCritical(enabled)
+    }
     
     override fun getThemeMode(): Flow<String> {
         return preferencesDataSource.getThemeMode()
@@ -91,6 +99,7 @@ class SettingsRepositoryImpl @Inject constructor(
         preferencesDataSource.setNotificationSoundEnabled(true)
         preferencesDataSource.setNotificationVibrationEnabled(true)
         preferencesDataSource.setDataRetentionDays(30) // 30 дней
+        preferencesDataSource.setAutoDisableWifiOnCritical(false)
         preferencesDataSource.setThemeMode("system") // Системная тема
     }
 }

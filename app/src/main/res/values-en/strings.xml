@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name -->
+    <string name="app_name">WifiGuard</string>
+    
+    <!-- Navigation -->
+    <string name="nav_scanner">Scanner</string>
+    <string name="nav_analysis">Analysis</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_notifications">Notifications</string>
+    
+    <!-- Scanner Screen -->
+    <string name="scanner_title">Wi-Fi Scanner</string>
+    <string name="scanner_scan_button">Scan</string>
+    <string name="scanner_scanning">Scanning…</string>
+    <string name="scanner_no_networks">No networks found</string>
+    <string name="scanner_wifi_disabled">Wi-Fi is off</string>
+    <string name="scanner_permission_required">Location permission required</string>
+    <string name="scanner_permission_denied">Location permission denied</string>
+    <string name="scanner_scan_failed">Scan failed</string>
+    <string name="scanner_pull_to_refresh">Pull to refresh</string>
+    <string name="scanner_networks_found">Networks found: %d</string>
+    <string name="scanner_last_scan">Last scan: %s</string>
+    
+    <!-- Network Card -->
+    <string name="network_connected">Connected</string>
+    <string name="network_hidden">Hidden network</string>
+    <string name="network_open">Open</string>
+    <string name="network_secured">Secured</string>
+    <string name="network_signal_strength">Signal strength: %s</string>
+    <string name="network_frequency">Frequency: %d MHz</string>
+    <string name="network_channel">Channel: %d</string>
+    <string name="network_vendor">Vendor: %s</string>
+    <string name="network_security_type">Security type: %s</string>
+    <string name="network_threat_level">Threat level: %s</string>
+    
+    <!-- Security Types -->
+    <string name="security_open">Open</string>
+    <string name="security_wep">WEP</string>
+    <string name="security_wpa">WPA</string>
+    <string name="security_wpa2">WPA2</string>
+    <string name="security_wpa3">WPA3</string>
+    <string name="security_wpa2_wpa3">WPA2/WPA3</string>
+    <string name="security_eap">EAP</string>
+    <string name="security_unknown">Unknown</string>
+    
+    <!-- Threat Levels -->
+    <string name="threat_safe">Safe</string>
+    <string name="threat_low">Low risk</string>
+    <string name="threat_medium">Medium risk</string>
+    <string name="threat_high">High risk</string>
+    <string name="threat_critical">Critical risk</string>
+    <string name="threat_unknown">Unknown</string>
+    
+    <!-- Signal Strength -->
+    <string name="signal_excellent">Excellent</string>
+    <string name="signal_good">Good</string>
+    <string name="signal_fair">Fair</string>
+    <string name="signal_weak">Weak</string>
+    <string name="signal_very_weak">Very weak</string>
+    <string name="signal_critical">Critically weak</string>
+    
+    <!-- Analysis Screen -->
+    <string name="analysis_title">Security Analysis</string>
+    <string name="analysis_overall_risk">Overall risk level</string>
+    <string name="analysis_networks_analyzed">Networks analyzed: %d</string>
+    <string name="analysis_safe_networks">Safe networks: %d</string>
+    <string name="analysis_threats_found">Threats found: %d</string>
+    <string name="analysis_recommendations">Recommendations</string>
+    <string name="analysis_no_recommendations">No recommendations</string>
+    <string name="analysis_security_score">Security score: %d/100</string>
+    <string name="analysis_threats_by_type">Threats by type</string>
+    <string name="analysis_networks_by_security">Networks by security type</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_general">General</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_about">About</string>
+    
+    <string name="settings_auto_scan">Auto scan</string>
+    <string name="settings_auto_scan_summary">Periodic background scanning</string>
+    <string name="settings_scan_interval">Scan interval</string>
+    <string name="settings_scan_interval_summary">Automatic scan frequency</string>
+    <string name="settings_scan_interval_5min">5 minutes</string>
+    <string name="settings_scan_interval_15min">15 minutes</string>
+    <string name="settings_scan_interval_30min">30 minutes</string>
+    <string name="settings_scan_interval_1hour">1 hour</string>
+    
+    <string name="settings_notifications_enabled">Threat notifications</string>
+    <string name="settings_notifications_enabled_summary">Receive notifications about critical threats</string>
+    <string name="settings_notifications_sound">Notification sound</string>
+    <string name="settings_notifications_vibration">Vibration</string>
+    
+    <string name="settings_data_retention">Data retention</string>
+    <string name="settings_data_retention_summary">Scan history retention period</string>
+    <string name="settings_data_retention_1day">1 day</string>
+    <string name="settings_data_retention_1week">1 week</string>
+    <string name="settings_data_retention_1month">1 month</string>
+    <string name="settings_data_retention_3months">3 months</string>
+    <string name="settings_data_retention_forever">Forever</string>
+    
+    <string name="settings_clear_data">Clear data</string>
+    <string name="settings_clear_data_summary">Delete all scan history</string>
+
+    <string name="settings_auto_disable_wifi_on_critical_title">Auto-disable Wi‑Fi on critical threat</string>
+    <string name="settings_auto_disable_wifi_on_critical_summary">When connecting to a critically unsafe network, the app will attempt to disable Wi‑Fi or disconnect</string>
+    
+    <string name="settings_about_version">Version: %s</string>
+    <string name="settings_about_build">Build: %d</string>
+    <string name="settings_about_privacy">Privacy Policy</string>
+    <string name="settings_about_terms">Terms of Service</string>
+    <string name="settings_about_github">GitHub</string>
+    <string name="settings_about_license">License</string>
+    
+    <!-- Notifications Screen -->
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_no_notifications">No notifications</string>
+    <string name="notifications_mark_all_read">Mark all as read</string>
+    <string name="notifications_clear_all">Clear all</string>
+    
+    <!-- Threat Types -->
+    <string name="threat_open_network">Open network</string>
+    <string name="threat_weak_encryption">Weak encryption</string>
+    <string name="threat_duplicate_ssid">Duplicate SSID</string>
+    <string name="threat_suspicious_ssid">Suspicious name</string>
+    <string name="threat_wps_vulnerability">WPS vulnerability</string>
+    <string name="threat_weak_signal">Weak signal</string>
+    <string name="threat_unknown_encryption">Unknown encryption</string>
+    <string name="threat_multiple_duplicates">Multiple duplicates</string>
+    <string name="threat_suspicious_activity">Suspicious activity</string>
+    <string name="threat_suspicious_bssid">Suspicious MAC address</string>
+    
+    <!-- Common -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_refresh">Refresh</string>
+    <string name="common_loading">Loading…</string>
+    <string name="common_error">Error</string>
+    <string name="common_success">Success</string>
+    <string name="common_warning">Warning</string>
+    <string name="common_info">Info</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_share">Share</string>
+    <string name="common_copy">Copy</string>
+    <string name="common_close">Close</string>
+    <string name="common_back">Back</string>
+    <string name="common_open_settings">Open settings</string>
+    <string name="common_next">Next</string>
+    <string name="common_previous">Previous</string>
+    <string name="common_done">Done</string>
+    <string name="common_skip">Skip</string>
+    <string name="common_continue">Continue</string>
+    <string name="common_finish">Finish</string>
+    
+    <!-- Permissions -->
+    <string name="permission_location_title">Location Permission</string>
+    <string name="permission_location_message">Location permission is required to scan Wi-Fi networks</string>
+    <string name="permission_notification_title">Notification Permission</string>
+    <string name="permission_notification_message">Notification permission is required to receive threat notifications</string>
+    <string name="permission_checking">Checking permissions…</string>
+    <string name="permission_required_title">Permissions required</string>
+    <string name="permission_blocked_title">Permissions blocked</string>
+    <string name="permission_request_button">Grant permissions</string>
+    <string name="permission_request_message">To protect you from unsafe Wi‑Fi networks, the app needs permissions:\n\n📍 Location — for Wi‑Fi scanning\n🔔 Notifications — for threat alerts\n\nThe app does NOT track your location</string>
+    <string name="permission_permanently_denied_message">Permissions were blocked.\n\nOpen app settings and grant:\n📍 Location\n🔔 Notifications</string>
+
+    <!-- Scanner additional -->
+    <string name="scanner_full_scan">Run full scan</string>
+    <string name="scanner_connected_network">Connected network</string>
+    <string name="scanner_signal_format">Signal: %s</string>
+    <string name="scanner_enable_wifi_hint">Turn on Wi‑Fi to scan networks</string>
+    <string name="scanner_enable_wifi_button">Turn on Wi‑Fi</string>
+    <string name="scanner_enable_location_title">Enable location</string>
+    <string name="scanner_location_required_oem_message">On some devices Wi‑Fi scanning may not work when location is turned off.</string>
+    <string name="scanner_open_location_settings">Open location settings</string>
+
+    <!-- Settings additional -->
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_all_data_deleted">All data deleted</string>
+    <string name="settings_error_prefix">Error: %s</string>
+    
+    <!-- Errors -->
+    <string name="error_network_unavailable">Network unavailable</string>
+    <string name="error_permission_denied">Permission denied</string>
+    <string name="error_wifi_disabled">Wi-Fi disabled</string>
+    <string name="error_scan_failed">Scan failed</string>
+    <string name="error_database_error">Database error</string>
+    <string name="error_unknown">Unknown error</string>
+    
+    <!-- Recommendations -->
+    <string name="recommendation_avoid_open_networks">Avoid connecting to open Wi-Fi networks</string>
+    <string name="recommendation_use_strong_encryption">Use networks with WPA2 or WPA3 encryption</string>
+    <string name="recommendation_avoid_weak_encryption">Do not use networks with WEP or WPA encryption</string>
+    <string name="recommendation_beware_duplicate_ssid">Beware of duplicate SSIDs - possible Evil Twin attack</string>
+    <string name="recommendation_avoid_suspicious_names">Do not connect to networks with suspicious names</string>
+    <string name="recommendation_disable_wps">Disable WPS in router settings</string>
+    <string name="recommendation_use_vpn">Use VPN when connecting to public networks</string>
+    <string name="recommendation_keep_updated">Regularly update router firmware</string>
+    
+    <!-- Network Details Screen -->
+    <string name="network_details_title">Network Parameters</string>
+    <string name="network_details_frequency">Frequency</string>
+    <string name="network_details_frequency_mhz">%d MHz</string>
+    <string name="network_details_channel">Channel</string>
+    <string name="network_details_security_type">Security type</string>
+    <string name="network_details_standard">Standard</string>
+    <string name="network_details_hidden">Hidden</string>
+    <string name="network_details_not_hidden">Not hidden</string>
+    <string name="network_details_connected">Connected</string>
+    <string name="network_details_not_connected">Not connected</string>
+    <string name="network_details_last_scan">Last scan</string>
+    <string name="network_details_scan_type">Scan type</string>
+    <string name="network_details_suspicion_reasons">Suspicion reasons</string>
+    <string name="network_details_no_reasons">No obvious reasons found. Threat level calculated based on general factors.</string>
+    <string name="network_details_statistics">Network statistics</string>
+    <string name="network_details_loading_statistics">Loading statistics…</string>
+    <string name="network_details_no_network_in_db">Network not found in database. Statistics will be available after several scans.</string>
+    <string name="network_details_reason">Reason</string>
+    <string name="network_details_history_statistics">History and statistics</string>
+    <string name="network_details_no_history">No scan history.</string>
+    <string name="network_details_scans_count">Scans</string>
+    <string name="network_details_avg_rssi">Average RSSI</string>
+    <string name="network_details_min_max">Min/Max</string>
+    <string name="network_details_variation">Variation</string>
+    <string name="network_details_last_scan_time">Last scan</string>
+    <string name="network_details_history_note">History is updated automatically with each scan.</string>
+    <string name="network_details_yes">Yes</string>
+    <string name="network_details_no">No</string>
+    <string name="network_details_first_seen">First detected</string>
+    <string name="network_details_last_seen">Last detected</string>
+    <string name="network_details_known">Known</string>
+    <string name="network_details_suspicious">Suspicious</string>
+    <string name="network_details_trust">Trust</string>
+    <string name="network_details_detections">Detections</string>
+</resources>
+

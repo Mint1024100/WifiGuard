@@ -53,6 +53,18 @@ class ThreatRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>> {
+        return threatDao.getThreatsByNetworkBssid(bssid).map { entities ->
+            entities.map { threatEntityToDomainMapper.map(it) }
+        }
+    }
+
+    override fun getUnresolvedThreatsByNetworkBssid(bssid: String): Flow<List<SecurityThreat>> {
+        return threatDao.getUnresolvedThreatsByNetworkBssid(bssid).map { entities ->
+            entities.map { threatEntityToDomainMapper.map(it) }
+        }
+    }
+
     override fun getUnresolvedThreats(): Flow<List<SecurityThreat>> {
         return threatDao.getUnresolvedThreats().map { entities ->
             entities.map { threatEntityToDomainMapper.map(it) }

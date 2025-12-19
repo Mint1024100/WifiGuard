@@ -3,6 +3,7 @@ package com.wifiguard.core.common
 import android.content.Context
 import android.location.LocationManager
 import android.os.Build
+import android.util.Log
 import org.json.JSONObject
 import java.io.File
 
@@ -35,7 +36,17 @@ object DeviceDebugLogger {
     }
 
     fun clear(context: Context) {
-        runCatching { file(context).delete() }
+        runCatching { 
+            val logFile = file(context)
+            val deleted = logFile.delete()
+            // #region agent log
+            Log.d("DeviceDebugLogger", "Очистка лог-файла: ${logFile.absolutePath}, удален=$deleted")
+            // #endregion
+        }.onFailure { e ->
+            // #region agent log
+            Log.e("DeviceDebugLogger", "Ошибка очистки лог-файла: ${e.message}", e)
+            // #endregion
+        }
     }
 
     fun log(
@@ -46,7 +57,6 @@ object DeviceDebugLogger {
         message: String,
         data: JSONObject = JSONObject(),
     ) {
-        // #region agent log
         runCatching {
             val payload = JSONObject().apply {
                 put("sessionId", SESSION_ID)
@@ -57,9 +67,16 @@ object DeviceDebugLogger {
                 put("timestamp", System.currentTimeMillis())
                 put("data", data)
             }
-            file(context).appendText(payload.toString() + "\n")
+            val logFile = file(context)
+            // ИСПРАВЛЕНО: Создаем директорию, если она не существует
+            logFile.parentFile?.mkdirs()
+            // ИСПРАВЛЕНО: Используем appendText с обработкой ошибок
+            logFile.appendText(payload.toString() + "\n")
+        }.onFailure { e ->
+            // #region agent log
+            Log.e("DeviceDebugLogger", "Ошибка записи в лог-файл: ${e.message}", e)
+            // #endregion
         }
-        // #endregion
     }
 
     fun logAppStart(context: Context, runId: String) {
@@ -102,7 +119,11 @@ object DeviceDebugLogger {
 
     private fun file(context: Context): File {
         val dir = context.getExternalFilesDir(null) ?: context.filesDir
-        return File(dir, FILE_NAME)
+        val logFile = File(dir, FILE_NAME)
+        // #region agent log
+        Log.d("DeviceDebugLogger", "Путь к лог-файлу: ${logFile.absolutePath}, exists=${logFile.exists()}, canRead=${logFile.canRead()}, dir=${dir.absolutePath}")
+        // #endregion
+        return logFile
     }
 
     private fun createRunId(): String {
@@ -111,7 +132,4 @@ object DeviceDebugLogger {
         return "run_" + System.currentTimeMillis().toString(36)
     }
 }
-
-
-
 

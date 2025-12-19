@@ -32,6 +32,9 @@ interface ThreatDao {
     
     @Query("SELECT * FROM threats WHERE networkBssid = :bssid ORDER BY timestamp DESC")
     fun getThreatsByNetworkBssid(bssid: String): Flow<List<ThreatEntity>>
+
+    @Query("SELECT * FROM threats WHERE networkBssid = :bssid AND isResolved = 0 ORDER BY timestamp DESC")
+    fun getUnresolvedThreatsByNetworkBssid(bssid: String): Flow<List<ThreatEntity>>
     
     @Query("SELECT * FROM threats WHERE isResolved = 0 ORDER BY timestamp DESC")
     fun getUnresolvedThreats(): Flow<List<ThreatEntity>>

@@ -85,7 +85,7 @@ class WifiConnectionObserver @Inject constructor(
                 // Реагируем только на подключение к WiFi
                 val isWifi = connectionType == ConnectionType.WIFI
                 if (isWifi) {
-                    Log.d(TAG, "📶 Обнаружено подключение к WiFi")
+                    Log.d(TAG, "📶 Обнаружено подключение к Wi-Fi")
                 }
                 isWifi
             }
@@ -107,7 +107,7 @@ class WifiConnectionObserver @Inject constructor(
      */
     private suspend fun checkCurrentWifiConnection() {
         try {
-            Log.d(TAG, "🔎 Проверка текущего WiFi подключения")
+            Log.d(TAG, "🔎 Проверка текущего Wi-Fi подключения")
             
             // Проверяем, включены ли уведомления в настройках
             val notificationsEnabled = settingsRepository.getNotificationsEnabled().first()
@@ -156,7 +156,7 @@ class WifiConnectionObserver @Inject constructor(
                 Log.w(TAG, "⚠️ Обнаружена опасная сеть: ${threatLevel.getDescription()}")
                 
                 // Формируем текст уведомления
-                val title = "⚠️ Небезопасная WiFi сеть"
+                val title = "⚠️ Небезопасная Wi-Fi сеть"
                 val content = buildNotificationContent(
                     ssid = currentNetwork.ssid,
                     threatLevel = threatLevel,
@@ -190,7 +190,7 @@ class WifiConnectionObserver @Inject constructor(
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Ошибка при проверке WiFi подключения: ${e.message}", e)
+            Log.e(TAG, "❌ Ошибка при проверке Wi-Fi подключения: ${e.message}", e)
         }
     }
     

@@ -20,20 +20,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.wifiguard.core.ui.theme.*
 import android.widget.Toast
+import android.util.Log
 import com.wifiguard.core.ui.theme.calculateLuminance
 import androidx.core.content.FileProvider
 import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.common.Constants
 import com.wifiguard.BuildConfig
-import android.os.Build
 import java.io.File
+import com.wifiguard.core.ui.testing.UiTestTags
+import com.wifiguard.R
 
 /**
  * Экран настроек
@@ -47,6 +50,10 @@ fun SettingsScreen(
     onNavigateToTermsOfService: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    // ИСПРАВЛЕНО: Защита от множественных кликов на экспорт логов
+    var isExporting by remember { mutableStateOf(false) }
+    var lastExportClickTime by remember { mutableStateOf(0L) }
+    val EXPORT_DEBOUNCE_MS = 2000L // 2 секунды между кликами
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -74,6 +81,10 @@ fun SettingsScreen(
     
     var themeDialogVisible by remember { mutableStateOf(false) }
 
+    // ИСПРАВЛЕНО: Получаем строковые ресурсы ДО LaunchedEffect, чтобы избежать предупреждения о LocalContext.current
+    val successMessage = stringResource(R.string.settings_all_data_deleted)
+    val errorPrefixFormat = stringResource(R.string.settings_error_prefix)
+
     // ИСПРАВЛЕНО: Безопасная обработка результата очистки данных
     // Проверяем жизненный цикл перед показом Toast
     LaunchedEffect(clearDataResult) {
@@ -81,10 +92,22 @@ fun SettingsScreen(
             clearDataResult?.let { result ->
                 when (result) {
                     is ClearDataResult.Success -> {
-                        Toast.makeText(context, "Все данные удалены", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            successMessage,
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     is ClearDataResult.Error -> {
-                        Toast.makeText(context, "Ошибка: ${result.message}", Toast.LENGTH_LONG).show()
+                        // Используем String.format() для форматирования строки с параметром
+                        // Это избегает предупреждения о LocalContext.current внутри LaunchedEffect
+                        // Строка ресурса уже получена через stringResource() выше
+                        val errorMessage = errorPrefixFormat.replace("%s", result.message ?: "")
+                        Toast.makeText(
+                            context,
+                            errorMessage,
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
                 // Сбрасываем результат после показа
@@ -104,16 +127,21 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        modifier = Modifier.testTag(UiTestTags.SETTINGS_SCREEN),
         topBar = {
             TopAppBar(
+                modifier = Modifier.testTag(UiTestTags.SETTINGS_TOP_APP_BAR),
                 title = {
-                    Text("Настройки")
+                    Text(stringResource(R.string.settings_title))
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(
+                        modifier = Modifier.testTag(UiTestTags.SETTINGS_NAV_BACK),
+                        onClick = onNavigateBack
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 }
@@ -130,17 +158,18 @@ fun SettingsScreen(
             // Общие настройки
             item {
                 SettingsSection(
-                    title = "Общие",
+                    title = stringResource(R.string.settings_general),
                     icon = Icons.Filled.Settings
                 ) {
                     SettingsItem(
-                        title = "Тема оформления",
+                        title = stringResource(R.string.settings_theme),
                         subtitle = when (uiState.themeMode) {
-                            "light" -> "Светлая"
-                            "dark" -> "Темная"
-                            else -> "Системная"
+                            "light" -> stringResource(R.string.theme_light)
+                            "dark" -> stringResource(R.string.theme_dark)
+                            else -> stringResource(R.string.theme_system)
                         },
                         onClick = { themeDialogVisible = true },
+                        modifier = Modifier.testTag(UiTestTags.SETTINGS_ITEM_THEME),
                         trailing = {
                             Icon(
                                 imageVector = Icons.Filled.BrightnessMedium,
@@ -151,8 +180,8 @@ fun SettingsScreen(
                     )
 
                     SettingsItem(
-                        title = "Автоматическое сканирование",
-                        subtitle = "Периодическое сканирование в фоне",
+                        title = stringResource(R.string.settings_auto_scan),
+                        subtitle = stringResource(R.string.settings_auto_scan_summary),
                         trailing = {
                             SettingsSwitch(
                                 checked = uiState.autoScanEnabled,
@@ -162,12 +191,12 @@ fun SettingsScreen(
                     )
 
                     SettingsItem(
-                        title = "Интервал сканирования",
+                        title = stringResource(R.string.settings_scan_interval),
                         subtitle = "Частота автоматического сканирования: ${
                             when (uiState.scanIntervalMinutes) {
-                                15 -> "15 минут"
-                                30 -> "30 минут"
-                                60 -> "60 минут"
+                                15 -> stringResource(R.string.settings_scan_interval_15min)
+                                30 -> stringResource(R.string.settings_scan_interval_30min)
+                                60 -> stringResource(R.string.settings_scan_interval_1hour)
                                 120 -> "2 часа"
                                 else -> "${uiState.scanIntervalMinutes} минут"
                             }
@@ -180,23 +209,34 @@ fun SettingsScreen(
             // Настройки безопасности
             item {
                 SettingsSection(
-                    title = "Безопасность",
+                    title = stringResource(R.string.settings_security),
                     icon = Icons.Filled.Security
                 ) {
                     SettingsItem(
-                        title = "Хранение данных",
+                        title = stringResource(R.string.settings_data_retention),
                         subtitle = "Период хранения истории сканирований: ${
                             when (uiState.dataRetentionDays) {
-                                1 -> "1 день"
-                                7 -> "1 неделя"
-                                30 -> "1 месяц"
-                                90 -> "3 месяца"
-                                -1 -> "Навсегда"
+                                1 -> stringResource(R.string.settings_data_retention_1day)
+                                7 -> stringResource(R.string.settings_data_retention_1week)
+                                30 -> stringResource(R.string.settings_data_retention_1month)
+                                90 -> stringResource(R.string.settings_data_retention_3months)
+                                -1 -> stringResource(R.string.settings_data_retention_forever)
                                 else -> "${uiState.dataRetentionDays} дней"
                             }
                         }",
                         onClick = { 
                             viewModel.showDataRetentionDialog() 
+                        }
+                    )
+
+                    SettingsItem(
+                        title = stringResource(R.string.settings_auto_disable_wifi_on_critical_title),
+                        subtitle = stringResource(R.string.settings_auto_disable_wifi_on_critical_summary),
+                        trailing = {
+                            SettingsSwitch(
+                                checked = uiState.autoDisableWifiOnCritical,
+                                onCheckedChange = { viewModel.setAutoDisableWifiOnCritical(it) }
+                            )
                         }
                     )
                     
@@ -215,8 +255,8 @@ fun SettingsScreen(
                     // )
                     
                     SettingsItem(
-                        title = "Очистить данные",
-                        subtitle = "Удалить всю историю сканирований",
+                        title = stringResource(R.string.settings_clear_data),
+                        subtitle = stringResource(R.string.settings_clear_data_summary),
                         onClick = { viewModel.showClearDataDialog() }
                     )
                 }
@@ -225,12 +265,12 @@ fun SettingsScreen(
             // Настройки уведомлений
             item {
                 SettingsSection(
-                    title = "Уведомления",
+                    title = stringResource(R.string.settings_notifications),
                     icon = Icons.Filled.Notifications
                 ) {
                     SettingsItem(
-                        title = "Уведомления об угрозах",
-                        subtitle = "Получать уведомления о критических угрозах",
+                        title = stringResource(R.string.settings_notifications_enabled),
+                        subtitle = stringResource(R.string.settings_notifications_enabled_summary),
                         trailing = {
                             SettingsSwitch(
                                 checked = uiState.notificationsEnabled,
@@ -240,8 +280,8 @@ fun SettingsScreen(
                     )
                     
                     SettingsItem(
-                        title = "Звук уведомлений",
-                        subtitle = "Звук уведомлений",
+                        title = stringResource(R.string.settings_notifications_sound),
+                        subtitle = stringResource(R.string.settings_notifications_sound),
                         trailing = {
                             SettingsSwitch(
                                 checked = uiState.notificationSoundEnabled,
@@ -251,8 +291,8 @@ fun SettingsScreen(
                     )
                     
                     SettingsItem(
-                        title = "Вибрация",
-                        subtitle = "Вибрация уведомлений",
+                        title = stringResource(R.string.settings_notifications_vibration),
+                        subtitle = stringResource(R.string.settings_notifications_vibration),
                         trailing = {
                             SettingsSwitch(
                                 checked = uiState.notificationVibrationEnabled,
@@ -266,32 +306,90 @@ fun SettingsScreen(
             // О приложении
             item {
                 SettingsSection(
-                    title = "О приложении",
+                    title = stringResource(R.string.settings_about),
                     icon = Icons.Filled.Info
                 ) {
                     SettingsItem(
                         title = "Экспортировать debug-лог",
                         subtitle = "Отправить файл для диагностики падений/сканирования",
                         onClick = {
+                            // ИСПРАВЛЕНО: Защита от множественных кликов
+                            val currentTime = System.currentTimeMillis()
+                            if (isExporting || (currentTime - lastExportClickTime) < EXPORT_DEBOUNCE_MS) {
+                                // #region agent log
+                                Log.d("SettingsScreen", "Экспорт пропущен: isExporting=$isExporting, timeSinceLastClick=${currentTime - lastExportClickTime}ms")
+                                // #endregion
+                                return@SettingsItem
+                            }
+                            lastExportClickTime = currentTime
+                            isExporting = true
+                            
                             // ИСПРАВЛЕНО: Безопасная проверка контекста
                             val activity = context as? android.app.Activity
                             if (activity == null || activity.isFinishing || activity.isDestroyed) {
+                                isExporting = false
                                 return@SettingsItem
                             }
                             
                             val logFile: File = DeviceDebugLogger.getFile(context)
                             
+                            // #region agent log
+                            Log.d("SettingsScreen", "Попытка экспорта лог-файла: path=${logFile.absolutePath}, exists=${logFile.exists()}, size=${logFile.length()}, canRead=${logFile.canRead()}")
+                            // #endregion
+                            
                             // ИСПРАВЛЕНО: Проверка существования и доступности файла
                             if (!logFile.exists()) {
-                                Toast.makeText(
-                                    context,
-                                    "Файл лога не найден. Сначала воспроизведите проблему.",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                return@SettingsItem
+                                // #region agent log
+                                Log.w("SettingsScreen", "Файл лога не существует: ${logFile.absolutePath}, создаем тестовую запись")
+                                // #endregion
+                                
+                                // ИСПРАВЛЕНО: Создаем тестовую запись, если файл не существует
+                                try {
+                                    val runId = DeviceDebugLogger.currentRunId()
+                                    DeviceDebugLogger.log(
+                                        context = context,
+                                        runId = runId,
+                                        hypothesisId = "MANUAL",
+                                        location = "SettingsScreen.kt:onClick",
+                                        message = "Тестовая запись для создания файла лога",
+                                        data = org.json.JSONObject().apply {
+                                            put("action", "manual_export_trigger")
+                                            put("timestamp", System.currentTimeMillis())
+                                        }
+                                    )
+                                    // #region agent log
+                                    Log.d("SettingsScreen", "Тестовая запись создана, проверяем файл снова")
+                                    // #endregion
+                                    
+                                    // Проверяем еще раз после создания
+                                    if (!logFile.exists()) {
+                                        isExporting = false
+                                        Toast.makeText(
+                                            context,
+                                            "Не удалось создать файл лога. Проверьте разрешения на запись.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        return@SettingsItem
+                                    }
+                                } catch (e: Exception) {
+                                    // #region agent log
+                                    Log.e("SettingsScreen", "Ошибка при создании тестовой записи: ${e.message}", e)
+                                    // #endregion
+                                    isExporting = false
+                                    Toast.makeText(
+                                        context,
+                                        "Не удалось создать файл лога: ${e.message}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    return@SettingsItem
+                                }
                             }
                             
                             if (logFile.length() == 0L) {
+                                // #region agent log
+                                Log.w("SettingsScreen", "Файл лога пуст: ${logFile.absolutePath}")
+                                // #endregion
+                                isExporting = false
                                 Toast.makeText(
                                     context,
                                     "Файл лога пуст. Сначала воспроизведите проблему.",
@@ -302,6 +400,10 @@ fun SettingsScreen(
                             
                             // Проверка доступности файла для чтения
                             if (!logFile.canRead()) {
+                                // #region agent log
+                                Log.e("SettingsScreen", "Нет доступа для чтения файла: ${logFile.absolutePath}")
+                                // #endregion
+                                isExporting = false
                                 Toast.makeText(
                                     context,
                                     "Нет доступа для чтения файла лога",
@@ -311,49 +413,205 @@ fun SettingsScreen(
                             }
 
                             runCatching {
-                                // ИСПРАВЛЕНО: Добавлены проверки версий Android для FileProvider
-                                val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                    // FileProvider доступен с API 24+
+                                val authority = "${context.packageName}.fileprovider"
+                                // #region agent log
+                                Log.d("SettingsScreen", "Создание URI через FileProvider: authority=$authority, file=${logFile.absolutePath}, parent=${logFile.parent}, externalFilesDir=${context.getExternalFilesDir(null)?.absolutePath}, filesDir=${context.filesDir.absolutePath}")
+                                // #endregion
+                                
+                                // ИСПРАВЛЕНО: Проверяем, что файл находится в доступной директории
+                                val externalFilesDir = context.getExternalFilesDir(null)
+                                val filesDir = context.filesDir
+                                
+                                // Нормализуем пути для корректного сравнения
+                                val filePath = logFile.absolutePath
+                                val externalPath = externalFilesDir?.absolutePath?.let { 
+                                    if (!it.endsWith("/")) "$it/" else it 
+                                } ?: ""
+                                val internalPath = filesDir.absolutePath.let { 
+                                    if (!it.endsWith("/")) "$it/" else it 
+                                }
+                                
+                                val isInExternalFiles = externalFilesDir != null && filePath.startsWith(externalPath)
+                                val isInInternalFiles = filePath.startsWith(internalPath)
+                                
+                                // #region agent log
+                                Log.d("SettingsScreen", "Проверка пути файла: isInExternalFiles=$isInExternalFiles, isInInternalFiles=$isInInternalFiles")
+                                Log.d("SettingsScreen", "Детали путей: filePath=$filePath, externalPath=$externalPath, internalPath=$internalPath")
+                                // #endregion
+                                
+                                if (!isInExternalFiles && !isInInternalFiles) {
+                                    val errorMsg = "Файл находится вне доступных директорий для FileProvider. Файл: $filePath, External: $externalPath, Internal: $internalPath"
+                                    // #region agent log
+                                    Log.e("SettingsScreen", errorMsg)
+                                    // #endregion
+                                    throw IllegalStateException(errorMsg)
+                                }
+                                
+                                // minSdk = 26, поэтому используем FileProvider всегда (без ветвлений по версии).
+                                // #region agent log
+                                Log.d("SettingsScreen", "Вызов FileProvider.getUriForFile с authority=$authority")
+                                // #endregion
+                                
+                                val uri = try {
                                     FileProvider.getUriForFile(
                                         context,
-                                        "${context.packageName}.fileprovider",
+                                        authority,
                                         logFile
                                     )
-                                } else {
-                                    // ИСПРАВЛЕНО: Для Android < 7.0 (API < 24) используем file:// URI
-                                    // ВАЖНО: На Android 7+ (API 24+) это не работает из-за FileUriExposedException
-                                    // Но так как мы проверяем Build.VERSION.SDK_INT >= N, это безопасно
-                                    @Suppress("DEPRECATION")
-                                    android.net.Uri.fromFile(logFile)
+                                } catch (e: IllegalArgumentException) {
+                                    // #region agent log
+                                    Log.e("SettingsScreen", "IllegalArgumentException при создании URI: ${e.message}", e)
+                                    Log.e("SettingsScreen", "Детали: authority=$authority, file=${logFile.absolutePath}, fileExists=${logFile.exists()}, fileCanRead=${logFile.canRead()}")
+                                    // #endregion
+                                    throw e
+                                } catch (e: Exception) {
+                                    // #region agent log
+                                    Log.e("SettingsScreen", "Неожиданная ошибка при создании URI: ${e.javaClass.simpleName}: ${e.message}", e)
+                                    // #endregion
+                                    throw e
                                 }
+                                
+                                // #region agent log
+                                Log.d("SettingsScreen", "URI создан успешно: $uri")
+                                // #endregion
 
+                                // ИСПРАВЛЕНО: Создаем Intent с правильными флагами
+                                // Используем ClipData для автоматической выдачи разрешений на URI
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "application/x-ndjson"
+                                    // ИСПРАВЛЕНО: Используем ClipData для правильной передачи URI с разрешениями
+                                    // Это предотвращает SecurityException при попытке системы предпросмотреть файл
+                                    val clipData = android.content.ClipData.newUri(
+                                        context.contentResolver,
+                                        "Debug Log",
+                                        uri
+                                    )
+                                    setClipData(clipData)
+                                    // Оставляем EXTRA_STREAM для обратной совместимости
                                     putExtra(Intent.EXTRA_STREAM, uri)
-                                    // FLAG_GRANT_READ_URI_PERMISSION доступен с API 18+
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
+                                
+                                val packageManager = context.packageManager
+                                
+                                // ИСПРАВЛЕНО: Используем правильные флаги для queryIntentActivities
+                                // На Android 11+ нужно использовать MATCH_DEFAULT_ONLY или MATCH_ALL
+                                val queryFlags = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                    android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+                                } else {
+                                    0
+                                }
+                                
+                                val resolveInfos = try {
+                                    packageManager.queryIntentActivities(shareIntent, queryFlags)
+                                } catch (e: Exception) {
+                                    // #region agent log
+                                    Log.e("SettingsScreen", "Ошибка при queryIntentActivities: ${e.message}", e)
+                                    // #endregion
+                                    emptyList()
+                                }
+                                
+                                // #region agent log
+                                Log.d("SettingsScreen", "Найдено приложений для отправки: ${resolveInfos.size}, queryFlags=$queryFlags")
+                                // #endregion
                                 
                                 // ИСПРАВЛЕНО: Безопасная проверка перед запуском Activity
                                 val chooser = Intent.createChooser(shareIntent, "Отправить debug-лог")
-                                val resolveInfo = chooser.resolveActivity(context.packageManager)
-                                if (resolveInfo != null && activity != null && !activity.isFinishing && !activity.isDestroyed) {
-                                    context.startActivity(chooser)
+                                
+                                @Suppress("QueryPermissionsNeeded")
+                                val resolveInfo = chooser.resolveActivity(packageManager)
+                                
+                                // #region agent log
+                                Log.d("SettingsScreen", "ResolveInfo для chooser: $resolveInfo, activity.isFinishing=${activity.isFinishing}, activity.isDestroyed=${activity.isDestroyed}")
+                                // #endregion
+                                
+                                if (resolveInfo != null && !activity.isFinishing && !activity.isDestroyed) {
+                                    // #region agent log
+                                    Log.d("SettingsScreen", "Запуск Activity для отправки файла, URI=$uri")
+                                    // #endregion
+                                    try {
+                                        // ИСПРАВЛЕНО: Используем activity.startActivity вместо context.startActivity
+                                        // для правильной работы с lifecycle
+                                        activity.startActivity(chooser)
+                                        // #region agent log
+                                        Log.d("SettingsScreen", "Activity запущена успешно")
+                                        // #endregion
+                                        // ИСПРАВЛЕНО: Сбрасываем флаг после успешного запуска
+                                        isExporting = false
+                                    } catch (e: android.content.ActivityNotFoundException) {
+                                        // #region agent log
+                                        Log.e("SettingsScreen", "ActivityNotFoundException: ${e.message}", e)
+                                        // #endregion
+                                        isExporting = false
+                                        if (!isExporting) {
+                                            Toast.makeText(
+                                                context,
+                                                "Не найдено приложение для отправки файла",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    } catch (e: SecurityException) {
+                                        // #region agent log
+                                        Log.e("SettingsScreen", "SecurityException при запуске Activity: ${e.message}", e)
+                                        // #endregion
+                                        isExporting = false
+                                        if (!isExporting) {
+                                            Toast.makeText(
+                                                context,
+                                                "Нет разрешения на отправку файла: ${e.message}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        // #region agent log
+                                        Log.e("SettingsScreen", "Ошибка при запуске Activity: ${e.javaClass.simpleName}: ${e.message}", e)
+                                        // #endregion
+                                        isExporting = false
+                                        if (!isExporting) {
+                                            Toast.makeText(
+                                                context,
+                                                "Не удалось открыть диалог отправки: ${e.message}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
                                 } else {
+                                    // #region agent log
+                                    Log.w("SettingsScreen", "Не удалось запустить Activity: resolveInfo=$resolveInfo, isFinishing=${activity.isFinishing}, isDestroyed=${activity.isDestroyed}, resolveInfos.size=${resolveInfos.size}")
+                                    // #endregion
+                                    isExporting = false
+                                    if (!isExporting) {
+                                        Toast.makeText(
+                                            context,
+                                            "Нет приложения для отправки файла. Установите приложение для отправки файлов (например, Gmail, Telegram).",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            }.onFailure { e ->
+                                // #region agent log
+                                Log.e("SettingsScreen", "Ошибка при отправке debug-лога: ${e.javaClass.simpleName}: ${e.message}", e)
+                                Log.e("SettingsScreen", "StackTrace: ${e.stackTraceToString()}")
+                                // #endregion
+                                
+                                val errorMessage = when (e) {
+                                    is IllegalArgumentException -> "Ошибка конфигурации FileProvider. Проверьте file_paths.xml"
+                                    is IllegalStateException -> e.message ?: "Файл находится в недоступной директории"
+                                    is SecurityException -> "Нет разрешения на доступ к файлу"
+                                    else -> "Не удалось отправить debug-лог: ${e.message}"
+                                }
+                                
+                                // ИСПРАВЛЕНО: Показываем Toast только если не показывается другой
+                                if (!isExporting) {
                                     Toast.makeText(
                                         context,
-                                        "Нет приложения для отправки файла",
+                                        errorMessage,
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
-                            }.onFailure {
-                                Toast.makeText(
-                                    context,
-                                    "Не удалось отправить debug-лог: ${it.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
+                            }.also {
+                                // ИСПРАВЛЕНО: Сбрасываем флаг экспорта после завершения операции
+                                isExporting = false
                             }
                         }
                     )
@@ -418,8 +676,10 @@ fun SettingsScreen(
     if (themeDialogVisible) {
         ThemeSelectionDialog(
             currentTheme = uiState.themeMode,
-            onDismiss = { themeDialogVisible = false },
-            onConfirm = { theme: String ->
+            onDismiss = { 
+                themeDialogVisible = false 
+            },
+            onConfirm = { theme ->
                 viewModel.setThemeMode(theme)
                 themeDialogVisible = false
             }
@@ -520,12 +780,13 @@ private fun SettingsSwitch(
 private fun SettingsItem(
     title: String,
     subtitle: String,
+    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null
 ) {
     // Прозрачный фон - элементы сидят прямо на фоне секции
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .then(
                 if (onClick != null) {
@@ -582,7 +843,7 @@ fun ScanIntervalDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Интервал сканирования") },
+        title = { Text(stringResource(R.string.settings_scan_interval)) },
         text = {
             Column {
                 // ИСПРАВЛЕНО: Добавлено предупреждение о минимальном интервале
@@ -622,14 +883,14 @@ fun ScanIntervalDialog(
                     onConfirm(validInterval)
                 }
             ) {
-                Text("OK")
+                Text(stringResource(R.string.common_ok))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss
             ) {
-                Text("Отмена")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -706,14 +967,15 @@ fun ThemeSelectionDialog(
     onConfirm: (String) -> Unit
 ) {
     val themes = mapOf(
-        "system" to "Системная",
-        "light" to "Светлая",
-        "dark" to "Темная"
+        "system" to stringResource(R.string.theme_system),
+        "light" to stringResource(R.string.theme_light),
+        "dark" to stringResource(R.string.theme_dark)
     )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Тема оформления") },
+        modifier = Modifier.testTag(UiTestTags.SETTINGS_THEME_DIALOG),
+        title = { Text(stringResource(R.string.settings_theme)) },
         text = {
             Column {
                 themes.forEach { (mode, label) ->
@@ -736,7 +998,7 @@ fun ThemeSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -765,7 +1027,7 @@ fun DataRetentionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Хранение данных") },
+        title = { Text(stringResource(R.string.settings_data_retention)) },
         text = {
             LazyColumn {
                 retentionOptions.forEach { (days, label) ->
@@ -792,14 +1054,14 @@ fun DataRetentionDialog(
             Button(
                 onClick = { onConfirm(selectedDays) }
             ) {
-                Text("OK")
+                Text(stringResource(R.string.common_ok))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss
             ) {
-                Text("Отмена")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

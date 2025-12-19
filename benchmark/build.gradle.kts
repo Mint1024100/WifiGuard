@@ -30,12 +30,33 @@ android {
     experimentalProperties["android.experimental.self-instrumenting"] = true
 }
 
+// Форсируем версию androidx.tracing для всех конфигураций (решает конфликт 1.0.0 vs 1.3.0)
+configurations.all {
+    resolutionStrategy {
+        force("androidx.tracing:tracing:1.3.0")
+    }
+}
+
 dependencies {
     implementation(libs.androidx.benchmark.macro.junit4)
     implementation(libs.androidx.test.ext.junit)
     implementation(libs.androidx.test.runner)
     implementation(libs.androidx.test.uiautomator)
+    
+    // Compose BOM и compileOnly зависимости для разрешения opt-in маркеров
+    // Эти зависимости нужны только для компиляции, не включаются в APK
+    implementation(platform(libs.androidx.compose.bom))
+    compileOnly(libs.androidx.compose.material3)
+    compileOnly("androidx.compose.foundation:foundation")
+    compileOnly("androidx.compose.animation:animation")
 }
+
+
+
+
+
+
+
 
 
 

@@ -27,6 +27,12 @@ interface WifiScanner {
      * Наблюдать за изменениями состояния WiFi (включен/выключен) в реальном времени
      */
     fun observeWifiEnabled(): Flow<Boolean>
+
+    /**
+     * Наблюдать за фактом Wi‑Fi подключения (TRANSPORT_WIFI) в реальном времени.
+     * Нужен для обновления "текущей сети" при реальном коннекте, а не только при включении тумблера Wi‑Fi.
+     */
+    fun observeWifiTransportConnected(): Flow<Boolean>
     
     /**
      * Получить текущую подключенную сеть

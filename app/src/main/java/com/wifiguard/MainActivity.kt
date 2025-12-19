@@ -29,8 +29,8 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import com.wifiguard.core.background.WifiMonitoringWorker
 import com.wifiguard.core.background.WorkManagerSafe
 import com.wifiguard.core.common.Constants
-import com.wifiguard.core.common.DeviceDebugLogger
 import com.wifiguard.core.data.preferences.PreferencesDataSource
+import com.wifiguard.core.updates.AppUpdateChecker
 import com.wifiguard.core.ui.theme.WifiGuardTheme
 import com.wifiguard.navigation.WifiGuardNavigation
 import dagger.hilt.android.AndroidEntryPoint
@@ -60,6 +60,9 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var preferencesDataSource: PreferencesDataSource
+
+    @Inject
+    lateinit var appUpdateChecker: AppUpdateChecker
     
     // ИСПРАВЛЕНО: Thread-safe state management через StateFlow
     private val _permissionState = MutableStateFlow(PermissionState.UNKNOWN)
@@ -88,6 +91,9 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "🚀 Запуск MainActivity")
         
         try {
+            // Инициализируем launcher для обновлений через Play In-App Updates
+            appUpdateChecker.initializeLauncher(this)
+            
             // Сразу проверяем разрешения
             checkAndRequestPermissions()
             
@@ -172,7 +178,7 @@ class MainActivity : ComponentActivity() {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Проверка разрешений...",
+                    text = stringResource(R.string.permission_checking),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -192,7 +198,7 @@ class MainActivity : ComponentActivity() {
                 TopAppBar(
                     title = { 
                         Text(
-                            "🛡️ WifiGuard",
+                            stringResource(R.string.app_name),
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         ) 
                     },
@@ -221,9 +227,9 @@ class MainActivity : ComponentActivity() {
                 
                 Text(
                     text = if (isPermanentlyDenied) 
-                        "Разрешения заблокированы" 
+                        stringResource(R.string.permission_blocked_title)
                     else 
-                        "Требуются разрешения",
+                        stringResource(R.string.permission_required_title),
                     style = MaterialTheme.typography.headlineMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
@@ -233,15 +239,9 @@ class MainActivity : ComponentActivity() {
                 
                 Text(
                     text = if (isPermanentlyDenied)
-                        "Разрешения были заблокированы.\n\n" +
-                        "Откройте настройки приложения и предоставьте:\n" +
-                        "📍 Местоположение\n" +
-                        "🔔 Уведомления"
+                        stringResource(R.string.permission_permanently_denied_message)
                     else
-                        "Для защиты от небезопасных WiFi сетей\nтребуются разрешения:\n\n" +
-                        "📍 Местоположение - для сканирования WiFi\n" +
-                        "🔔 Уведомления - для мгновенных предупреждений об угрозах\n\n" +
-                        "Приложение НЕ отслеживает ваше местоположение",
+                        stringResource(R.string.permission_request_message),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -254,14 +254,14 @@ class MainActivity : ComponentActivity() {
                         onClick = onOpenSettings,
                         modifier = Modifier.fillMaxWidth(0.8f)
                     ) {
-                        Text("Открыть настройки")
+                        Text(stringResource(R.string.common_open_settings))
                     }
                 } else {
                     Button(
                         onClick = onRequestPermissions,
                         modifier = Modifier.fillMaxWidth(0.8f)
                     ) {
-                        Text("Предоставить разрешения")
+                        Text(stringResource(R.string.permission_request_button))
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -270,7 +270,7 @@ class MainActivity : ComponentActivity() {
                         onClick = onOpenSettings,
                         modifier = Modifier.fillMaxWidth(0.8f)
                     ) {
-                        Text("Открыть настройки")
+                        Text(stringResource(R.string.common_open_settings))
                     }
                 }
             }
@@ -288,19 +288,6 @@ class MainActivity : ComponentActivity() {
                 val currentState = getCurrentPermissionState()
                 _permissionState.value = currentState
 
-                DeviceDebugLogger.log(
-                    context = this@MainActivity,
-                    runId = DeviceDebugLogger.currentRunId(),
-                    hypothesisId = "C",
-                    location = "MainActivity.kt:checkAndRequestPermissions",
-                    message = "Состояние разрешений рассчитано",
-                    data = org.json.JSONObject().apply {
-                        put("sdkInt", Build.VERSION.SDK_INT)
-                        put("state", currentState.name)
-                        put("locationEnabled", DeviceDebugLogger.isLocationEnabled(this@MainActivity))
-                    }
-                )
-                
                 when (currentState) {
                     PermissionState.GRANTED -> {
                         Log.d(TAG, "✅ Все разрешения получены")
@@ -350,22 +337,22 @@ class MainActivity : ComponentActivity() {
             }
             
             // ИСПРАВЛЕНО: Правильная логика определения permanently denied
-            // Если все критические разрешения НЕ предоставлены
-            val allCriticalDenied = criticalPermissions.all { permission ->
+            // Если какие-либо критические разрешения НЕ предоставлены
+            val missingCritical = criticalPermissions.filter { permission ->
                 ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED
             }
             
-            if (allCriticalDenied) {
-                // Проверяем, нужно ли показывать объяснение (т.е. пользователь отклонил, но не выбрал "не спрашивать")
-                val shouldShowRationale = criticalPermissions.any { permission ->
+            if (missingCritical.isNotEmpty()) {
+                // Проверяем, нужно ли показывать объяснение для любого из отсутствующих разрешений
+                val shouldShowRationale = missingCritical.any { permission ->
                     shouldShowRequestPermissionRationale(permission)
                 }
                 
-                // Если объяснение не нужно показывать, но разрешения не предоставлены - значит "навсегда отклонено"
+                // Если объяснение не нужно показывать (пользователь нажал "Don't ask again")
+                // и разрешение всё ещё отсутствует — значит "навсегда отклонено"
                 return if (!shouldShowRationale) PermissionState.PERMANENTLY_DENIED else PermissionState.DENIED
             }
             
-            // Если некоторые критические разрешения предоставлены, но не все
             return PermissionState.DENIED
         } catch (e: Exception) {
             Log.e(TAG, "❌ Ошибка определения состояния разрешений: ${e.message}", e)
@@ -473,6 +460,12 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         Log.d(TAG, "🔄 MainActivity возобновлено")
         checkAndRequestPermissions()
+
+        // Опционально: проверка обновлений через Play In-App Updates.
+        // Вне Play Store безопасно деградирует в no-op.
+        runCatching {
+            appUpdateChecker.onResume(this)
+        }
         
         // Проверяем, нужно ли запустить фоновый мониторинг (если разрешения получены)
         lifecycleScope.launch {

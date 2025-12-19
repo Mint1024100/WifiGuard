@@ -12,8 +12,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import org.json.JSONObject
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -140,52 +138,21 @@ class NetworkMonitor @Inject constructor(
      * Проверяет подключение к Wi-Fi
      */
     fun isWifiConnected(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val network = connectivityManager.activeNetwork
-            val capabilities = connectivityManager.getNetworkCapabilities(network)
-            
-            // #region agent log
-            try {
-                val logJson = JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "C")
-                    put("location", "NetworkMonitor.kt:140")
-                    put("message", "NetworkMonitor проверка WiFi подключения")
-                    put("data", JSONObject().apply {
-                        put("sdkVersion", Build.VERSION.SDK_INT)
-                        put("networkIsNull", network == null)
-                        put("capabilitiesIsNull", capabilities == null)
-                        put("hasWifiTransport", capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ?: false)
-                        put("result", capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
-            
-            if (network == null || capabilities == null) return false
-            return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-        } else {
-            @Suppress("DEPRECATION")
-            return connectivityManager.activeNetworkInfo?.type == ConnectivityManager.TYPE_WIFI
-        }
+        val network = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(network)
+        
+        if (network == null || capabilities == null) return false
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
     
     /**
      * Проверяет подключение к мобильной сети
      */
     fun isCellularConnected(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val network = connectivityManager.activeNetwork ?: return false
-            val capabilities = connectivityManager.getNetworkCapabilities(network) 
-                ?: return false
-            return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-        } else {
-            @Suppress("DEPRECATION")
-            return connectivityManager.activeNetworkInfo?.type == ConnectivityManager.TYPE_MOBILE
-        }
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) 
+            ?: return false
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 }
 

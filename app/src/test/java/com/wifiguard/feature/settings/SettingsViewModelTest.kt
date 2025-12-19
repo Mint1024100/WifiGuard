@@ -44,6 +44,8 @@ class SettingsViewModelTest {
         every { settingsRepository.getNotificationVibrationEnabled() } returns flowOf(true)
         every { settingsRepository.getScanIntervalMinutes() } returns flowOf(15)
         every { settingsRepository.getThemeMode() } returns flowOf("system")
+        every { settingsRepository.getDataRetentionDays() } returns flowOf(30)
+        every { settingsRepository.getAutoDisableWifiOnCritical() } returns flowOf(false)
 
         settingsViewModel = SettingsViewModel(
             settingsRepository = settingsRepository,

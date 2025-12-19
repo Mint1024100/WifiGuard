@@ -26,11 +26,11 @@ subprojects {
         // Настройка Android модулей
         if (project.extensions.findByName("android") != null) {
             configure<com.android.build.gradle.BaseExtension> {
-                compileSdkVersion(35)
+                compileSdkVersion(libs.versions.compileSdk.get().toInt())
 
                 defaultConfig {
-                    minSdk = 26
-                    targetSdk = 35
+                    minSdk = libs.versions.minSdk.get().toInt()
+                    targetSdk = libs.versions.targetSdk.get().toInt()
 
                     // testInstrumentationRunner удалён отсюда, чтобы позволить
                     // каждому модулю (например, app) настроить свой собственный runner

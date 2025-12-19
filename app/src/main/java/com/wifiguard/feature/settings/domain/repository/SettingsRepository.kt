@@ -25,6 +25,14 @@ interface SettingsRepository {
     
     fun getDataRetentionDays(): Flow<Int>
     suspend fun setDataRetentionDays(days: Int)
+
+    /**
+     * Разрешение пользователя: авто-отключение Wi‑Fi при критической угрозе.
+     *
+     * ВАЖНО: по умолчанию выключено (false).
+     */
+    fun getAutoDisableWifiOnCritical(): Flow<Boolean>
+    suspend fun setAutoDisableWifiOnCritical(enabled: Boolean)
     
     fun getThemeMode(): Flow<String>
     suspend fun setThemeMode(mode: String)

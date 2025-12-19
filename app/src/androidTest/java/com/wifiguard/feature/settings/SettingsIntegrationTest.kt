@@ -13,7 +13,6 @@ import com.wifiguard.feature.settings.presentation.SettingsViewModel
 import com.wifiguard.testing.WorkManagerTestUtils
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -21,7 +20,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import javax.inject.Inject
-import java.util.concurrent.TimeUnit
 
 /**
  * Integration test for Settings functionality, particularly the scan interval feature
@@ -51,7 +49,7 @@ class SettingsIntegrationTest {
         context = ApplicationProvider.getApplicationContext()
         val config = Configuration.Builder()
             .setWorkerFactory(workerFactory)
-            .setMinimumLoggingLevel(android.util.Log.DEBUG)
+            .setMinimumLoggingLevel(Log.DEBUG)
             .build()
 
         WorkManagerTestInitHelper.initializeTestWorkManager(context, config)
@@ -109,6 +107,9 @@ class SettingsIntegrationTest {
             override fun getThreatSensitivity() = kotlinx.coroutines.flow.flowOf(1)
             override suspend fun setThreatSensitivity(sensitivity: Int) {}
 
+            override fun getAutoDisableWifiOnCritical() = kotlinx.coroutines.flow.flowOf(false)
+            override suspend fun setAutoDisableWifiOnCritical(enabled: Boolean) {}
+
             override fun getDataRetentionDays() = kotlinx.coroutines.flow.flowOf(30)
             override suspend fun setDataRetentionDays(days: Int) {}
 
@@ -130,7 +131,6 @@ class SettingsIntegrationTest {
                     firstLaunch = true,
                     lastScanTimestamp = 0L,
                     totalScansCount = 0,
-                    analyticsEnabled = false,
                     crashReportingEnabled = false
                 )
             )
@@ -189,7 +189,11 @@ class SettingsIntegrationTest {
             override suspend fun validateDatabaseIntegrity(): Boolean = true
         }
 
-        val viewModel = SettingsViewModel(repository, mockWifiRepository, context)
+        val viewModel = SettingsViewModel(
+            settingsRepository = repository,
+            wifiRepository = mockWifiRepository,
+            context = context
+        )
 
         // Initially, set the scan interval to 30 minutes
         viewModel.setScanInterval(30)
@@ -246,6 +250,8 @@ class SettingsIntegrationTest {
         workManager.cancelUniqueWork("wifi_monitoring_periodic").result.get()
 
         // Initialize the test data store with default settings
+        // Note: defaultDataSource is not used directly, but the test verifies default initialization behavior
+        @Suppress("UNUSED_VARIABLE")
         val defaultDataSource = object : com.wifiguard.feature.settings.data.datasource.SettingsDataSource {
             override fun getAutoScanEnabled() = kotlinx.coroutines.flow.flowOf(true)
             override suspend fun setAutoScanEnabled(enabled: Boolean) {}
@@ -271,6 +277,9 @@ class SettingsIntegrationTest {
             override fun getThreatSensitivity() = kotlinx.coroutines.flow.flowOf(1)
             override suspend fun setThreatSensitivity(sensitivity: Int) {}
 
+            override fun getAutoDisableWifiOnCritical() = kotlinx.coroutines.flow.flowOf(false)
+            override suspend fun setAutoDisableWifiOnCritical(enabled: Boolean) {}
+
             override fun getDataRetentionDays() = kotlinx.coroutines.flow.flowOf(30)
             override suspend fun setDataRetentionDays(days: Int) {}
 
@@ -292,7 +301,6 @@ class SettingsIntegrationTest {
                     firstLaunch = true,
                     lastScanTimestamp = 0L,
                     totalScansCount = 0,
-                    analyticsEnabled = false,
                     crashReportingEnabled = false
                 )
             )
@@ -301,6 +309,8 @@ class SettingsIntegrationTest {
             override suspend fun clearAllSettings() {}
         }
 
+        // Note: mockWifiRepositoryForBoot is not used directly, but kept for potential future use
+        @Suppress("UNUSED_VARIABLE")
         val mockWifiRepositoryForBoot = object : com.wifiguard.core.domain.repository.WifiRepository {
             override fun getAllNetworks(): kotlinx.coroutines.flow.Flow<List<com.wifiguard.core.domain.model.WifiNetwork>> =
                 kotlinx.coroutines.flow.flowOf(emptyList())

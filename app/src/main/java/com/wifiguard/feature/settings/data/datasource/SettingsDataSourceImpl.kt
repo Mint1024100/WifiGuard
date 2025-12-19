@@ -39,6 +39,7 @@ class SettingsDataSourceImpl @Inject constructor(
         private val THREAT_SENSITIVITY = intPreferencesKey("threat_sensitivity")
         private val DATA_RETENTION_DAYS = intPreferencesKey("data_retention_days")
         private val THEME_MODE = androidx.datastore.preferences.core.stringPreferencesKey("theme_mode")
+        private val AUTO_DISABLE_WIFI_ON_CRITICAL = booleanPreferencesKey("auto_disable_wifi_on_critical")
     }
 
     /**
@@ -331,6 +332,38 @@ class SettingsDataSourceImpl @Inject constructor(
         }
     }
 
+    override fun getAutoDisableWifiOnCritical(): Flow<Boolean> {
+        return dataStore.data
+            .catch { exception ->
+                if (exception is CancellationException) throw exception
+                if (exception is IOException) emit(emptyPreferences())
+                else {
+                    android.util.Log.e(
+                        "SettingsDataSource",
+                        "Error reading auto-disable wifi on critical",
+                        exception
+                    )
+                    emit(emptyPreferences())
+                }
+            }
+            .map { preferences ->
+                preferences[AUTO_DISABLE_WIFI_ON_CRITICAL] ?: false
+            }
+    }
+
+    override suspend fun setAutoDisableWifiOnCritical(enabled: Boolean) {
+        try {
+            dataStore.edit { preferences ->
+                preferences[AUTO_DISABLE_WIFI_ON_CRITICAL] = enabled
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.e("SettingsDataSource", "Error writing auto-disable wifi on critical", e)
+            throw e
+        }
+    }
+
     /**
      * ИСПРАВЛЕНО: Get all settings с правильной обработкой ошибок
      */
@@ -354,12 +387,12 @@ class SettingsDataSourceImpl @Inject constructor(
                     dataRetentionDays = preferences[DATA_RETENTION_DAYS] ?: 30,
                     threatAlertEnabled = true, // Default value as it's not in SettingsDataSource
                     criticalThreatNotifications = preferences[HIGH_PRIORITY_NOTIFICATIONS] ?: false,
+                    autoDisableWifiOnCritical = preferences[AUTO_DISABLE_WIFI_ON_CRITICAL] ?: false,
                     themeMode = preferences[THEME_MODE] ?: "system",
                     language = "ru", // Default value as it's not in SettingsDataSource
                     firstLaunch = true, // Default value as it's not in SettingsDataSource
                     lastScanTimestamp = 0L, // Default value as it's not in SettingsDataSource
                     totalScansCount = 0, // Default value as it's not in SettingsDataSource
-                    analyticsEnabled = false, // Default value as it's not in SettingsDataSource
                     crashReportingEnabled = false // Default value as it's not in SettingsDataSource
                 )
             }
@@ -378,6 +411,7 @@ class SettingsDataSourceImpl @Inject constructor(
                 preferences[NOTIFICATION_VIBRATION_ENABLED] = settings.notificationVibrationEnabled
                 preferences[DATA_RETENTION_DAYS] = settings.dataRetentionDays
                 preferences[HIGH_PRIORITY_NOTIFICATIONS] = settings.criticalThreatNotifications
+                preferences[AUTO_DISABLE_WIFI_ON_CRITICAL] = settings.autoDisableWifiOnCritical
                 preferences[THEME_MODE] = settings.themeMode
             }
         } catch (e: CancellationException) {
@@ -403,4 +437,5 @@ class SettingsDataSourceImpl @Inject constructor(
             throw e
         }
     }
+
 }

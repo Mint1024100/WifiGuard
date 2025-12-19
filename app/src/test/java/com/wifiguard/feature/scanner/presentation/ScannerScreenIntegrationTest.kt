@@ -3,6 +3,8 @@ package com.wifiguard.feature.scanner.presentation
 import com.wifiguard.core.common.BssidValidator
 import com.wifiguard.core.common.PermissionHandler
 import com.wifiguard.core.common.Result
+import com.wifiguard.core.common.SerializableResultWrapper
+import com.wifiguard.core.common.toResultForWifiList
 import com.wifiguard.core.data.wifi.WifiScanner
 import com.wifiguard.core.domain.model.SecurityType
 import com.wifiguard.core.domain.model.ThreatLevel
@@ -10,14 +12,15 @@ import com.wifiguard.core.domain.model.WifiScanResult
 import com.wifiguard.core.domain.model.WifiStandard
 import com.wifiguard.core.domain.model.ScanType
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -28,6 +31,7 @@ import org.junit.Test
 import androidx.lifecycle.SavedStateHandle
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
+import kotlinx.serialization.json.Json
 
 /**
  * Integration тесты для ScannerScreen и ScannerViewModel
@@ -50,7 +54,9 @@ class ScannerScreenIntegrationTest {
         savedStateHandle = SavedStateHandle()
         
         // Настройка базовых mock-ответов
-        every { permissionHandler.hasWifiScanPermissions() } returns true
+        // ВАЖНО: ScannerViewModel в init() может автоматически запустить scan.
+        // Для тестов делаем запуск явным (иначе второй startScan() попадает под debounce).
+        every { permissionHandler.hasWifiScanPermissions() } returns false
         every { permissionHandler.isLocationEnabled() } returns true
         every { permissionHandler.isLocationRequiredForWifiScan() } returns true
         every { wifiScanner.isWifiEnabled() } returns true
@@ -82,20 +88,22 @@ class ScannerScreenIntegrationTest {
         viewModel = ScannerViewModel(wifiScanner, permissionHandler, savedStateHandle)
         advanceUntilIdle()
 
+        every { permissionHandler.hasWifiScanPermissions() } returns true
         viewModel.startScan()
         advanceUntilIdle()
 
-        val result = viewModel.scanResult.first()
-        assertTrue(result is Result.Success)
-        
-        val dedupedNetworks = (result as Result.Success).data
+        coVerify(exactly = 1) { wifiScanner.startScan() }
+
+        // Здесь проверяем итоговую модель данных (uiState), т.к. scanResult — это сохранённое
+        // состояние и в тестах может требовать отдельного подписчика как в UI.
+        val dedupedNetworks = viewModel.uiState.value.networks
         
         // Проверяем, что дубликаты удалены
         assertEquals(2, dedupedNetworks.size)
         
         // Проверяем, что осталась самая свежая запись для каждого BSSID
         val network1 = dedupedNetworks.find { it.bssid == "00:11:22:33:44:55" }
-        assertEquals(2000, network1?.timestamp)
+        assertEquals(2000L, network1?.timestamp)
     }
 
     /**
@@ -109,6 +117,7 @@ class ScannerScreenIntegrationTest {
         viewModel = ScannerViewModel(wifiScanner, permissionHandler, savedStateHandle)
         advanceUntilIdle()
 
+        every { permissionHandler.hasWifiScanPermissions() } returns true
         // Первый вызов - должен пройти
         viewModel.startScan()
         advanceUntilIdle()
@@ -117,16 +126,9 @@ class ScannerScreenIntegrationTest {
         viewModel.startScan()
         advanceUntilIdle()
 
-        // Ожидаем debounce период (2.5 секунды)
-        advanceTimeBy(2600)
-
-        // Третий вызов после debounce - должен пройти
-        viewModel.startScan()
-        advanceUntilIdle()
-
-        // Проверяем, что сканирование вызывалось только 2 раза (1й и 3й вызов)
-        // 2й вызов был заблокирован debounce
-        coEvery { wifiScanner.startScan() }
+        // В unit-тестах мы не можем надёжно "продвинуть" System.currentTimeMillis(),
+        // поэтому проверяем только факт блокировки второго вызова.
+        coVerify(exactly = 1) { wifiScanner.startScan() }
     }
 
     /**
@@ -149,10 +151,11 @@ class ScannerScreenIntegrationTest {
         viewModel = ScannerViewModel(wifiScanner, permissionHandler, savedStateHandle)
         advanceUntilIdle()
 
+        every { permissionHandler.hasWifiScanPermissions() } returns true
         viewModel.startScan()
         advanceUntilIdle()
 
-        val filteredResult = viewModel.filteredScanResult.first()
+        val filteredResult = viewModel.filteredScanResult.dropWhile { it is Result.Loading }.first()
         assertTrue(filteredResult is Result.Success)
         
         val filteredNetworks = (filteredResult as Result.Success).data
@@ -169,15 +172,15 @@ class ScannerScreenIntegrationTest {
     @Test
     fun `test BSSID validator correctly identifies valid and invalid addresses`() {
         // Валидные BSSID
-        assertTrue(BssidValidator.isValid("00:11:22:33:44:55"))
-        assertTrue(BssidValidator.isValid("AA:BB:CC:DD:EE:FF"))
-        assertTrue(BssidValidator.isValid("aa:bb:cc:dd:ee:ff"))
+        assertTrue(BssidValidator.isValidForStorage("00:11:22:33:44:55"))
+        assertTrue(BssidValidator.isValidForStorage("AA:BB:CC:DD:EE:FF"))
+        assertTrue(BssidValidator.isValidForStorage("aa:bb:cc:dd:ee:ff"))
         
         // Невалидные BSSID
-        assertTrue(!BssidValidator.isValid(""))
-        assertTrue(!BssidValidator.isValid("invalid"))
-        assertTrue(!BssidValidator.isValid("00:11:22:33:44"))
-        assertTrue(!BssidValidator.isValid("GG:HH:II:JJ:KK:LL"))
+        assertTrue(!BssidValidator.isValidForStorage(""))
+        assertTrue(!BssidValidator.isValidForStorage("invalid"))
+        assertTrue(!BssidValidator.isValidForStorage("00:11:22:33:44"))
+        assertTrue(!BssidValidator.isValidForStorage("GG:HH:II:JJ:KK:LL"))
     }
 
     /**
@@ -199,16 +202,19 @@ class ScannerScreenIntegrationTest {
         viewModel = ScannerViewModel(wifiScanner, permissionHandler, savedStateHandle)
         advanceUntilIdle()
 
+        every { permissionHandler.hasWifiScanPermissions() } returns true
         viewModel.startScan()
         advanceUntilIdle()
 
-        // Проверяем, что в SavedStateHandle сохранено не более 30 сетей
-        // (точная проверка зависит от реализации serialization)
-        val result = viewModel.scanResult.first()
-        assertTrue(result is Result.Success)
-        
-        // В UI должны быть все сети
-        assertEquals(50, (result as Result.Success).data.size)
+        // В UI должны быть все сети (не ограничиваем отображение)
+        assertEquals(50, viewModel.uiState.value.networks.size)
+
+        // А в SavedStateHandle должны быть сохранены только первые 30 (ограничение на размер).
+        val savedJson = savedStateHandle.get<String>("scan_result") ?: ""
+        val wrapper = Json.decodeFromString<SerializableResultWrapper>(savedJson)
+        val savedResult = wrapper.toResultForWifiList()
+        assertTrue(savedResult is Result.Success)
+        assertEquals(30, (savedResult as Result.Success).data.size)
     }
 
     /**
@@ -252,11 +258,18 @@ class ScannerScreenIntegrationTest {
             securityType = SecurityType.WPA2,
             isHidden = false,
             channel = 6,
-            standard = WifiStandard.WIFI_4,
+            standard = WifiStandard.WIFI_2_4_GHZ,
             threatLevel = ThreatLevel.SAFE,
             isConnected = false,
             vendor = null,
-            scanType = ScanType.ACTIVE
+            scanType = ScanType.MANUAL
         )
     }
 }
+
+
+
+
+
+
+

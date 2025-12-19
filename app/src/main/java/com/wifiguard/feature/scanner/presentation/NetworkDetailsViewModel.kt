@@ -2,8 +2,10 @@ package com.wifiguard.feature.scanner.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wifiguard.core.domain.model.SecurityThreat
 import com.wifiguard.core.domain.model.WifiNetwork
 import com.wifiguard.core.domain.model.WifiScanResult
+import com.wifiguard.core.domain.repository.ThreatRepository
 import com.wifiguard.core.domain.repository.WifiRepository
 import com.wifiguard.core.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +22,7 @@ import javax.inject.Inject
 @HiltViewModel
 class NetworkDetailsViewModel @Inject constructor(
     private val wifiRepository: WifiRepository,
+    private val threatRepository: ThreatRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
     
@@ -43,7 +46,12 @@ class NetworkDetailsViewModel @Inject constructor(
     private val _signalAnalytics = MutableStateFlow<SignalAnalytics?>(null)
     val signalAnalytics: StateFlow<SignalAnalytics?> = _signalAnalytics.asStateFlow()
 
+    // Активные (неразрешенные) угрозы по сети
+    private val _activeThreats = MutableStateFlow<List<SecurityThreat>>(emptyList())
+    val activeThreats: StateFlow<List<SecurityThreat>> = _activeThreats.asStateFlow()
+
     private var statisticsJob: Job? = null
+    private var threatsJob: Job? = null
     
     /**
      * Загрузить детали сети по BSSID (уникальный MAC точки доступа).
@@ -52,76 +60,22 @@ class NetworkDetailsViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             _loadedBssid.value = bssid
             _uiState.update { it.copy(isLoading = true, errorMessage = null, bssid = bssid) }
-            
-            // #region agent log
-            try {
-                val logJson = org.json.JSONObject().apply {
-                    put("sessionId", "debug-session")
-                    put("runId", "run1")
-                    put("hypothesisId", "D")
-                    put("location", "NetworkDetailsViewModel.kt:loadNetworkDetails")
-                    put("message", "Начало загрузки деталей сети")
-                    put("data", org.json.JSONObject().apply {
-                        put("bssid", bssid)
-                    })
-                    put("timestamp", System.currentTimeMillis())
-                }
-                java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-            } catch (e: Exception) {}
-            // #endregion
-            
+
             try {
                 // Получаем сеть
                 val network = wifiRepository.getNetworkByBssid(bssid)
-                // #region agent log
-                try {
-                    val logJson = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "D")
-                        put("location", "NetworkDetailsViewModel.kt:loadNetworkDetails:afterGetNetwork")
-                        put("message", "Результат getNetworkByBssid")
-                        put("data", org.json.JSONObject().apply {
-                            put("bssid", bssid)
-                            put("networkFound", network != null)
-                            if (network != null) {
-                                put("ssid", network.ssid)
-                                put("firstSeen", network.firstSeen)
-                            }
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (e: Exception) {}
-                // #endregion
                 
                 // Сеть может отсутствовать в БД - это нормально для новых сетей
                 _currentNetwork.value = network
                 
                 // Загружаем статистику (даже если сети нет в БД, статистика может быть)
                 loadNetworkStatisticsByBssid(bssid)
+
+                // Загружаем активные угрозы
+                observeActiveThreatsByBssid(bssid)
                 
                 _uiState.update { it.copy(isLoading = false, errorMessage = null) }
             } catch (e: Exception) {
-                // #region agent log
-                try {
-                    val logJson = org.json.JSONObject().apply {
-                        put("sessionId", "debug-session")
-                        put("runId", "run1")
-                        put("hypothesisId", "D")
-                        put("location", "NetworkDetailsViewModel.kt:loadNetworkDetails:exception")
-                        put("message", "Исключение при загрузке сети")
-                        put("data", org.json.JSONObject().apply {
-                            put("bssid", bssid)
-                            put("error", e.message ?: "unknown")
-                            put("errorType", e.javaClass.simpleName)
-                        })
-                        put("timestamp", System.currentTimeMillis())
-                    }
-                    java.io.File("/Users/mint1024/Desktop/андроид/.cursor/debug.log").appendText("${logJson}\n")
-                } catch (logEx: Exception) {}
-                // #endregion
-                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -147,10 +101,30 @@ class NetworkDetailsViewModel @Inject constructor(
                         _signalAnalytics.value = null
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Игнорируем отмену корутины - это нормальное поведение при переключении сетей
+                throw e
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(errorMessage = "Ошибка загрузки статистики: ${e.message}")
                 }
+            }
+        }
+    }
+
+    private fun observeActiveThreatsByBssid(bssid: String) {
+        threatsJob?.cancel()
+        threatsJob = viewModelScope.launch(ioDispatcher) {
+            try {
+                threatRepository.getUnresolvedThreatsByNetworkBssid(bssid).collect { threats ->
+                    _activeThreats.value = threats
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Игнорируем отмену корутины - это нормальное поведение при переключении сетей
+                throw e
+            } catch (e: Exception) {
+                // Не считаем это критичной ошибкой для экрана деталей
+                _activeThreats.value = emptyList()
             }
         }
     }

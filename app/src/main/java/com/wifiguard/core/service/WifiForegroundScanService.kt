@@ -8,10 +8,12 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.wifiguard.MainActivity
 import com.wifiguard.R
@@ -93,11 +95,7 @@ class WifiForegroundScanService : Service() {
             
             try {
                 val intent = Intent(context, WifiForegroundScanService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
+                context.startForegroundService(intent)
             } catch (t: Throwable) {
                 // На Android 14+ при попытке запуска из фона возможен ForegroundServiceStartNotAllowedException.
                 Log.e(TAG, "Не удалось запустить foreground service: ${t.message}", t)
@@ -142,7 +140,6 @@ class WifiForegroundScanService : Service() {
         }
 
         private fun ensurePromptChannel(context: Context) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -187,7 +184,17 @@ class WifiForegroundScanService : Service() {
         
         // Запускаем foreground notification
         val notification = createNotification("Подготовка к сканированию...")
-        startForeground(NOTIFICATION_ID, notification)
+        // Android 14+ требует явное указание типа foreground service при вызове startForeground()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
         
         // Запускаем сканирование в корутине
         serviceScope.launch {
@@ -217,20 +224,18 @@ class WifiForegroundScanService : Service() {
      * Создать notification channel для Android 8+
      */
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Уведомления о сканировании Wi-Fi сетей"
-                setShowBadge(false)
-            }
-            
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-            Log.d(TAG, "Notification channel created")
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Уведомления о сканировании Wi-Fi сетей"
+            setShowBadge(false)
         }
+        
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+        Log.d(TAG, "Notification channel created")
     }
     
     /**
@@ -278,7 +283,9 @@ class WifiForegroundScanService : Service() {
             scanStatusBus.update(ScanStatusState.Scanning())
 
             // Проверяем, включен ли WiFi
-            if (!wifiScannerService.isWifiEnabled()) {
+            val wifiEnabled = wifiScannerService.isWifiEnabled()
+            
+            if (!wifiEnabled) {
                 Log.w(TAG, "WiFi is not enabled")
                 updateNotification("Wi-Fi отключен")
                 scanStatusBus.update(ScanStatusState.Result(WifiScanStatus.Failed("Wi‑Fi отключен")))
@@ -290,7 +297,10 @@ class WifiForegroundScanService : Service() {
             updateNotification("Сканирование сетей...")
             
             // Запускаем сканирование
+            val scanStartTime = System.currentTimeMillis()
             val scanStatus = wifiScannerService.startScan()
+            val scanStartDuration = System.currentTimeMillis() - scanStartTime
+            
             
             when (scanStatus) {
                 is WifiScanStatus.Success -> {
@@ -299,22 +309,37 @@ class WifiForegroundScanService : Service() {
                     scanStatusBus.update(ScanStatusState.Processing())
                     
                     // Небольшая задержка для получения результатов
+                    val delayStartTime = System.currentTimeMillis()
                     delay(1000)
+                    val delayDuration = System.currentTimeMillis() - delayStartTime
+                    
                     
                     // Получаем результаты с метаданными
+                    val resultsStartTime = System.currentTimeMillis()
                     val (networks, metadata) = wifiScannerService.getScanResultsWithMetadata()
+                    val resultsDuration = System.currentTimeMillis() - resultsStartTime
                     Log.d(TAG, "Found ${networks.size} networks")
+                    
                     
                     if (networks.isNotEmpty()) {
                         updateNotification("Найдено ${networks.size} сетей. Анализ безопасности...")
                         scanStatusBus.update(ScanStatusState.Processing(networksCount = networks.size))
                         
                         // Сохраняем результаты батчем, чтобы избежать «шторма» обновлений Room/Flow
-                        wifiRepository.insertScanResults(networks)
+                        val insertStartTime = System.currentTimeMillis()
+                        try {
+                            wifiRepository.insertScanResults(networks)
+                            val insertDuration = System.currentTimeMillis() - insertStartTime
+                        } catch (e: Exception) {
+                            throw e
+                        }
                         
                         // Анализируем безопасность
+                        val analysisStartTime = System.currentTimeMillis()
                         val securityReport = securityAnalyzer.analyzeNetworks(networks, metadata)
+                        val analysisDuration = System.currentTimeMillis() - analysisStartTime
                         Log.d(TAG, "Security analysis complete. Found ${securityReport.threats.size} threats")
+                        
                         
                         // Сохраняем угрозы
                         if (securityReport.threats.isNotEmpty()) {

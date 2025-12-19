@@ -13,8 +13,6 @@
         <trust-anchors>
             <!-- Доверять CA, предоставленным системой -->
             <certificates src="system"/>
-            <!-- Доверять CA, предоставленным пользователем -->
-            <certificates src="user"/>
         </trust-anchors>
     </base-config>
     

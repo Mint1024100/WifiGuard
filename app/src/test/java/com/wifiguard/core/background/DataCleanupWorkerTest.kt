@@ -42,7 +42,7 @@ class DataCleanupWorkerTest {
     @Test
     fun `doWork should clean up old data`() = runTest {
         // Given
-        coEvery { settingsRepository.getDataRetentionDays() } returns flowOf(30)
+        every { settingsRepository.getDataRetentionDays() } returns flowOf(30)
         coEvery { wifiRepository.deleteScansOlderThan(any()) } returns 10
         coEvery { wifiRepository.optimizeDatabase() } returns Unit
         coEvery { wifiRepository.getTotalScansCount() } returns 100
@@ -68,6 +68,13 @@ class DataCleanupWorkerTest {
         assertEquals(ListenableWorker.Result.retry(), result)
     }
 }
+
+
+
+
+
+
+
 
 
 

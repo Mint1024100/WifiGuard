@@ -47,6 +47,8 @@ class ScannerViewModelTest {
 
         // Default behavior
         every { permissionHandler.hasWifiScanPermissions() } returns true
+        every { permissionHandler.isLocationEnabled() } returns true
+        every { permissionHandler.isLocationRequiredForWifiScan() } returns true
         every { wifiScanner.isWifiEnabled() } returns true
         every { wifiScanner.observeWifiEnabled() } returns flowOf(true)
         every { wifiScanner.getLastScanMetadata() } returns ScanMetadata(
@@ -136,96 +138,24 @@ class ScannerViewModelTest {
         )
         coEvery { wifiScanner.startScan() } returns kotlin.Result.success(mockResults)
 
+        // ВАЖНО: отключаем auto-scan в init(), чтобы второй startScan() не попал под debounce.
+        every { permissionHandler.hasWifiScanPermissions() } returns false
+
         // Create ViewModel first
         viewModel = ScannerViewModel(wifiScanner, permissionHandler, savedStateHandle)
 
-        // Create collectors to observe StateFlows - these must stay active to keep the stateIn flow alive
-        val scanResultValues = mutableListOf<Result<List<WifiScanResult>>>()
-        val uiStateValues = mutableListOf<ScannerUiState>()
-
-        val scanResultCollector = backgroundScope.launch {
-            viewModel.scanResult.collect { value ->
-                scanResultValues.add(value)
-            }
-        }
-        val uiStateCollector = backgroundScope.launch {
-            viewModel.uiState.collect { value ->
-                uiStateValues.add(value)
-            }
-        }
-
-        // Wait to ensure collectors are fully active and subscription is established
-        advanceUntilIdle()
-        
-        // Wait for initial scan from init to complete first
-        var initRetries = 0
-        while (initRetries < 50) {
-            advanceUntilIdle()
-            val currentResult = viewModel.scanResult.value
-            if (currentResult !is com.wifiguard.core.common.Result.Loading) {
-                break
-            }
-            delay(10)
-            initRetries++
-        }
-        
-        // Очищаем старый результат перед вторым сканированием, чтобы избежать проблем
-        savedStateHandle.remove<String>("scan_result")
-
-        // When - вызываем startScan второй раз после завершения init сканирования
+        // When
+        every { permissionHandler.hasWifiScanPermissions() } returns true
         viewModel.startScan()
 
-        // Wait for the operation to complete - даем корутинам время на выполнение
         advanceUntilIdle()
-        
-        // Wait for scanResult to update - ждем до 200 попыток для надежности
-        var retries = 0
-        var finalResult: Result<List<WifiScanResult>>
-        while (retries < 200) {
-            advanceUntilIdle()
-            
-            // Проверяем текущее значение StateFlow
-            finalResult = viewModel.scanResult.value
-            
-            // Если результат не Loading, выходим из цикла
-            if (finalResult !is com.wifiguard.core.common.Result.Loading) {
-                break
-            }
-            
-            delay(10)
-            retries++
-        }
-        finalResult = viewModel.scanResult.value
-
-        // Then - проверяем результат
-        if (finalResult is Result.Error) {
-            throw AssertionError("scanResult должен быть Success, но был Error: ${finalResult.message}. Exception: ${finalResult.exception?.message}")
-        }
-        assertTrue("scanResult должен быть Success, но был: ${finalResult.javaClass.simpleName}", finalResult is Result.Success)
-        
-        // Verify that startScan was called (after init call)
-        coVerify(atLeast = 2) { wifiScanner.startScan() }
-
-        if (finalResult is Result.Success) {
-            assertEquals("Должны вернуться те же сети", mockResults, finalResult.data)
-        }
-
-        // Also check that UI state is updated (wait for this propagation too)
-        var uiRetries = 0
-        var finalUiState = viewModel.uiState.value
-        while (uiRetries < 20 && finalUiState.networks.isEmpty()) {
-            delay(50)
-            advanceUntilIdle()
-            finalUiState = viewModel.uiState.value
-            uiRetries++
-        }
-
-        assertEquals("networks должны совпадать", mockResults, finalUiState.networks)
-        assertEquals("isScanning должен быть false", false, finalUiState.isScanning)
-
-        // Cancel collectors
-        scanResultCollector.cancel()
-        uiStateCollector.cancel()
+        // Then
+        coVerify(exactly = 1) { wifiScanner.startScan() }
+        val finalResult = viewModel.scanResult.dropWhile { it is Result.Loading }.first()
+        assertTrue("scanResult должен быть Success", finalResult is Result.Success)
+        assertEquals("Должны вернуться те же сети", mockResults, (finalResult as Result.Success).data)
+        assertEquals("networks должны совпадать", mockResults, viewModel.uiState.value.networks)
+        assertEquals("isScanning должен быть false", false, viewModel.uiState.value.isScanning)
     }
 
     @Test
