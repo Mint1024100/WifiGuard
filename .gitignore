@@ -126,3 +126,10 @@ gradle-full-8.5.zip
 *~
 .DS_Store
 .tmp_gradle/
+
+# IDE specific files
+.cursor/
+.cursorrules
+.vscode/
+local.properties
+keystore.properties
